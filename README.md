@@ -20,14 +20,14 @@ At the users page you can define valid RFID tags that can unlock the EVSE.
 
 ## What You Will Need
 
-###Hardware
+### Hardware
 * A complete Wallbox based on SimpleEVSE WB [link](https://www.elektrofahrzeug-umbau.de/shop/wallbox/)
 * An ESP8266 module or a development board like **WeMos D1 mini** or **NodeMcu 1.0**
 * (optional) An electricity meter with S0 interface
 * (optional) A MFRC522 RFID PCD Module or PN532 NFC Reader Module or Wiegand based RFID reader
 * (optional) n quantity of Mifare Classic 1KB (recommended due to available code base) PICCs (RFID Tags) equivalent to User Number
 
-###Software
+### Software
 
 #### Building From Source
 Please install Arduino IDE if you didn't already, then add ESP8266 Core on top of it. Additional Library download links are listed below:
