@@ -1,0 +1,21 @@
+{
+  "command": "configfile",
+  "bssid": "",
+  "ssid": "evse-wifi",
+  "wmode": "1",
+  "pswd": "",
+  "rfid": false,
+  "sspin": "",
+  "rfidgain": "",
+  "meter": false,
+  "intpin": "",
+  "buttonpin": "",
+  "kwhimp": "",
+  "price": "",
+  "timezone": "",
+  "hostnm": "",
+  "auto_restart_interval_seconds": "",
+  "adminpwd": "admin",
+  "maxinstall": "",
+  "buttonactive": false
+}
