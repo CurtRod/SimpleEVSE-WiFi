@@ -2,3 +2,8 @@
 
 data/auth/config.json
 data/auth/latestlog.json
+
+data/required/required.css
+data/required/required.js
+
+compiledbin
