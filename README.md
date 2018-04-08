@@ -27,6 +27,19 @@ At the users page you can define valid RFID tags that can unlock the EVSE.
 * (optional) A MFRC522 RFID PCD Module or PN532 NFC Reader Module or Wiegand based RFID reader
 * (optional) n quantity of Mifare Classic 1KB (recommended due to available code base) PICCs (RFID Tags) equivalent to User Number
 
+#### Wiring (WeMos D1 mini/ NodeMcu)
+
+* D0	->	Button (optional)
+* D1	->	TX EVSE
+* D2	->	RX EVSE
+* D3	->	Electricity Meter S0 (optional)*
+* D5	->	SCK RC522 (optional)
+* D6	->	MISO RC522 (optional)
+* D7	->	MOSI RC522 (optional)
+* D8	->	SDA RC522 (optional)
+
+*When you use an electricity meter be sure the S0 interface switches to GND, don't use 3.3V oder 5V!
+
 ### Software
 
 #### Use Compiled Binaries
@@ -53,13 +66,3 @@ You also need to upload web files to your ESP with ESP8266FS Uploader.
 
 Unlisted libraries are part of ESP8266 Core for Arduino IDE, so you don't need to download them.
 
-## Wiring (WeMos D1 mini/ NodeMcu)
-
-* D0	->	button
-* D1	->	TX EVSE
-* D2	->	RX EVSE
-* D3	->	impulse meter
-* D5	->	SCK RC522
-* D6	->	MISO RC522
-* D7	->	MOSI RC522
-* D8	->	SDA RC522
