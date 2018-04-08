@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="icon" href="/favicon.ico">
+    <title>ESP RFID</title>
+    <!-- Bootstrap core CSS -->
+    <link href="../required/required.css" rel="stylesheet">
+    <script src="../required/required.js" type="text/javascript"></script>
+    <script src="set.js" type="text/javascript"></script>
+  </head>
+  <body onload="start()">
+  	<div style="z-index: 99;" id="mySidenav" class="sidenav">
+		<a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+		<a href="/auth/evse.htm">EVSE&nbsp;Control</a>
+		<a href="/auth/users.htm">Users</a>
+		<a href="/auth/settings.htm"><b>Settings</b></a>
+		<a href="/auth/log.htm">Log</a>
+	</div>
+    <div class="container">
+		<div class="header clearfix">
+		<nav>
+			<ul class="nav pull-right" style="padding:10px">
+			<span class="text-muted" style="font-size:30px;cursor:pointer" onclick="openNav()">&#9776;</span>
+			</ul>
+		</nav>
+		<h3 class="text-muted">Settings</h3>
+		</div>
+        <div class="alert alert-warning"><strong>Warning!</strong> Settings will take effect when the device is rebooted. 
+        </div>
+        <div id="loading-img" class="text-center">
+                            <img src="/load.gif">
+                  <h5>Please wait while fetching data... <span id="loadpages"></span></h5>
+        </div>
+        <div>
+          <button data-toggle="collapse" data-target="#status" id="refstat" onclick="refreshStats()" class="btn btn-link btn-sm">Show Device Status</button>
+        </div>
+        <div id="status" class="row collapse">
+            <div class="col-sm-6">
+              <div class="panel panel-default table-responsive">
+                <table class="table table-hover table-striped">
+                  <caption>Device</caption>
+                  <tr>
+                    <th>Chip ID</th>
+                    <td id="chip"></td>
+                  </tr>
+                  <tr>
+                    <th>CPU Clock</th>
+                    <td id="cpu"></td>
+                  </tr>
+                                    <tr>
+                    <th>Uptime</th>
+                    <td id="uptime"></td>
+                  </tr>
+                  <tr>
+                    <th>Free Heap</th>
+                    <td>
+                      <div class="progress" style="margin-bottom: 0 !important;">
+                        <div id="heap" class="progress-bar progress-bar-primary" role="progressbar">
+                          Progress
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th>Free Flash</th>
+                    <td>
+                      <div class='progress' style="margin-bottom: 0 !important;">
+                        <div id="flash" class="progress-bar progress-bar-primary" role="progressbar">
+                          Progress
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                  				<tr>
+ 					<th>Free SPIFFS</th>
+ 					<td>			
+ 					<div class='progress' style="margin-bottom: 0 !important;">
+ 						<div id="spiffs" class="progress-bar progress-bar-primary" role="progressbar">
+ 							Progress
+ 						</div>
+ 					</div></td>
+				  </tr>
+                </table>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <div class="panel panel-default table-responsive">
+                <table class="table table-hover table-striped">
+                  <caption>Network</caption>
+                  <tr>
+                    <th>SSID</th>
+                    <td id="ssidstat"></td>
+                  </tr>
+                  <tr>
+                    <th>IP</th>
+                    <td id="ip"></td>
+                  </tr>
+                  <tr>
+                    <th>Gateway</th>
+                    <td id="gate"></td>
+                  </tr>
+                  <tr>
+                    <th>Mask</th>
+                    <td id="mask"></td>
+                  </tr>
+                  <tr>
+                    <th>DNS</th>
+                    <td id="dns"></td>
+                  </tr>
+                  <tr>
+                    <th>MAC</th>
+                    <td id="mac"></td>
+                  </tr>
+                </table>
+              </div>
+            </div>
+			<div class="col-sm-6">
+              <div class="panel panel-default table-responsive">
+                <table class="table table-hover table-striped">
+                  <caption>EVSE</caption>
+                  <tr>
+                    <th>1000: Configured Current</th>
+                    <td id="amps_conf"></td>
+                  </tr>
+                  <tr>
+                    <th>1001: Actual Current</th>
+                    <td id="amps_out"></td>
+                  </tr>
+                  <tr>
+                    <th>1002: Vehicle Status</th>
+                    <td id="vehicle_status"></td>
+                  </tr>
+                  <tr>
+                    <th>1003: PP-Limit</th>
+                    <td id="amps_pp"></td>
+                  </tr>
+				  <tr>
+                    <th>1005: Firmware Version</th>
+                    <td id="evse_version"></td>
+                  </tr>
+                  <tr>
+                    <th>1006: EVSE Status</th>
+                    <td id="evse_status"></td>
+                  </tr>
+                  <tr>
+                    <th>2000: Current after boot</th>
+                    <td id="amps_boot"></td>
+                  </tr>
+				  <tr>
+                    <th>2001: Modbus Status</th>
+                    <td id="evse_modbus"></td>
+                  </tr>
+				  <tr>
+                    <th>2002: Min. Current Value</th>
+                    <td id="amps_min"></td>
+                  </tr>
+				  <tr>
+                    <th>2007: PP Detection</th>
+                    <td id="pp_detection"></td>
+                  </tr>
+                </table>
+              </div>
+            </div>
+          </div>
+            <br>
+        <div class="row">
+          <div class="col-sm-6">
+            <legend>Wi-Fi Settings</legend>
+            <h6 class="text-muted">Type your Wi-Fi Network's SSID or Scan for nerby Wireless Networks to join.</h6>
+            <div class="row form-group">
+              <label data-toggle="tooltip" title="You can run your ESP in AP Mode or Client Mode. In client mode you will need to connect to an existing Wi-Fi network, in AP Mode ESP creates a Wi-Fi network itself." class="col-xs-3">Wi-Fi Mode</label>
+              <div class="col-xs-9">
+                <form>
+                  <label class="radio-inline"><input type="radio" value="1" name="wmode" id="wmodeap" onclick="handleAP();">Access Point </label>
+                  <label class="radio-inline"><input type="radio" value="0" name="wmode" id="wmodesta" onclick="handleSTA();">Client</label>
+                </form>
+              </div>
+            </div>
+            <div class="row form-group">
+              <label data-toggle="tooltip" title="Wi-Fi Network's Name" class="col-xs-3">SSID</label> 
+              <span class="col-xs-6 col-md-5">
+                <input class="form-control input-sm" id="inputtohide" type="text" name="ap_ssid">
+                <select class="form-control input-sm" style="display:none;" id="ssid" onchange="listBSSID();"></select>
+              </span>
+              <span class="col-xs-3">
+                <button id="scanb" type="button" class="btn btn-primary btn-xs" onclick="scanWifi()">Scan</button>
+              </span>
+            </div>
+            <div class="row form-group" style="display:none" id="hideBSSID">
+              <label data-toggle="tooltip" title="If you have two Wi-Fi networks with the same SSID you may want to choose the specific one by BSSID" class="col-xs-3">BSSID</label> 
+              <span class="col-xs-9 col-md-5">
+              <input id="wifibssid" class="form-control input-sm" type="text" name="ap_bssid">
+              </span> 
+            </div>
+            <div class="row form-group">
+              <label data-toggle="tooltip" title="Wi-Fi Password" class="col-xs-3">Password</label> 
+              <span class="col-xs-6 col-md-5">
+              <input id="wifipass" class="form-control input-sm" type="password" name="ap_passwd">
+              </span> 
+			  <span class="col-xs-3">
+                <button id="shwifi" type="button" class="btn btn-primary btn-xs" onclick="shWifi()">show</button>
+              </span>
+            </div>
+			<br>
+    	  </div>
+          <div class="col-sm-6">
+            <legend>RFID Hardware Settings</legend>
+            <h6 class="text-muted">Please refer the <a href="https://github.com/omersiar/esp-rfid#pin-layout">documentation</a> for pin configuration.</h6>
+			<div class="alert alert-warning"><strong>Warning!</strong> Activating RFID-Hardware when there is no RC522 connected to ESP, causes boot loop!</div>
+			<div class="row form-group">
+              <label data-toggle="tooltip" title="When you want to use a RC522 RFID Hardware to activate your EVSE, please activate this option." class="col-xs-3">RFID-Hardware</label>
+              <div class="col-xs-9">
+                <form>
+                  <label class="checkbox-inline"><input type="checkbox" id="checkboxRfid" value="" name="rfidmode" onclick="handleRFID();">Active</label>
+                </form>
+              </div>
+            </div>
+            <div class="row form-group">
+              <label data-toggle="tooltip" title="Choose which ESP port is connected to RFID Hardware SDA pin" class="col-xs-3">SPI SS</label> 
+              <span class="col-xs-9 col-md-5">
+                <select class="form-control input-sm" id="gpioss">
+                  <option value="0">GPIO-0</option>
+                  <option value="2">GPIO-2</option>
+                  <option value="4">GPIO-4</option>
+                  <option value="5">GPIO-5</option>
+                  <option selected="selected" value="15">GPIO-15</option>
+                  <option value="16">GPIO-16</option>
+                </select>
+              </span>
+            </div>
+            <div class="row form-group">
+              <label data-toggle="tooltip" title="Higher value means the longer RFID reader's reading distance" class="col-xs-3">Antenna Gain</label> 
+              <span class="col-xs-9 col-md-5">
+                <select class="form-control input-sm" id="gain">
+                  <option value="112">Max (48 db)</option>
+                  <option value="96">43 db</option>
+                  <option value="48">38 db</option>
+                  <option selected="selected" value="32">Avg (33 db)</option>
+                  <option value="16">23 db</option>
+                  <option value="0">Min (18 db)</option>
+                </select>
+              </span>
+            </div>
+            <br>
+		  </div>
+		</div>
+		 <div class="row">
+		  <div class="col-sm-6">
+			<legend>Meter Hardware Settings</legend>
+			<div class="row form-group">
+              <label data-toggle="tooltip" title="If you want to use an electricity meter to count the power consumption, please activate this option." class="col-xs-3">Meter Hardware</label>
+              <div class="col-xs-9">
+                <form>
+                  <label class="checkbox-inline"><input type="checkbox" id="checkboxMeter" value="" name="checkboxMeter" onclick="handleMeter();">Active</label>
+                </form>
+              </div>
+            </div>
+			<div class="row form-group">
+              <label data-toggle="tooltip" title="Choose which ESP port is connected to S0 interface of electricity meter" class="col-xs-3">Meter GPIO</label> 
+              <span class="col-xs-9 col-md-5">
+                <select class="form-control input-sm" id="gpioint">
+                  <option value="0">GPIO-0</option>
+                  <option value="2">GPIO-2</option>
+                  <option value="4">GPIO-4</option>
+                  <option selected="selected" value="5">GPIO-5</option>
+                  <option value="15">GPIO-15</option>
+                  <option value="16">GPIO-16</option>
+                </select>
+              </span>
+            </div>
+            <div class="row form-group">
+ 						<label data-toggle="tooltip" title="Depending on your meter setup, you can choose the impulses per kWh (usually 1000 or 2000 imp/kWh)" class="col-xs-3">Meter Type</label> 
+ 						<span class="col-xs-9 col-md-5">
+						<input class="form-control input-sm" value="1000" placeholder="in impulses per kWh" id="impkwh" type="text" name="impsperkwh">
+ 						</span>
+			</div>
+			<div class="row form-group">
+ 						<label data-toggle="tooltip" title="Price per kWh in cent" class="col-xs-3">Price</label> 
+ 						<span class="col-xs-9 col-md-5">
+						<input class="form-control input-sm" value="25" placeholder="in cent per kWh" id="price" type="text" name="price">
+ 						</span>
+			</div>
+          </div>
+		  <div class="col-sm-6">
+			<legend>EVSE Settings</legend>
+            <div class="row form-group">
+ 						<label data-toggle="tooltip" title="Enter the maximum current (A) allowed by your electical installation." class="col-xs-3">Max Current</label> 
+ 						<span class="col-xs-9 col-md-5">
+						<input class="form-control input-sm" value="6" placeholder="in A" id="maxinstall" type="text" name="maxinstall">
+ 						</span>
+			</div>
+			<div class="row form-group">
+              <label data-toggle="tooltip" title="If you want to activate your EVSE activated via button, please activate this option." class="col-xs-3">Button to activate</label>
+              <div class="col-xs-9">
+                <form>
+                  <label class="checkbox-inline"><input type="checkbox" id="checkboxButtonActive" value="" name="buttonsactive" onclick="handleButtonActive();">Active</label>
+                </form>
+              </div>
+            </div>
+			<div class="row form-group">
+              <label data-toggle="tooltip" title="Choose which ESP port is connected to Button for activating your EVSE" class="col-xs-3">Button Pin</label> 
+              <span class="col-xs-9 col-md-5">
+                <select class="form-control input-sm" id="gpiobutton">
+                  <option value="0">GPIO-0</option>
+                  <option value="2">GPIO-2</option>
+                  <option value="4">GPIO-4</option>
+                  <option value="5">GPIO-5</option>
+                  <option value="15">GPIO-15</option>
+                  <option selected="selected" value="16">GPIO-16</option>
+                </select>
+              </span>
+            </div>
+          </div>
+		  </div>
+        <br>
+        <div class="row">
+          <div class="col-sm-6">
+            <legend>General Settings</legend>
+            <div class="row form-group">
+              <label data-toggle="tooltip" title="Log On password for the Administrator" class="col-xs-3">Admin Password</label> 
+              <span class="col-xs-6 col-md-5">
+              <input class="form-control input-sm" placeholder="Administrator Password" id="adminpwd" type="password">
+              </span>
+			  <span class="col-xs-3">
+                <button id="shadmin" type="button" class="btn btn-primary btn-xs" onclick="shAdmin()">show</button>
+              </span>
+              <br>
+            </div>
+            <div class="row form-group">
+              <label data-toggle="tooltip" title="Hostname for your ESP, When Bonjour is installed on your computer you can access your ESP via http://hostname.local" class="col-xs-3">Host Name</label> 
+              <span class="col-xs-9 col-md-5">
+              <input class="form-control input-sm" placeholder="Hostname" value="evse-wifi" id="hostname" type="text">
+              </span>
+              <br>
+            </div>
+            <div class="row form-group">
+              <label data-toggle="tooltip" title="How often to automatically restart the unit to lessen risk of memory leaks and crashes." class="col-xs-3">Auto Restart</label> 
+              <span class="col-xs-9 col-md-5">
+                <select class="form-control" id="auto_restart_interval_seconds" name="auto_restart_interval_seconds">
+                  <option value='0'>Never</option>
+                  <option value='86400' selected>Every 24h</option>
+                  <option value='604800'>Every 7 days</option>
+                  <option value='18144000'>Every 30 days</option>
+                </select>
+              </span>
+              <br>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <legend>Time Settings</legend>
+            <h6 class="text-muted">Small differences between device time and local time can be ignored. Please see <a href="https://github.com/omersiar/esp-rfid#time">documentation</a> for additional information.</h6>
+            <div class="row form-group">
+              <label class="col-xs-3">Device Time</label> 
+              <span id="utc" class="col-xs-9 col-md-5">
+              </span>
+            </div>
+            <div class="row form-group">
+              <label class="col-xs-3">Browser Time</label> 
+              <span id="rtc" class="col-xs-9 col-md-5">
+              </span>
+            </div>
+            <div class="row form-group">
+              <div data-toggle="tooltip" title="Send your PC/Phone time to ESP, useful when the ESP does not have Internet connection." class="col-xs-3"><button onclick="syncBrowserTime(true)" class="btn btn-link btn-sm">Sync Browser Time to Device</button></div>
+              </div>
+            <div class="row form-group">
+              <label class="col-xs-3">Time Zone</label> 
+              <span class="col-xs-9 col-md-5">
+                <select class="form-control input-sm" name="DropDownTimezone" id="DropDownTimezone">
+                  <option value="-12">(GMT -12:00) Eniwetok, Kwajalein</option>
+                  <option value="-11">(GMT -11:00) Midway Island, Samoa</option>
+                  <option value="-10">(GMT -10:00) Hawaii</option>
+                  <option value="-9">(GMT -9:00) Alaska</option>
+                  <option value="-8">(GMT -8:00) Pacific Time (US &amp; Canada)</option>
+                  <option value="-7">(GMT -7:00) Mountain Time (US &amp; Canada)</option>
+                  <option value="-6">(GMT -6:00) Central Time (US &amp; Canada), Mexico City</option>
+                  <option value="-5">(GMT -5:00) Eastern Time (US &amp; Canada), Bogota, Lima</option>
+                  <option value="-4">(GMT -4:00) Atlantic Time (Canada), Caracas, La Paz</option>
+                  <option value="-3.5">(GMT -3:30) Newfoundland</option>
+                  <option value="-3">(GMT -3:00) Brazil, Buenos Aires, Georgetown</option>
+                  <option value="-2">(GMT -2:00) Mid-Atlantic</option>
+                  <option value="-1">(GMT -1:00 hour) Azores, Cape Verde Islands</option>
+                  <option value="0">(GMT) Western Europe Time, London, Lisbon, Casablanca</option>
+                  <option selected="selected" value="1">(GMT +1:00 hour) Brussels, Copenhagen, Madrid, Paris</option>
+                  <option value="2">(GMT +2:00) Kaliningrad, South Africa</option>
+                  <option value="3">(GMT +3:00) Baghdad, Riyadh, Moscow, St. Petersburg</option>
+                  <option value="3.5">(GMT +3:30) Tehran</option>
+                  <option value="4">(GMT +4:00) Abu Dhabi, Muscat, Baku, Tbilisi</option>
+                  <option value="4.5">(GMT +4:30) Kabul</option>
+                  <option value="5">(GMT +5:00) Ekaterinburg, Islamabad, Karachi, Tashkent</option>
+                  <option value="5.5">(GMT +5:30) Bombay, Calcutta, Madras, New Delhi</option>
+                  <option value="5.75">(GMT +5:45) Kathmandu</option>
+                  <option value="6">(GMT +6:00) Almaty, Dhaka, Colombo</option>
+                  <option value="7">(GMT +7:00) Bangkok, Hanoi, Jakarta</option>
+                  <option value="8">(GMT +8:00) Beijing, Perth, Singapore, Hong Kong</option>
+                  <option value="9">(GMT +9:00) Tokyo, Seoul, Osaka, Sapporo, Yakutsk</option>
+                  <option value="9.5">(GMT +9:30) Adelaide, Darwin</option>
+                  <option value="10">(GMT +10:00) Eastern Australia, Guam, Vladivostok</option>
+                  <option value="11">(GMT +11:00) Magadan, Solomon Islands, New Caledonia</option>
+                  <option value="12">(GMT +12:00) Auckland, Wellington, Fiji, Kamchatka</option>
+                </select>
+              </span>
+              <br>
+            </div>
+          </div>
+        </div>
+        <hr>
+        <div>
+          <button onclick="saveConf()" class="btn btn-primary btn-sm pull-right">Save & Reboot</button> 
+        </div>
+        <br><br><br>
+      <div class="jumbotron">
+        <div class="row">
+          <div class="col-sm-6">
+            <legend>Backup</legend>
+            <h6 class="text-muted">Please make sure that you have made a backup before updating the firmware.</h6>
+            <div>
+              <button class="btn btn-link btn-sm" onclick="backupuser()">Backup User Data</button>
+              <a id="downloadUser" style="display:none"></a>
+              <button class="btn btn-link btn-sm" onclick="backupset()">Backup Settings</button>
+              <a id="downloadSet" style="display:none"></a>
+            </div>
+            <br>
+            <div>
+              <legend>Restore</legend>
+              <h6 class="text-muted">Click on links and choose your backup file to restore.</h6>
+              <label for="restoreUser" class="btn btn-link btn-sm">Restore User Data</label>
+              <input id="restoreUser" type="file" accept="text/json" onchange="restoreUser()" style="display:none;">
+              <label for="restoreSet" class="btn btn-link btn-sm">Restore Settings</label>
+              <input id="restoreSet" type="file" accept="text/json" onchange="restoreSet()" style="display:none;">
+            </div>
+            <br>
+            <div id="restoremodal" class="modal fade" role="dialog">
+				<div class="modal-dialog">
+					<div class="modal-content">
+						<div class="modal-header">
+							<button type="button" class="close" data-dismiss="modal">&times;</button>
+							<h4 class="modal-title">Please wait while restoring user data...</h4>
+						</div>
+						<div class="modal-body">
+							<div id="pbar" class="progress">
+								<div id="dynamic" class="progress-bar progress-bar-primary progress-bar-striped active">Restoring...</div>
+							</div>
+						</div>
+						<div class="modal-footer">
+							<button type="button" id="restoreclose" style="display:none;" class="btn btn-default" data-dismiss="modal">Close</button>
+						</div>
+					</div>
+				</div>
+			</div>
+          </div>
+          <div class="col-sm-6">
+            <legend>Update Firmware</legend>
+            <h6 class="text-muted">Download <a href="https://github.com/omersiar/esp-rfid/raw/master/compiledbin/latest.bin">latest version</a> from GitHub.</h6>
+            <form class="form-inline" method="POST" action="/auth/update" enctype="multipart/form-data">
+              <div class="form-group">
+                <input type="file" name="update">
+              </div>
+              <button type="submit" class="btn btn-primary btn-sm">Upload</button>
+            </form>
+            <br>
+          </div>
+        </div>
+      </div>
+      <hr>
+      <footer class="footer">
+        <h6 class="text-muted"><a href="https://github.com/CurtRod/SimpleEVSE-WiFi" target="_blank">SimpleEVSE WiFi</a></h6>
+      </footer>
+    </div>
+  </body>
+</html>
