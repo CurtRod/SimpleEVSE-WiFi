@@ -38,7 +38,6 @@ Please install Arduino IDE if you didn't already, then add ESP8266 Core on top o
 * [ESPAsyncTCP](https://github.com/me-no-dev/ESPAsyncTCP) - Mandatory for ESPAsyncWebServer
 * [ModbusMaster](https://github.com/4-20ma/ModbusMaster) - ModbusMaster Library for communicating with EVSE
 * [SoftwareSerial](https://github.com/plerup/espsoftwareserial) SoftwareSerial to communicate with EVSE (**NOTE: Use the github version! There is a buxfix for esp8266 v2.4.0 and later**)
-* [WiFiUdp]
 * [MFRC522](https://github.com/miguelbalboa/rfid) - MFRC522 RFID Hardware Library for Arduino IDE
 * [Wiegand](https://github.com/monkeyboard/Wiegand-Protocol-Library-for-Arduino) - Wiegand 4 bit, 8 bit, 26 bit, 32 bit and 34 bit library for Arduino
 * [ArduinoJson](https://github.com/bblanchon/ArduinoJson) - JSON Library for Arduino IDE
