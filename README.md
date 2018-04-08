@@ -52,10 +52,9 @@ Please install Arduino IDE if you didn't already, then add ESP8266 Core on top o
 * [ESP8266 Core for Arduino IDE](https://github.com/esp8266/Arduino) - ESP8266 Core
 * [ESPAsyncWebServer](https://github.com/me-no-dev/ESPAsyncWebServer) - Asyncrone Web Server with WebSocket Plug-in
 * [ESPAsyncTCP](https://github.com/me-no-dev/ESPAsyncTCP) - Mandatory for ESPAsyncWebServer
-* [ModbusMaster](https://github.com/4-20ma/ModbusMaster) - ModbusMaster Library for communicating with EVSE
+* [ModbusMaster](https://github.com/CurtRod/ModbusMaster) - ModbusMaster Library for communicating with EVSE (**NOTE: Use my Fork of ModbusMaster! Otherwise the wdt reset will be triggered in case of timeout error**)
 * [SoftwareSerial](https://github.com/plerup/espsoftwareserial) SoftwareSerial to communicate with EVSE (**NOTE: Use the github version! There is a buxfix for esp8266 v2.4.0 and later**)
 * [MFRC522](https://github.com/miguelbalboa/rfid) - MFRC522 RFID Hardware Library for Arduino IDE
-* [Wiegand](https://github.com/monkeyboard/Wiegand-Protocol-Library-for-Arduino) - Wiegand 4 bit, 8 bit, 26 bit, 32 bit and 34 bit library for Arduino
 * [ArduinoJson](https://github.com/bblanchon/ArduinoJson) - JSON Library for Arduino IDE
 * [NTPClientLib](https://github.com/gmag11/NtpClient/) - NTP Client Library for Arduino IDE
 * [TimeLib](https://github.com/PaulStoffregen/Time) - Mandatory for NTP Client Library
