@@ -29,6 +29,9 @@ At the users page you can define valid RFID tags that can unlock the EVSE.
 
 ### Software
 
+#### Use Compiled Binaries
+Compiled firmware binary and flasher tool for Windows PCs are available in directory **/bin**. On Windows you can use **"flash.bat"**, it will ask you which COM port that ESP is connected and then flashes it. You can use any flashing tool and do the flashing manually. The flashing process itself has been described at numerous places on Internet.
+
 #### Building From Source
 Please install Arduino IDE if you didn't already, then add ESP8266 Core on top of it. Additional Library download links are listed below:
 
