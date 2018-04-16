@@ -1,5 +1,3 @@
-# Ignore the root dist as buildcontrol will place it on it's own branch (same for gh-pages)
-
 data/P
 
 data/required/required.css

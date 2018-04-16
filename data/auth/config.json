@@ -1,5 +1,6 @@
 {
   "command": "configfile",
+  "version": "0.1.1",
   "bssid": "",
   "ssid": "evse-wifi",
   "wmode": "1",
@@ -13,8 +14,7 @@
   "kwhimp": "1000",
   "price": "",
   "timezone": "",
-  "hostnm": "",
-  "auto_restart_interval_seconds": "",
+  "hostnm": "evse-wifi",
   "adminpwd": "admin",
   "maxinstall": "10",
   "buttonactive": false

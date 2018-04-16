@@ -11,6 +11,7 @@ var completed = false;
 var wsUri;
 
 function listCONF(obj) {
+  document.getElementById("version").innerText = obj.version;
   document.getElementById("inputtohide").value = obj.ssid;
   document.getElementById("wifipass").value = obj.pswd;
   document.getElementById("wifibssid").value = obj.bssid;
@@ -23,7 +24,6 @@ function listCONF(obj) {
   document.getElementById("adminpwd").value = obj.adminpwd;
   document.getElementById("DropDownTimezone").value = obj.timezone;
   document.getElementById("hostname").value = obj.hostnm;
-  document.getElementById("auto_restart_interval_seconds").value = obj.auto_restart_interval_seconds;
   if (obj.wmode === "1") {
 	document.getElementById("wmodeap").checked = true;
 	handleAP();
@@ -201,7 +201,6 @@ function saveConf() {
   datatosend.price = document.getElementById("price").value;
   datatosend.timezone = document.getElementById("DropDownTimezone").value;
   datatosend.hostnm = document.getElementById("hostname").value;
-  datatosend.auto_restart_interval_seconds = document.getElementById("auto_restart_interval_seconds").value;
   datatosend.adminpwd = a;
   datatosend.maxinstall = document.getElementById("maxinstall").value;
   datatosend.buttonactive = document.getElementById("checkboxButtonActive").checked;

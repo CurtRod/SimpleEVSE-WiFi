@@ -36,6 +36,9 @@ function initTable() {
 				if(value === 0) {
 					return "<span class=\"glyphicon glyphicon-repeat\"></span>";
 				}
+					else if(value === "e"){
+						return "<span class=\"glyphicon glyphicon-remove\"></span>";
+					}
 				var seconds = (value / 1000).toFixed(0);
 				var minutes = Math.floor(seconds / 60);
 				var hours = "";
@@ -60,15 +63,15 @@ function initTable() {
 					if(value === 0){
 						return "<span class=\"glyphicon glyphicon-repeat\"></span>";
 					}
+					else if(value === "e"){
+						return "<span class=\"glyphicon glyphicon-remove\"></span>";
+					}
 					return value + " kWh";
 				}
 		  },
 		  {
 		  	"name": "costs",
-			"title": "Costs",
-			"parser": function (value) {
-					return value + " €";
-				}
+			"title": "Costs"
 		  },
 		  {
             "name": "uid",
@@ -112,8 +115,12 @@ function socketMessageListener(evt) {
   if (obj.type === "latestlog") {
     logdata = obj.list;
 	for(i in logdata){ 
-		var costs = logdata[i].price / 100 * logdata[i].energy;
-		logdata[i].costs = round(costs);
+		if(logdata[i].price === "e"){
+			logdata[i].costs = "<span class=\"glyphicon glyphicon-remove\"></span>";
+		}
+		else{
+			logdata[i].costs = String(round(logdata[i].price / 100 * logdata[i].energy)) + " €";
+		}
 	}
     initTable();
     document.getElementById("loading-img").style.display = "none";

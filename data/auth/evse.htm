@@ -14,15 +14,13 @@
   <style>
 </style>
 </head>
-
 <body onload="start()">
- 
 <div style="z-index: 99;" id="mySidenav" class="sidenav">
   <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
-  <a href="/auth/evse.htm"><b>EVSE&nbsp;Control</b></a>
-  <a href="/auth/users.htm">Users</a>
-  <a href="/auth/settings.htm">Settings</a>
-  <a href="/auth/log.htm">Log</a>
+  <a href="/auth/evse.htm"><nobr><b><span class="glyphicon glyphicon-road"></span>&nbsp;&nbsp;EVSE&nbsp;Control</b></nobr></a>
+  <a href="/auth/users.htm"><nobr><span class="glyphicon glyphicon-user"></span>&nbsp;&nbsp;Users</nobr></a>
+  <a href="/auth/settings.htm"><nobr><span class="glyphicon glyphicon-cog"></span>&nbsp;&nbsp;Settings</nobr></a>
+  <a href="/auth/log.htm"><nobr><span class="glyphicon glyphicon-list-alt"></span>&nbsp;&nbsp;Log</nobr></a>
 </div>
 <!-- Modal -->
 <div class="modal fade" id="currentModal" tabindex="-1" role="dialog" aria-labelledby="currentModalLabel" aria-hidden="true">
@@ -35,16 +33,7 @@
       <div class="modal-body">
 		<div class="""slidecontainer">
 			<input type="range" min="6" max="25" value="20" class="slider" id="myRange" oninput="handleSlider(this.value)">
-		</div> <!--
-		<script>
-			slider = document.getElementById("myRange");
-			var output = document.getElementById("slider_current");
-			output.innerHTML = slider.value;
-	
-			slider.oninput = function() {
-			output.innerHTML = this.value;
-			}
-		</script> -->
+		</div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-dismiss="modal">Abort</button>
