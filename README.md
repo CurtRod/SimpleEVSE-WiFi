@@ -1,6 +1,6 @@
 # SimpleEVSE-WiFi
 
-SimpleEVSE-WiFi brings WiFi functionality to your SimpleEVSE WB to control your Charging Station very easy. It uses an ESP8266 for communicate with SimpleEVSE via ModBus and offers a Webinterface to control it. Optional there is a possibility to connect an impulse meter via S0 and an RC522 RFID reader to detect valid RFID tags.
+SimpleEVSE-WiFi brings WiFi functionality to your SimpleEVSE WB to control your Charging Station very easy. It uses an ESP8266 for communicate with SimpleEVSE WB via ModBus and offers a Webinterface to control it. Optional there is a possibility to connect an impulse meter via S0 and an RC522 RFID reader to detect valid RFID tags.
 
 ## Preview
 
@@ -21,7 +21,7 @@ At the users page you can define valid RFID tags that can unlock the EVSE.
 ## What You Will Need
 
 ### Hardware
-* A complete Wallbox based on EVSE Wallbox [link](http://evracing.cz/simple-evse-wallbox/) (min. revision 8 is needed)
+* A complete Wallbox based on EVSE Wallbox [link](http://evracing.cz/simple-evse-wallbox/) (min. Software revision 8 is needed - read the manual there for updating your EVSE software)
 * An ESP8266 module or a development board like **WeMos D1 mini** or **NodeMcu 1.0**
 * (optional) An electricity meter with S0 interface
 * (optional) A MFRC522 RFID PCD Module or PN532 NFC Reader Module or Wiegand based RFID reader
@@ -37,8 +37,15 @@ At the users page you can define valid RFID tags that can unlock the EVSE.
 * D6	->	MISO RC522 (optional)
 * D7	->	MOSI RC522 (optional)
 * D8	->	SDA RC522 (optional)
+* GND ->  Electricity Meter S0 (optional)*
+* GND ->  GND RC522 (optional)
+
+Be sure to use a suitable power supply for ESP. At least 200mA is recommended!
 
 *When you use an electricity meter be sure the S0 interface switches to GND, don't use 3.3V or 5V!
+
+#### Preparation of EVSE Wallbox
+To use SimpleEVSE-WiFi, the Modbus functionallity of EVSE Wallbox is needed! By default, Modbus functionality is disabled. To activate it, pull AN input of the EVSE Wallbox board to GND while booting for at least 5 times within 3 seconds. Modbus register 2001 will be set to 1 (Modbus is active). Attention: That change will not be saved! To save the settings, you have to give a R/W operation at a register >=2000. The easiest way to do this is to activate and deactivate EVSE through the WebUI in the "EVSE Control" page.
 
 ### Software
 
