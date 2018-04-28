@@ -1,6 +1,17 @@
 # SimpleEVSE-WiFi
 
-SimpleEVSE-WiFi brings WiFi functionality to your SimpleEVSE WB to control your Charging Station very easy. It uses an ESP8266 for communicate with SimpleEVSE WB via ModBus and offers a Webinterface to control it. Optional there is a possibility to connect an impulse meter via S0 and an RC522 RFID reader to detect valid RFID tags.
+SimpleEVSE-WiFi brings WiFi functionality to your SimpleEVSE WB to control your Charging Station very easy. It uses an ESP8266 to communicate with SimpleEVSE WB via ModBus (UART) and offers a web interface to control it. Optional there is a possibility to connect an impulse meter via S0 and an RC522 RFID reader to detect valid RFID tags.
+
+## Main Features
+
+* WiFi functionality (as an access point or as a WiFi client)
+* Activate and deactivate the Simple EVSE WB via a web interface, RFID tags or a button
+* Setting the charging current via the web interface
+* Displays the current charging power in kW (by impulses of the S0 counter, optional)
+* User management (RFID tags, optional)
+* Log of the last charging processes with output of the charged energy quantity, charging time and costs of the charging process (optionally which RFID tag the EVSE was enabled by and the user assigned to it)
+* Rudimentary settings (WiFi settings, password for web interface, maximum charging current, etc.)
+* Output of all important parameters of the SimpleEVSE WB (Modbus)
 
 ## Preview
 
@@ -74,4 +85,129 @@ Unlisted libraries are part of ESP8266 Core for Arduino IDE, so you don't need t
 
 ## First boot
 When SimpleEVSE-WiFi starts for the first time it sets up a WiFi access point called 'evse-wifi'. You can connect without a password. To connect, open http://192.168.4.1 in your browser. The initial password is 'admin'. You should first check the Settings to bring the ESP in Client mode and connect it to your local WiFi network. The ESP will be restarted afterwards. If it doesn't restart, press the 'RST' button once. Sometimes the ESP must first be manually reset (this only has to happen after flashing a new firmware).
+
+## HTTP API
+Since version 0.2.0 there is an HTTP API implemented to let other devices control your EVSE WiFi. The API gives you the following possibilities of setting and fetching information.
+
+### getParameters()
+gives you the following information of the EVSE WB in json:
+
+Parameter | Description
+--------- | -----------
+vehicleState | Vehicle state (ready / detected / charging)
+evseState | EVSE State (active/not active)
+actualCurrent | Actual configured current in A (e.g. 20A)
+actualPower | actual power consumption (when S0 meter is used)
+duration | charging duration in milliseconds
+energy | charged energy of the current charging process in kWh
+
+#### Example
+`GET http://192.168.4.1/getParameters`
+
+> returns JSON like this:
+
+```json
+{
+  "type": "parameters",
+  "list": [{
+    "vehicleState": 2,
+    "evseState": false,
+    "actualCurrent": 32,
+    "actualPower": 5.79,
+    "duration": 1821561,
+    "energy": "9.52"
+  }]
+}
+```
+
+### getLog()
+returns the following information about the last log entries
+
+Parameter | Description
+--------- | -----------
+uid | The UID of the RFID tag that was used to activate EVSE
+username | The username belongs to the UID
+timestamp | Timestamp in seconds since Jan 01 1970 (Unix timestamp)
+duration | Duration of the charging process in milliseconds
+energy | Charged energy of the charging process in kWh
+price | Defined price per kWh in cent
+
+#### Example
+`GET http://192.168.4.1/getLog`
+
+> returns JSON like this:
+
+```json
+{
+  "type": "latestlog",
+  "list": [{
+    "uid": "ABCD1234",
+    "username": "GUI",
+    "timestamp": 1523295915,
+    "duration": 7504266,
+    "energy": "10.32",
+    "price": 21
+  }, {
+    "uid": "-",
+    "username": "GUI",
+    "timestamp": 1523568920,
+    "duration": 1152251,
+    "energy": "2.17",
+    "price": 23
+  }]
+}
+```
+
+### setCurrent()
+using setCurrent() will set the current to the given value (e.g. 18A)
+
+Parameter | Description
+--------- | -----------
+current | Current to set in EVSE WiFi
+
+#### Example
+
+`GET http://192.168.4.1/setCurrent?current=8`
+
+> Sets the charging current  to 8A and returns
+
+```text
+S0_set current to 8A
+```
+In cases of Error, the answer would be
+
+Answer | Description
+--------- | -----------
+E0_could not set current - internal error | Internal error occured (unspecified)
+E1_could not set current - give a value between *x* and *y*  | Wrong value was given
+E2_could not set current - wrong parameter | Wrong parameter was given
+
+### setStatus()
+will activate/deactivate EVSE WB
+
+Parameter | Description
+--------- | -----------
+active | can be true (activate EVSE) or false (deactivate EVSE)
+
+#### Example
+
+`GET http://192.168.4.1/setStatus?active=true`
+
+> Activates EVSE and returns
+
+```text
+S0_EVSE successfully activated
+```
+In cases of Error, the answer would be
+
+Answer | Description
+--------- | -----------
+E0_could not activate EVSE - internal error | Internal error occured (unspecified)
+E0_could not deactivate EVSE - internal error | Internal error occured (unspecified)
+E1_could not process - give a valid value (true/false) | Wrong value was given
+E2_could not process - wrong parameter | Wrong parameter was given
+
+
+
+
 
