@@ -139,6 +139,10 @@
                     <th>1003: PP-Limit</th>
                     <td id="amps_pp"></td>
                   </tr>
+                  <tr>
+                    <th>1004: Turn off bit</th>
+                    <td id="amps_turn_off"></td>
+                  </tr>
 				  <tr>
                     <th>1005: Firmware Version</th>
                     <td id="evse_version"></td>
@@ -159,8 +163,24 @@
                     <th>2002: Min. Current Value</th>
                     <td id="amps_min"></td>
                   </tr>
+                  <tr>
+                    <th>2003: Analog Input Config</th>
+                    <td id="evse_analog_in"></td>
+                  </tr>
+                  <tr>
+                    <th>2004: Amps after boot (evse-button)</th>
+                    <td id="amps_power_on"></td>
+                  </tr>
+                  <tr>
+                    <th>2005: Register 2005</th>
+                    <td id="evse_2005"></td>
+                  </tr>
+                  <tr>
+                    <th>2006: Current Sharing Mode</th>
+                    <td id="evse_sharing_mode"></td>
+                  </tr>
 				  <tr>
-                    <th>2007: PP Detection</th>
+                    <th>2007: PP-Detection</th>
                     <td id="pp_detection"></td>
                   </tr>
                 </table>
@@ -198,7 +218,7 @@
               </span> 
             </div>
             <div class="row form-group">
-              <label data-toggle="tooltip" title="Wi-Fi Password" class="col-xs-3">Password</label> 
+              <label data-toggle="tooltip" title="WiFi Password - in AP mode at least 8 characters!" class="col-xs-3">Password</label> 
               <span class="col-xs-6 col-md-5">
               <input id="wifipass" class="form-control input-sm" type="password" name="ap_passwd">
               </span> 
@@ -295,7 +315,7 @@
  						</span>
 			</div>
 			<div class="row form-group">
-              <label data-toggle="tooltip" title="If you want to activate your EVSE activated via button, please activate this option." class="col-xs-3">Button to activate</label>
+              <label data-toggle="tooltip" title="If you want to activate your EVSE via button, please activate this option." class="col-xs-3">Button to activate</label>
               <div class="col-xs-9">
                 <form>
                   <label class="checkbox-inline"><input type="checkbox" id="checkboxButtonActive" value="" name="buttonsactive" onclick="handleButtonActive();">Active</label>

@@ -44,7 +44,8 @@ unsigned long millisStartCharging = 0;
 unsigned long millisStopCharging = 0;
 int16_t iPrice = 0;
 uint8_t maxinstall = 0;
-uint8_t currentToSet = 6;
+float consumption = 0.0;
+int currentToSet = 6;
 int8_t evseStatus = 0;
 bool evseSessionTimeOut = false;
 bool evseActive = false;
@@ -84,13 +85,19 @@ uint16_t evseAmpsConfig;     //Register 1000
 uint16_t evseAmpsOutput;     //Register 1001
 uint16_t evseVehicleStatus;  //Register 1002
 uint16_t evseAmpsPP;         //Register 1003
+uint16_t evseTurnOff;        //Register 1004
 uint16_t evseFirmware;       //Register 1005
 uint16_t evseState;          //Register 1006
-uint16_t evseAmpsAfterboot; //Register 2000
-uint16_t evseModbusEnabled; //Register 2001
-uint16_t evseAmpsMin;       //Register 2002
-uint16_t evsePpDetection;   //Register 2007
-uint16_t evseBootFirmware;  //Register 2009
+
+uint16_t evseAmpsAfterboot;  //Register 2000
+uint16_t evseModbusEnabled;  //Register 2001
+uint16_t evseAmpsMin;        //Register 2002
+uint16_t evseAnIn;           //Register 2003
+uint16_t evseAmpsPowerOn;    //Register 2004
+uint16_t evseReg2005;        //Register 2005
+uint16_t evseShareMode;      //Register 2006
+uint16_t evsePpDetection;    //Register 2007
+uint16_t evseBootFirmware;   //Register 2009
 
 //Settings
 bool useRFID = false;
@@ -231,6 +238,7 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
         toDeactivateEVSE = true;
         Serial.println("Deactivate EVSE via WebSocket");
       }
+      
     }
   }
 }
@@ -260,8 +268,10 @@ void sendEVSEdata(){
     root["evse_current_limit"] = evseAmpsConfig;
     root["evse_current"] = String(currentKW, 1);
     root["evse_charging_time"] = getChargingTime();
-    root["evse_charged_kwh"] = String(meteredKWh, 2);
+    root["evse_charged_kwh"] = String(meteredKWh, 2); 
     root["evse_maximum_current"] = maxinstall;
+    root["charged_milage"] = String(int((int(meteredKWh * 100.0) / 100) / consumption * 100));
+    root["ap_mode"] = inAPMode;
     
     size_t len = root.measureLength();
     AsyncWebSocketMessageBuffer * buffer = ws.makeBuffer(len);
@@ -526,11 +536,23 @@ void sendStatus() {
       case 2:
         evseAmpsMin = node.getResponseBuffer(i);           //Register 2002
         break;
+      case 3: 
+        evseAnIn = node.getResponseBuffer(i);             //Reg 2003
+        break;
+      case 4:
+        evseAmpsPowerOn = node.getResponseBuffer(i);      //Reg 2004
+        break;
+      case 5:
+        evseReg2005 = node.getResponseBuffer(i);          //Reg 2005
+        break;
+      case 6:
+        evseShareMode = node.getResponseBuffer(i);        //Reg 2006
+        break;
       case 7:
         evsePpDetection = node.getResponseBuffer(i);       //Register 2007
         break;
       case 9:
-        evseBootFirmware = node.getResponseBuffer(i);           //Register 2009
+        evseBootFirmware = node.getResponseBuffer(i);       //Register 2009
         break;    
       }
     }
@@ -540,11 +562,16 @@ void sendStatus() {
   root["evse_amps_out"] = evseAmpsOutput;           //Reg 1001
   root["evse_vehicle_state"] = evseVehicleStatus;   //Reg 1002
   root["evse_pp_limit"] = evseAmpsPP;               //Reg 1003
+  root["evse_turn_off"] = evseTurnOff;              //Reg 1004
   root["evse_firmware"] = evseFirmware;             //Reg 1005
   root["evse_state"] = evseState;                   //Reg 1006
   root["evse_amps_afterboot"] = evseAmpsAfterboot;  //Reg 2000
   root["evse_modbus_enabled"] = evseModbusEnabled;  //Reg 2001
   root["evse_amps_min"] = evseAmpsMin;              //Reg 2002
+  root["evse_analog_input"] = evseAnIn;             //Reg 2003
+  root["evse_amps_poweron"] = evseAmpsPowerOn;      //Reg 2004
+  root["evse_2005"] = evseReg2005;                  //Reg 2005
+  root["evse_sharing_mode"] = evseShareMode;        //Reg 2006
   root["evse_pp_detection"] = evsePpDetection;      //Reg 2007
   
   size_t len = root.measureLength();
@@ -761,6 +788,9 @@ bool queryEVSE(){
       case 3:
         evseAmpsPP = node.getResponseBuffer(i);          //Register 1003
         break;
+      case 4:
+        evseTurnOff = node.getResponseBuffer(i);          //Register 1004
+        break;
       case 5:
         evseFirmware = node.getResponseBuffer(i);        //Register 1005
         break;
@@ -838,6 +868,12 @@ bool activateEVSE() {
       millisStartCharging = millis();
       return true;
     }
+  }
+  else if (evseVehicleStatus != 0){
+    Serial.println("[ Modbus ] EVSE already active!");
+    toActivateEVSE = false;
+    evseActive = true;
+    return true;
   }
   return false;
 }
@@ -1026,6 +1062,11 @@ bool loadConfiguration() {
     buttonPin = json["buttonpin"];
     Serial.println("[ INFO ] No button is configured");
   }
+
+  if(json["consumption"] == true){
+    String sConsumption = json["consumption"];
+    consumption = strtof((sConsumption).c_str(),0);
+  }
   
   const char * l_hostname = json["hostnm"];
   free(deviceHostname);
@@ -1055,14 +1096,6 @@ bool loadConfiguration() {
   ws.setAuthentication("admin", adminpass);
   server.addHandler(new SPIFFSEditor("admin", adminpass));
 
-  if (wmode == 1) {
-    Serial.println(F("[ INFO ] SimpleEVSE Wifi is running in AP Mode "));
-    return startAP(ssid, password);
-  }
-  else if (!connectSTA(ssid, password, bssid)) {
-    return false;
-  }
-  
   const char * ntpserver = "pool.ntp.org";
   IPAddress timeserverip;
   WiFi.hostByName(ntpserver, timeserverip);
@@ -1075,7 +1108,14 @@ bool loadConfiguration() {
   }
   deactivateEVSE(false);  //initial deactivation
   vehicleCharging = false;
-  return true;
+
+  if (wmode == 1) {
+    Serial.println(F("[ INFO ] SimpleEVSE Wifi is running in AP Mode "));
+    return startAP(ssid, password);
+  }
+  else if (!connectSTA(ssid, password, bssid)) {
+    return false;
+  }
 }
 
 void fallbacktoAPMode() {
@@ -1125,6 +1165,99 @@ void startWebserver() {
       }
     }
   });
+  
+//////////////////////////////////////////////////////////////////////////////////////////
+///////       API Handler
+//////////////////////////////////////////////////////////////////////////////////////////
+
+  //getParameters
+  server.on("/getParameters", HTTP_GET, [](AsyncWebServerRequest * request) {
+    AsyncResponseStream *response = request->beginResponseStream("application/json");
+    DynamicJsonBuffer jsonBuffer17;
+    JsonObject& root = jsonBuffer17.createObject();
+    root["type"] = "parameters";
+    JsonArray& list = root.createNestedArray("list");
+    DynamicJsonBuffer jsonBuffer18;
+    JsonObject& item = jsonBuffer18.createObject();
+    item["vehicleState"] = evseStatus;
+    item["evseState"] = evseActive;
+    item["actualCurrent"] = evseAmpsConfig;
+    item["actualPower"] =  float((int(currentKW + 0.05)*100)/100) ;
+    item["duration"] = getChargingTime();
+    item["energy"] = String(meteredKWh, 2);
+    list.add(item);
+    root.printTo(*response);
+    request->send(response);
+  });
+  
+  //getLog
+  server.on("/getLog", HTTP_GET, [](AsyncWebServerRequest * request) {
+    AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/auth/latestlog.json", "application/json");
+    request->send(response);
+  });
+  
+  //setCurrent
+  server.on("/setCurrent", HTTP_GET, [](AsyncWebServerRequest * request) {
+    bool suc = false;
+    for(int i=0;i<request->params(); i++){
+      AsyncWebParameter* p = request->getParam(i);
+      if(p->name() == "current"){
+        if(atoi(p->value().c_str()) <= maxinstall && atoi(p->value().c_str()) >= 6 ){
+          currentToSet = atoi(p->value().c_str());
+          if(setEVSEcurrent()){
+            request->send(200, "text/plain", ("S0_set current to " + (String)currentToSet) + "A");
+          }
+          else{
+            request->send(200, "text/plain", "E0_could not set current - internal error");
+          }
+        }
+        else{
+          request->send(200, "text/plain", ("E1_could not set current - give a value between 6 and " + (String)maxinstall));
+        }
+        break;
+        suc = true;
+      }
+    }
+    if (suc == false){
+      request->send(200, "text/plain", "E2_could not set current - wrong parameter");
+    }
+  });
+  
+  //setStatus
+  server.on("/setStatus", HTTP_GET, [](AsyncWebServerRequest * request) {
+    bool suc = false;
+    for(int i=0;i<request->params(); i++){
+      AsyncWebParameter* p = request->getParam(i);
+      if(p->name() == "active"){
+        Serial.println(p->value().c_str());
+        if(strcmp(p->value().c_str(), "true") == 0){
+          if(activateEVSE()){
+            request->send(200, "text/plain", "S0_EVSE successfully activated");
+          }
+          else{
+            request->send(200, "text/plain", "E0_could not activate EVSE - internal error");
+          }
+        }
+        else if(strcmp(p->value().c_str(), "false") == 0){
+          if(deactivateEVSE(false)){
+            request->send(200, "text/plain", "S0_EVSE successfully deactivated");
+          }
+          else{
+            request->send(200, "text/plain", "E0_could not deactivate EVSE - internal error");
+          }
+        }
+        else{
+          request->send(200, "text/plain", "E1_could not process - give a valid value (true/false)");
+        }
+        break;
+        suc = true;
+      }
+    }
+    if (suc == false){
+      request->send(200, "text/plain", "E2_could not process - wrong parameter");
+    }
+  });
+  
   server.begin();
 }
 

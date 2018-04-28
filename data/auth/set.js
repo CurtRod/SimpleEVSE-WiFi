@@ -344,16 +344,21 @@ function listStats(obj) {
   document.getElementById("mask").innerHTML = obj.netmask;
   document.getElementById("dns").innerHTML = obj.dns;
   document.getElementById("mac").innerHTML = obj.mac;
-  document.getElementById("amps_conf").innerHTML = obj.evse_amps_conf;
-  document.getElementById("amps_out").innerHTML = obj.evse_amps_out;
-  document.getElementById("vehicle_status").innerHTML = obj.evse_vehicle_state;
-  document.getElementById("amps_pp").innerHTML = obj.evse_pp_limit;
-  document.getElementById("evse_version").innerHTML = obj.evse_firmware;
-  document.getElementById("evse_status").innerHTML = obj.evse_state;
-  document.getElementById("amps_boot").innerHTML = obj.evse_amps_afterboot;
-  document.getElementById("evse_modbus").innerHTML = obj.evse_modbus_enabled;
-  document.getElementById("amps_min").innerHTML = obj.evse_amps_min;
-  document.getElementById("pp_detection").innerHTML = obj.evse_pp_detection;
+  document.getElementById("amps_conf").innerHTML = obj.evse_amps_conf;			//1000
+  document.getElementById("amps_out").innerHTML = obj.evse_amps_out;			//1001
+  document.getElementById("vehicle_status").innerHTML = obj.evse_vehicle_state;	//1002
+  document.getElementById("amps_pp").innerHTML = obj.evse_pp_limit;				//1003
+  document.getElementById("amps_turn_off").innerHTML = obj.evse_turn_off;		//1004
+  document.getElementById("evse_version").innerHTML = obj.evse_firmware;		//1005
+  document.getElementById("evse_status").innerHTML = obj.evse_state;			//1006
+  document.getElementById("amps_boot").innerHTML = obj.evse_amps_afterboot;		//2000
+  document.getElementById("evse_modbus").innerHTML = obj.evse_modbus_enabled;	//2001
+  document.getElementById("amps_min").innerHTML = obj.evse_amps_min;			//2002
+  document.getElementById("evse_analog_in").innerHTML = obj.evse_analog_input;	//2003
+  document.getElementById("amps_power_on").innerHTML = obj.evse_amps_poweron;	//2004
+  document.getElementById("evse_2005").innerHTML = obj.evse_2005;				//2005
+  document.getElementById("evse_sharing_mode").innerHTML = obj.evse_sharing_mode;//2006
+  document.getElementById("pp_detection").innerHTML = obj.evse_pp_detection;	//2007
 }
 
 function getnextpage() {

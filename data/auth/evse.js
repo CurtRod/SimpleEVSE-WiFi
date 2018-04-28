@@ -82,12 +82,14 @@ function listEVSEData(obj) {
 		document.getElementById("evse_vehicle_state").innerHTML = "Charging...";
 	}
 	document.getElementById("evse_charging_time").innerHTML = getTimeFormat(obj.evse_charging_time);
-
 	if (firstEVSEData === true){
 		document.getElementById("myRange").max = obj.evse_maximum_current;
 		document.getElementById("myRange").value = obj.evse_current_limit;
 		document.getElementById("slider_current").innerHTML = obj.evse_current_limit;
 		firstEVSEData = false;
+	}
+	if (obj.ap_mode === true){
+		syncBrowserTime();
 	}
 }
 
@@ -128,6 +130,15 @@ function getTimeFormat(millisec) {
         return hours + ":" + minutes + ":" + seconds;
     }
     return minutes + ":" + seconds;
+}
+
+function syncBrowserTime() {
+  var d = new Date();
+  var timestamp = Math.floor((d.getTime() / 1000) + ((d.getTimezoneOffset() * 60) * -1));
+  var datatosend = {};
+  datatosend.command = "settime";
+  datatosend.epoch = timestamp;
+  websock.send(JSON.stringify(datatosend));
 }
 
 function sessionTimeOut() {
