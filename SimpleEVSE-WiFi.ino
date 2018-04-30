@@ -1096,12 +1096,6 @@ bool loadConfiguration() {
   ws.setAuthentication("admin", adminpass);
   server.addHandler(new SPIFFSEditor("admin", adminpass));
 
-  const char * ntpserver = "pool.ntp.org";
-  IPAddress timeserverip;
-  WiFi.hostByName(ntpserver, timeserverip);
-  String ip = printIP(timeserverip);
-  NTP.Ntp(ntpserver, timeZone, 3600);   //use pool.ntp.org, timeZone, update every 60 minutes
-  
   queryEVSE();
   if(vehicleCharging){
     updateLog(true);
@@ -1116,6 +1110,12 @@ bool loadConfiguration() {
   else if (!connectSTA(ssid, password, bssid)) {
     return false;
   }
+  
+  const char * ntpserver = "pool.ntp.org";
+  IPAddress timeserverip;
+  WiFi.hostByName(ntpserver, timeserverip);
+  String ip = printIP(timeserverip);
+  NTP.Ntp(ntpserver, timeZone, 3600);   //use pool.ntp.org, timeZone, update every 60 minutes
 }
 
 void fallbacktoAPMode() {
