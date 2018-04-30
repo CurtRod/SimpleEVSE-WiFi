@@ -60,6 +60,8 @@ To use SimpleEVSE-WiFi, the Modbus functionallity of EVSE Wallbox is needed! By 
 
 ### Software
 
+**Attention:** make sure that the EVSE WB is not connected to the ESP during the flash process via USB. It could cause overheating of the ESP.
+
 #### Use Compiled Binaries
 Compiled firmware binary and flasher tool for Windows PCs are available in directory **/bin**. On Windows you can use **"flash.bat"**, it will ask you which COM port that ESP is connected and then flashes it. You can use any flashing tool and do the flashing manually if you don't want to use the flash.bat.
 
