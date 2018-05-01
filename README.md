@@ -40,16 +40,17 @@ At the users page you can define valid RFID tags that can unlock the EVSE.
 
 #### Wiring (WeMos D1 mini/ NodeMcu)
 
-* D0	->	Button (optional)
-* D1	->	TX EVSE
-* D2	->	RX EVSE
-* D3	->	Electricity Meter S0 (optional)*
-* D5	->	SCK RC522 (optional)
-* D6	->	MISO RC522 (optional)
-* D7	->	MOSI RC522 (optional)
-* D8	->	SDA RC522 (optional)
-* GND ->  Electricity Meter S0 (optional)*
-* GND ->  GND RC522 (optional)
+* D0	 ->	Button (optional)
+* D1	 ->	TX EVSE
+* D2	 ->	RX EVSE
+* D3	 ->	Electricity Meter S0 (optional)*
+* D5	 ->	SCK RC522 (optional)
+* D6	 ->	MISO RC522 (optional)
+* D7	 ->	MOSI RC522 (optional)
+* D8	 ->	SDA RC522 (optional)
+* GND  ->	Electricity Meter S0 (optional)*
+* GND  ->	GND RC522 (optional)
+* 3.3V ->	3.3V RC522 (optinal)
 
 Be sure to use a suitable power supply for ESP. At least 200mA is recommended!
 
