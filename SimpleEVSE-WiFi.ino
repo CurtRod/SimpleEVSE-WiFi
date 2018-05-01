@@ -573,7 +573,8 @@ void sendStatus() {
   root["evse_2005"] = evseReg2005;                  //Reg 2005
   root["evse_sharing_mode"] = evseShareMode;        //Reg 2006
   root["evse_pp_detection"] = evsePpDetection;      //Reg 2007
-  
+  root["evse_boot_firmware"] = evseBootFirmware;    //Reg 2009
+    
   size_t len = root.measureLength();
   AsyncWebSocketMessageBuffer * buffer = ws.makeBuffer(len); //  creates a buffer (len + 1) for you.
   if (buffer) {
