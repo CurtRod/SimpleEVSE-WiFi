@@ -50,6 +50,7 @@ At the users page you can define valid RFID tags that can unlock the EVSE.
 * D8	->	SDA RC522 (optional)
 * GND ->  Electricity Meter S0 (optional)*
 * GND ->  GND RC522 (optional)
+* 3.3V ->	3.3V RC522 (optinal)
 
 Be sure to use a suitable power supply for ESP. At least 200mA is recommended!
 
