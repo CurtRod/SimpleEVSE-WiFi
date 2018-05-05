@@ -50,6 +50,7 @@ At the users page you can define valid RFID tags that can unlock the EVSE.
 * D8	->	SDA RC522 (optional)
 * GND ->  Electricity Meter S0 (optional)*
 * GND ->  GND RC522 (optional)
+* 3.3V ->	3.3V RC522 (optinal)
 
 Be sure to use a suitable power supply for ESP. At least 200mA is recommended!
 
@@ -72,6 +73,7 @@ Please install Arduino IDE if you didn't already, then add ESP8266 Core on top o
 * [ESP8266 Core for Arduino IDE](https://github.com/esp8266/Arduino) - ESP8266 Core
 * [ESPAsyncWebServer](https://github.com/me-no-dev/ESPAsyncWebServer) - Asyncrone Web Server with WebSocket Plug-in
 * [ESPAsyncTCP](https://github.com/me-no-dev/ESPAsyncTCP) - Mandatory for ESPAsyncWebServer
+* [ESPAsyncUDP](https://github.com/me-no-dev/ESPAsyncUDP) - Mandatory for ESPAsyncWebServer
 * [ModbusMaster](https://github.com/CurtRod/ModbusMaster) - ModbusMaster Library for communicating with EVSE (**NOTE: Use my Fork of ModbusMaster! Otherwise the wdt reset will be triggered in case of timeout error**)
 * [SoftwareSerial](https://github.com/plerup/espsoftwareserial) SoftwareSerial to communicate with EVSE (**NOTE: Use the github version! There is a buxfix for esp8266 v2.4.0 and later**)
 * [MFRC522](https://github.com/miguelbalboa/rfid) - MFRC522 RFID Hardware Library for Arduino IDE
@@ -83,7 +85,7 @@ You also need to upload web files to your ESP with ESP8266FS Uploader.
 
 * [ESP8266FS Uploader](https://github.com/esp8266/arduino-esp8266fs-plugin) - Arduino ESP8266 filesystem uploader
 
-Unlisted libraries are part of ESP8266 Core for Arduino IDE, so you don't need to download them.
+Unlisted libraries are part of [ESP8266](https://github.com/esp8266/Arduino) Core for Arduino IDE, so you don't need to download them, but check that at least you have v2.4.0 or above installed.
 
 ## First boot
 When SimpleEVSE-WiFi starts for the first time it sets up a WiFi access point called 'evse-wifi'. You can connect without a password. To connect, open http://192.168.4.1 in your browser. The initial password is 'admin'. You should first check the Settings to bring the ESP in Client mode and connect it to your local WiFi network. The ESP will be restarted afterwards. If it doesn't restart, press the 'RST' button once. Sometimes the ESP must first be manually reset (this only has to happen after flashing a new firmware).
