@@ -6,6 +6,7 @@ SimpleEVSE-WiFi brings WiFi functionality to your SimpleEVSE WB to control your 
 
 * WiFi functionality (as an access point or as a WiFi client)
 * Activate and deactivate the Simple EVSE WB via a web interface, RFID tags or a button
+* [HTTP-API](#http-api) to let other devices control SimpleEVSE-WiFi
 * Setting the charging current via the web interface
 * Displays the current charging power in kW (by impulses of the S0 counter, optional)
 * User management (RFID tags, optional)
