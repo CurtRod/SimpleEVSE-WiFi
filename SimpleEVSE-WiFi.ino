@@ -10,24 +10,25 @@
   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
   THE SOFTWARE. 
-  
 */
 
 #include <ESP8266WiFi.h>              // Whole thing is about using Wi-Fi networks
 #include <SPI.h>                      // RFID MFRC522 Module uses SPI protocol
 #include <ESP8266mDNS.h>              // Zero-config Library (Bonjour, Avahi)
 #include <MFRC522.h>                  // Library for Mifare RC522 Devices
-#include <ArduinoJson.h>              // JSON Library for Encoding and Parsing Json object to send browser. We do that because Javascript has built-in JSON parsing.
+#include <ArduinoJson.h>              // JSON Library for Encoding and Parsing Json object to send browser
 #include <FS.h>                       // SPIFFS Library for storing web files to serve to web browsers
 #include <ESPAsyncTCP.h>              // Async TCP Library is mandatory for Async Web Server
 #include <ESPAsyncWebServer.h>        // Async Web Server with built-in WebSocket Plug-in
-#include <SPIFFSEditor.h>             // This creates a web page on server which can be used to edit text based files.
+#include <SPIFFSEditor.h>             // This creates a web page on server which can be used to edit text based files
 #include <TimeLib.h>                  // Library for converting epochtime to a date
 #include <WiFiUdp.h>                  // Library for manipulating UDP packets which is used by NTP Client to get Timestamps
 #include <SoftwareSerial.h>           // Using GPIOs for Serial Modbus communication
 #include <ModbusMaster.h>
-#include "ntp.h"
-
+#include <Pinger.h>
+#include "src/proto.h"
+#include "src/ntp.h"
+#include "src/websrc.h"
 NtpClient NTP;
 
 #ifdef ESP8266
@@ -110,239 +111,60 @@ String lastUID = "";
 char * deviceHostname = NULL;
 int buttonPin;
 const char * defaultWifiPassword = "evse";
+char * adminpass = NULL;
 int timeZone;
 
 MFRC522 mfrc522 = MFRC522();  // Create MFRC522 RFID instance
 AsyncWebServer server(80);    // Create AsyncWebServer instance on port "80"
 AsyncWebSocket ws("/ws");     // Create WebSocket instance on URL "/ws"
-
+Pinger pinger;
 
 //////////////////////////////////////////////////////////////////////////////////////////
-///////       Websocket Functions
+///////       Auxiliary Functions
 //////////////////////////////////////////////////////////////////////////////////////////
-void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len) {
-  if (type == WS_EVT_ERROR) {
-    Serial.printf("[ WARN ] WebSocket[%s][%u] error(%u): %s\r\n", server->url(), client->id(), *((uint16_t*)arg), (char*)data);
-  }
-  else if (type == WS_EVT_DATA) {
-    AwsFrameInfo * info = (AwsFrameInfo*)arg;
-    String msg = "";
-    if (info->final && info->index == 0 && info->len == len) {
-      //the whole message is in a single frame and we got all of it's data
-      for (size_t i = 0; i < info->len; i++) {
-        msg += (char) data[i];
-      }
-      DynamicJsonBuffer jsonBuffer8;
-      JsonObject& root = jsonBuffer8.parseObject(msg);
-      if (!root.success()) {
-        Serial.println(F("[ WARN ] Couldn't parse WebSocket message"));
-        return;
-      }
-      
-      const char * command = root["command"];
-      if (strcmp(command, "remove")  == 0) {
-        const char* uid = root["uid"];
-        String filename = "/P/";
-        filename += uid;
-        SPIFFS.remove(filename);
-      }
-      else if (strcmp(command, "configfile")  == 0) {
-        File f = SPIFFS.open("/auth/config.json", "w+");
-        if (f) {
-          root.prettyPrintTo(f);
-          //f.print(msg);
-          f.close();
-          if(vehicleCharging){
-            deactivateEVSE(true);
-          }
-          ESP.reset();
-        }
-      }
-      else if (strcmp(command, "userlist")  == 0) {
-        int page = root["page"];
-        sendUserList(page, client);
-      }
-      else if (strcmp(command, "status")  == 0) {
-        toSendStatus = true;
-      }
-      else if (strcmp(command, "userfile")  == 0) {
-        const char* uid = root["uid"];
-        String filename = "/P/";
-        filename += uid;
-        File f = SPIFFS.open(filename, "w+");
-        // Check if we created the file
-        if (f) {
-          f.print(msg);
-        }
-        f.close();
-        ws.textAll("{\"command\":\"result\",\"resultof\":\"userfile\",\"result\": true}");
-      }
-      else if (strcmp(command, "latestlog")  == 0) {
-        File logFile = SPIFFS.open("/auth/latestlog.json", "r");
-        if (logFile) {
-          size_t len = logFile.size();
-          AsyncWebSocketMessageBuffer * buffer = ws.makeBuffer(len); //  creates a buffer (len + 1) for you.
-          if (buffer) {
-            logFile.readBytes((char *)buffer->get(), len + 1);
-            ws.textAll(buffer);
-          }
-          logFile.close();
-        }
-        else{
-          Serial.println("Error while reading logfile");
-        }
-      }
-      else if (strcmp(command, "scan")  == 0) {
-        WiFi.scanNetworksAsync(printScanResult, true);
-      }
-      else if (strcmp(command, "gettime")  == 0) {
-        sendTime();
-      }
-      else if (strcmp(command, "settime")  == 0) {
-        unsigned long t = root["epoch"];
-        setTime(t);
-        sendTime();
-      }
-      else if (strcmp(command, "getconf")  == 0) {
-        File configFile = SPIFFS.open("/auth/config.json", "r");
-        if (configFile) {
-          size_t len = configFile.size();
-          AsyncWebSocketMessageBuffer * buffer = ws.makeBuffer(len); //  creates a buffer (len + 1) for you.
-          if (buffer) {
-            configFile.readBytes((char *)buffer->get(), len + 1);
-            ws.textAll(buffer);
-          }
-          configFile.close();
-        }
-      }
-      else if (strcmp(command, "getevsedata") == 0){
-        sendEVSEdata();
-        evseQueryTimeOut = millis() + 10000; //Timeout for pushing data in loop
-        evseSessionTimeOut = false;
-        Serial.println("sendEVSEdata");
-        toQueryEVSE = true;
-      }
-      else if (strcmp(command, "setcurrent") == 0){
-        currentToSet = root["current"];
-        Serial.print("Call setEVSECurrent() ");
-        Serial.println(currentToSet);
-        toSetEVSEcurrent = true;
-      }
-      else if (strcmp(command, "activateevse") == 0){
-        toActivateEVSE = true;
-        Serial.println("Activate EVSE via WebSocket");
-        lastUID = "-";
-        lastUsername = "GUI";
-      }
-      else if (strcmp(command, "deactivateevse") == 0){
-        toDeactivateEVSE = true;
-        Serial.println("Deactivate EVSE via WebSocket");
-      }
-      
+
+String printIP(IPAddress adress) {
+  return (String)adress[0] + "." + (String)adress[1] + "." + (String)adress[2] + "." + (String)adress[3];
+}
+
+void parseBytes(const char* str, char sep, byte* bytes, int maxBytes, int base) {
+  for (int i = 0; i < maxBytes; i++) {
+    bytes[i] = strtoul(str, NULL, base);  // Convert byte
+    str = strchr(str, sep);               // Find next separator
+    if (str == NULL || *str == '\0') {
+      break;                            // No more separators, exit
     }
+    str++;                                // Point to next character after separator
   }
 }
 
-void pushSessionTimeOut(){
-  // push "TimeOut" to evse.htm!
-  // Encode a JSON Object and send it to All WebSocket Clients
-  DynamicJsonBuffer jsonBuffer15;
-  JsonObject& root = jsonBuffer15.createObject();
-  root["command"] = "sessiontimeout";
-  size_t len = root.measureLength();
-  AsyncWebSocketMessageBuffer * buffer = ws.makeBuffer(len); //  creates a buffer (len + 1) for you.
-  if (buffer) {
-    root.printTo((char *)buffer->get(), len + 1);
-    ws.textAll(buffer);
-  }
-  Serial.println("TimeOut sent to browser!");
-}
-
-void sendEVSEdata(){
-  if (evseSessionTimeOut == false){
-    DynamicJsonBuffer jsonBuffer9;
-    JsonObject& root = jsonBuffer9.createObject();
-    root["command"] = "getevsedata";
-    root["evse_vehicle_state"] = evseStatus;
-    root["evse_active"] = evseActive;
-    root["evse_current_limit"] = evseAmpsConfig;
-    root["evse_current"] = String(currentKW, 1);
-    root["evse_charging_time"] = getChargingTime();
-    root["evse_charged_kwh"] = String(meteredKWh, 2); 
-    root["evse_maximum_current"] = maxinstall;
-    root["charged_milage"] = String(int((int(meteredKWh * 100.0) / 100) / consumption * 100));
-    root["ap_mode"] = inAPMode;
-    
-    size_t len = root.measureLength();
-    AsyncWebSocketMessageBuffer * buffer = ws.makeBuffer(len);
-    if (buffer) {
-      root.printTo((char *)buffer->get(), len + 1);
-     ws.textAll(buffer);
-    }
+void ICACHE_RAM_ATTR handleMeterInt() {  //interrupt routine for metering
+  if(meterImpMillis < millis()){   //Meter impulse is 30ms 
+    meterInterrupt = true;
+    meterImpMillis = millis();
   }
 }
 
-void sendTime() {
-  DynamicJsonBuffer jsonBuffer10;
-  JsonObject& root = jsonBuffer10.createObject();
-  root["command"] = "gettime";
-  root["epoch"] = now();
-  root["timezone"] = timeZone;
-  size_t len = root.measureLength();
-  AsyncWebSocketMessageBuffer * buffer = ws.makeBuffer(len);
-  if (buffer) {
-    root.printTo((char *)buffer->get(), len + 1);
-    ws.textAll(buffer);
+void updateMeterData() {
+  if (vehicleCharging){
+    currentKW = 3600.0 / float(meterImpMillis - previousMeterMillis) / float(kwhimp / 1000) ;  //Calculating kW
+    previousMeterMillis = meterImpMillis;
+    meterImpMillis = meterImpMillis + 35;
+    meterInterrupt = false;
+    numberOfMeterImps ++;
+    meteredKWh = float(numberOfMeterImps) / float(kwhimp / 1000) / 1000.0;
   }
 }
 
-void sendUserList(int page, AsyncWebSocketClient * client) {
-  DynamicJsonBuffer jsonBuffer11;
-  JsonObject& root = jsonBuffer11.createObject();
-  root["command"] = "userlist";
-  root["page"] = page;
-  JsonArray& users = root.createNestedArray("list");
-  Dir dir = SPIFFS.openDir("/P/");
-  int first = (page - 1) * 15;
-  int last = page * 15;
-  int i = 0;
-  while (dir.next()) {
-    if (i >= first && i < last) {
-      JsonObject& item = users.createNestedObject();
-      String uid = dir.fileName();
-      uid.remove(0, 3);
-      item["uid"] = uid;
-      File f = SPIFFS.open(dir.fileName(), "r");
-      size_t size = f.size();
-      // Allocate a buffer to store contents of the file.
-      std::unique_ptr<char[]> buf(new char[size]);
-      f.readBytes(buf.get(), size);
-      DynamicJsonBuffer jsonBuffer16;
-      JsonObject& json = jsonBuffer16.parseObject(buf.get());
-      if (json.success()) {
-        String username = json["user"];
-        int AccType = json["acctype"];
-        unsigned long validuntil = json["validuntil"];
-        item["username"] = username;
-        item["acctype"] = AccType;
-        item["validuntil"] = validuntil;
-      }
-    }
-    i++;
+int getChargingTime(){
+  int iTime;
+  if(vehicleCharging == true){
+    iTime = millis() - millisStartCharging;
   }
-  float pages = i / 15.0;
-  root["haspages"] = ceil(pages);
-  size_t len = root.measureLength();
-  AsyncWebSocketMessageBuffer * buffer = ws.makeBuffer(len); //  creates a buffer (len + 1) for you.
-  if (buffer) {
-    root.printTo((char *)buffer->get(), len + 1);
-    if (client) {
-      client->text(buffer);
-      client->text("{\"command\":\"result\",\"resultof\":\"userlist\",\"result\": true}");
-    } else {
-      ws.textAll("{\"command\":\"result\",\"resultof\":\"userlist\",\"result\": false}");
-    }
+  else {
+    iTime = millisStopCharging - millisStartCharging;
   }
+  return iTime;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -611,10 +433,10 @@ void printScanResult(int networksFound) {
 ///////       Log Functions
 //////////////////////////////////////////////////////////////////////////////////////////
 void logLatest(String uid, String username) {
-  File logFile = SPIFFS.open("/auth/latestlog.json", "r");
+  File logFile = SPIFFS.open("/latestlog.json", "r");
   if (!logFile) {
     // Can not open file create it.
-    File logFile = SPIFFS.open("/auth/latestlog.json", "w");
+    File logFile = SPIFFS.open("/latestlog.json", "w");
     DynamicJsonBuffer jsonBuffer3;
     JsonObject& root = jsonBuffer3.createObject();
     root["type"] = "latestlog";
@@ -622,7 +444,7 @@ void logLatest(String uid, String username) {
     root.printTo(logFile);
     logFile.close();
     
-    logFile = SPIFFS.open("/auth/latestlog.json", "r");
+    logFile = SPIFFS.open("/latestlog.json", "r");
   }
   if (logFile) {
     size_t size = logFile.size();
@@ -639,7 +461,7 @@ void logLatest(String uid, String username) {
       if ( list.size() >= 1000 ) {
         list.remove(0);
       } 
-      File logFile = SPIFFS.open("/auth/latestlog.json", "w");
+      File logFile = SPIFFS.open("/latestlog.json", "w");
       DynamicJsonBuffer jsonBuffer5;
       JsonObject& item = jsonBuffer5.createObject();
       item["uid"] = uid;
@@ -659,7 +481,7 @@ void logLatest(String uid, String username) {
 }
 
 void updateLog(bool e) {
-File logFile = SPIFFS.open("/auth/latestlog.json", "r");
+File logFile = SPIFFS.open("/latestlog.json", "r");
   size_t size = logFile.size();
   std::unique_ptr<char[]> buf (new char[size]);
   logFile.readBytes(buf.get(), size);
@@ -676,7 +498,7 @@ File logFile = SPIFFS.open("/auth/latestlog.json", "r");
     long timestamp = (long)list[(list.size()-1)]["timestamp"];
     
     list.remove(list.size() - 1); // delete newest log
-    File logFile = SPIFFS.open("/auth/latestlog.json", "w");
+    File logFile = SPIFFS.open("/latestlog.json", "w");
     DynamicJsonBuffer jsonBuffer7;
     JsonObject& item = jsonBuffer7.createObject();
     item["uid"] = uid;
@@ -696,54 +518,6 @@ File logFile = SPIFFS.open("/auth/latestlog.json", "r");
     root.printTo(logFile);
   }
   logFile.close();
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////
-///////       Auxiliary Functions
-//////////////////////////////////////////////////////////////////////////////////////////
-
-String printIP(IPAddress adress) {
-  return (String)adress[0] + "." + (String)adress[1] + "." + (String)adress[2] + "." + (String)adress[3];
-}
-
-void parseBytes(const char* str, char sep, byte* bytes, int maxBytes, int base) {
-  for (int i = 0; i < maxBytes; i++) {
-    bytes[i] = strtoul(str, NULL, base);  // Convert byte
-    str = strchr(str, sep);               // Find next separator
-    if (str == NULL || *str == '\0') {
-      break;                            // No more separators, exit
-    }
-    str++;                                // Point to next character after separator
-  }
-}
-
-void ICACHE_RAM_ATTR handleMeterInt() {  //interrupt routine for metering
-  if(meterImpMillis < millis()){   //Meter impulse is 30ms 
-    meterInterrupt = true;
-    meterImpMillis = millis();
-  }
-}
-
-void updateMeterData() {
-  if (vehicleCharging){
-    currentKW = 3600.0 / float(meterImpMillis - previousMeterMillis) / float(kwhimp / 1000) ;  //Calculating kW
-    previousMeterMillis = meterImpMillis;
-    meterImpMillis = meterImpMillis + 35;
-    meterInterrupt = false;
-    numberOfMeterImps ++;
-    meteredKWh = float(numberOfMeterImps) / float(kwhimp / 1000) / 1000.0;
-  }
-}
-
-int getChargingTime(){
-  int iTime;
-  if(vehicleCharging == true){
-    iTime = millis() - millisStartCharging;
-  }
-  else {
-    iTime = millisStopCharging - millisStartCharging;
-  }
-  return iTime;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -932,6 +706,235 @@ bool setEVSEcurrent(){  // telegram 1: write EVSE current
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
+///////       Websocket Functions
+//////////////////////////////////////////////////////////////////////////////////////////
+void pushSessionTimeOut(){
+  // push "TimeOut" to evse.htm!
+  // Encode a JSON Object and send it to All WebSocket Clients
+  DynamicJsonBuffer jsonBuffer15;
+  JsonObject& root = jsonBuffer15.createObject();
+  root["command"] = "sessiontimeout";
+  size_t len = root.measureLength();
+  AsyncWebSocketMessageBuffer * buffer = ws.makeBuffer(len); //  creates a buffer (len + 1) for you.
+  if (buffer) {
+    root.printTo((char *)buffer->get(), len + 1);
+    ws.textAll(buffer);
+  }
+  Serial.println("TimeOut sent to browser!");
+}
+
+void sendEVSEdata(){
+  if (evseSessionTimeOut == false){
+    DynamicJsonBuffer jsonBuffer9;
+    JsonObject& root = jsonBuffer9.createObject();
+    root["command"] = "getevsedata";
+    root["evse_vehicle_state"] = evseStatus;
+    root["evse_active"] = evseActive;
+    root["evse_current_limit"] = evseAmpsConfig;
+    root["evse_current"] = String(currentKW, 1);
+    root["evse_charging_time"] = getChargingTime();
+    root["evse_charged_kwh"] = String(meteredKWh, 2); 
+    root["evse_maximum_current"] = maxinstall;
+    root["charged_milage"] = String(int((int(meteredKWh * 100.0) / 100) / consumption * 100));
+    root["ap_mode"] = inAPMode;
+    
+    size_t len = root.measureLength();
+    AsyncWebSocketMessageBuffer * buffer = ws.makeBuffer(len);
+    if (buffer) {
+      root.printTo((char *)buffer->get(), len + 1);
+     ws.textAll(buffer);
+    }
+  }
+}
+
+void sendTime() {
+  DynamicJsonBuffer jsonBuffer10;
+  JsonObject& root = jsonBuffer10.createObject();
+  root["command"] = "gettime";
+  root["epoch"] = now();
+  root["timezone"] = timeZone;
+  size_t len = root.measureLength();
+  AsyncWebSocketMessageBuffer * buffer = ws.makeBuffer(len);
+  if (buffer) {
+    root.printTo((char *)buffer->get(), len + 1);
+    ws.textAll(buffer);
+  }
+}
+
+void sendUserList(int page, AsyncWebSocketClient * client) {
+  DynamicJsonBuffer jsonBuffer11;
+  JsonObject& root = jsonBuffer11.createObject();
+  root["command"] = "userlist";
+  root["page"] = page;
+  JsonArray& users = root.createNestedArray("list");
+  Dir dir = SPIFFS.openDir("/P/");
+  int first = (page - 1) * 15;
+  int last = page * 15;
+  int i = 0;
+  while (dir.next()) {
+    if (i >= first && i < last) {
+      JsonObject& item = users.createNestedObject();
+      String uid = dir.fileName();
+      uid.remove(0, 3);
+      item["uid"] = uid;
+      File f = SPIFFS.open(dir.fileName(), "r");
+      size_t size = f.size();
+      // Allocate a buffer to store contents of the file.
+      std::unique_ptr<char[]> buf(new char[size]);
+      f.readBytes(buf.get(), size);
+      DynamicJsonBuffer jsonBuffer16;
+      JsonObject& json = jsonBuffer16.parseObject(buf.get());
+      if (json.success()) {
+        String username = json["user"];
+        int AccType = json["acctype"];
+        unsigned long validuntil = json["validuntil"];
+        item["username"] = username;
+        item["acctype"] = AccType;
+        item["validuntil"] = validuntil;
+      }
+    }
+    i++;
+  }
+  float pages = i / 15.0;
+  root["haspages"] = ceil(pages);
+  size_t len = root.measureLength();
+  AsyncWebSocketMessageBuffer * buffer = ws.makeBuffer(len); //  creates a buffer (len + 1) for you.
+  if (buffer) {
+    root.printTo((char *)buffer->get(), len + 1);
+    if (client) {
+      client->text(buffer);
+      client->text("{\"command\":\"result\",\"resultof\":\"userlist\",\"result\": true}");
+    } else {
+      ws.textAll("{\"command\":\"result\",\"resultof\":\"userlist\",\"result\": false}");
+    }
+  }
+}
+
+void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len) {
+  if (type == WS_EVT_ERROR) {
+    Serial.printf("[ WARN ] WebSocket[%s][%u] error(%u): %s\r\n", server->url(), client->id(), *((uint16_t*)arg), (char*)data);
+  }
+  else if (type == WS_EVT_DATA) {
+    AwsFrameInfo * info = (AwsFrameInfo*)arg;
+    String msg = "";
+    if (info->final && info->index == 0 && info->len == len) {
+      //the whole message is in a single frame and we got all of it's data
+      for (size_t i = 0; i < info->len; i++) {
+        msg += (char) data[i];
+      }
+      DynamicJsonBuffer jsonBuffer8;
+      JsonObject& root = jsonBuffer8.parseObject(msg);
+      if (!root.success()) {
+        Serial.println(F("[ WARN ] Couldn't parse WebSocket message"));
+        return;
+      }
+      
+      const char * command = root["command"];
+      if (strcmp(command, "remove")  == 0) {
+        const char* uid = root["uid"];
+        String filename = "/P/";
+        filename += uid;
+        SPIFFS.remove(filename);
+      }
+      else if (strcmp(command, "configfile")  == 0) {
+        File f = SPIFFS.open("/config.json", "w+");
+        if (f) {
+          root.prettyPrintTo(f);
+          //f.print(msg);
+          f.close();
+          if(vehicleCharging){
+            deactivateEVSE(true);
+          }
+          ESP.reset();
+        }
+      }
+      else if (strcmp(command, "userlist")  == 0) {
+        int page = root["page"];
+        sendUserList(page, client);
+      }
+      else if (strcmp(command, "status")  == 0) {
+        toSendStatus = true;
+      }
+      else if (strcmp(command, "userfile")  == 0) {
+        const char* uid = root["uid"];
+        String filename = "/P/";
+        filename += uid;
+        File f = SPIFFS.open(filename, "w+");
+        // Check if we created the file
+        if (f) {
+          f.print(msg);
+          Serial.println("[ DEBUG ] Userfile written!");
+        }
+        f.close();
+        ws.textAll("{\"command\":\"result\",\"resultof\":\"userfile\",\"result\": true}");
+      }
+      else if (strcmp(command, "latestlog")  == 0) {
+        File logFile = SPIFFS.open("/latestlog.json", "r");
+        if (logFile) {
+          size_t len = logFile.size();
+          AsyncWebSocketMessageBuffer * buffer = ws.makeBuffer(len); //  creates a buffer (len + 1) for you.
+          if (buffer) {
+            logFile.readBytes((char *)buffer->get(), len + 1);
+            ws.textAll(buffer);
+          }
+          logFile.close();
+        }
+        else{
+          Serial.println("Error while reading logfile");
+        }
+      }
+      else if (strcmp(command, "scan")  == 0) {
+        WiFi.scanNetworksAsync(printScanResult, true);
+      }
+      else if (strcmp(command, "gettime")  == 0) {
+        sendTime();
+      }
+      else if (strcmp(command, "settime")  == 0) {
+        unsigned long t = root["epoch"];
+        setTime(t);
+        sendTime();
+      }
+      else if (strcmp(command, "getconf")  == 0) {
+        File configFile = SPIFFS.open("/config.json", "r");
+        if (configFile) {
+          size_t len = configFile.size();
+          AsyncWebSocketMessageBuffer * buffer = ws.makeBuffer(len); //  creates a buffer (len + 1) for you.
+          if (buffer) {
+            configFile.readBytes((char *)buffer->get(), len + 1);
+            ws.textAll(buffer);
+          }
+          configFile.close();
+        }
+      }
+      else if (strcmp(command, "getevsedata") == 0){
+        sendEVSEdata();
+        evseQueryTimeOut = millis() + 10000; //Timeout for pushing data in loop
+        evseSessionTimeOut = false;
+        Serial.println("sendEVSEdata");
+        toQueryEVSE = true;
+      }
+      else if (strcmp(command, "setcurrent") == 0){
+        currentToSet = root["current"];
+        Serial.print("Call setEVSECurrent() ");
+        Serial.println(currentToSet);
+        toSetEVSEcurrent = true;
+      }
+      else if (strcmp(command, "activateevse") == 0){
+        toActivateEVSE = true;
+        Serial.println("Activate EVSE via WebSocket");
+        lastUID = "-";
+        lastUsername = "GUI";
+      }
+      else if (strcmp(command, "deactivateevse") == 0){
+        toDeactivateEVSE = true;
+        Serial.println("Deactivate EVSE via WebSocket");
+      }
+      
+    }
+  }
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////
 ///////       Setup Functions
 //////////////////////////////////////////////////////////////////////////////////////////
 void ShowReaderDetails() {
@@ -994,7 +997,7 @@ bool connectSTA(const char* ssid, const char* password, byte bssid[6]) {
   }
 }
 
-bool startAP(const char * ssid, const char * password = NULL) {
+bool startAP(const char * ssid, const char * password = NULL){
   inAPMode = true;
   WiFi.mode(WIFI_AP);
   Serial.print(F("[ INFO ] Configuring access point... "));
@@ -1010,7 +1013,7 @@ bool startAP(const char * ssid, const char * password = NULL) {
 }
 
 bool loadConfiguration() {
-  File configFile = SPIFFS.open("/auth/config.json", "r");
+  File configFile = SPIFFS.open("/config.json", "r");
   if (!configFile) {
     Serial.println(F("[ WARN ] Failed to open config file"));
     return false;
@@ -1089,10 +1092,9 @@ bool loadConfiguration() {
   const char * ssid = json["ssid"];
   const char * password = json["pswd"];
   int wmode = json["wmode"];
-  const char * adminpass = json["adminpwd"];
+  adminpass = strdup(json["adminpwd"]);
   defaultWifiPassword = json["adminpwd"];
 
-  server.serveStatic("/auth/", SPIFFS, "/auth/").setDefaultFile("evse.htm").setAuthentication("admin", adminpass);
   ws.setAuthentication("admin", adminpass);
   server.addHandler(new SPIFFSEditor("admin", adminpass));
 
@@ -1111,65 +1113,81 @@ bool loadConfiguration() {
     return false;
   }
   
-  const char * ntpserver = "pool.ntp.org";
-  IPAddress timeserverip;
-  WiFi.hostByName(ntpserver, timeserverip);
-  String ip = printIP(timeserverip);
-  NTP.Ntp(ntpserver, timeZone, 3600);   //use pool.ntp.org, timeZone, update every 60 minutes
+  // Ping Google DNS
+  for (int i = 0; i < 3; i++){
+    pinger.Ping("pool.ntp.org");
+    delay(5);
+  }
+  ping_resp pingResponse = pinger.GetLastPingResponse();
+  
+  if(pingResponse.ping_err == -1){
+    Serial.println("[ NTP ] Error pinging pool.ntp.org - no NTP support!");
+  }
+  else{
+    Serial.println("[ NTP ] Echo response received from pool.ntp.org - set up NTP");
+    const char * ntpserver = "pool.ntp.org";
+    IPAddress timeserverip;
+    WiFi.hostByName(ntpserver, timeserverip);
+    String ip = printIP(timeserverip);
+    NTP.Ntp(ntpserver, timeZone, 3600);   //use pool.ntp.org, timeZone, update every 60 minutes
+  }
 }
 
-void fallbacktoAPMode() {
-  Serial.println(F("[ INFO ] SimpleEVSE Wifi is running in Fallback AP Mode"));
-  uint8_t macAddr[6];
-  WiFi.softAPmacAddress(macAddr);
-  char ssid[15];
-  sprintf(ssid, "evse-wifi-%02x%02x%02x", macAddr[3], macAddr[4], macAddr[5]);
-  isWifiConnected = startAP(ssid, defaultWifiPassword);
-  server.serveStatic("/auth/", SPIFFS, "/auth/").setDefaultFile("evse.htm").setAuthentication("admin", "admin");
-}
-
-void startWebserver() {
-  // Start WebSocket Plug-in and handle incoming message on "onWsEvent" function
-  server.addHandler(&ws);
-  ws.onEvent(onWsEvent);
-  server.serveStatic("/", SPIFFS, "/");
-  server.onNotFound([](AsyncWebServerRequest * request) {
-    AsyncWebServerResponse *response = request->beginResponse(404, "text/plain", "Not found");
+void setWebEvents(){
+  server.on("/index.htm", HTTP_GET, [](AsyncWebServerRequest * request) {
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "text/html", WEBSRC_INDEX_HTM, WEBSRC_INDEX_HTM_LEN);
+    response->addHeader("Content-Encoding", "gzip");
     request->send(response);
   });
 
-  // Simple Firmware Update Handler
-  server.on("/auth/update", HTTP_POST, [](AsyncWebServerRequest * request) {
-    toReboot = !Update.hasError();
-    AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", toReboot ? "OK" : "FAIL");
-    response->addHeader("Connection", "close");
+  server.on("/script.js", HTTP_GET, [](AsyncWebServerRequest * request) {
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "text/javascript", WEBSRC_SCRIPT_JS, WEBSRC_SCRIPT_JS_LEN);
+    response->addHeader("Content-Encoding", "gzip");
     request->send(response);
-  }, [](AsyncWebServerRequest * request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
-    if (!index) {
-      Serial.printf("[ UPDT ] Firmware update started: %s\n", filename.c_str());
-      Update.runAsync(true);
-      if (!Update.begin((ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000)) {
-        Update.printError(Serial);
-      }
-    }
-    if (!Update.hasError()) {
-      if (Update.write(data, len) != len) {
-        Update.printError(Serial);
-      }
-    }
-    if (final) {
-      if (Update.end(true)) {
-        Serial.printf("[ UPDT ] Firmware update finished: %uB\n", index + len);
-      } else {
-        Update.printError(Serial);
-      }
-    }
   });
   
-//////////////////////////////////////////////////////////////////////////////////////////
-///////       API Handler
-//////////////////////////////////////////////////////////////////////////////////////////
+  server.on("/fonts/glyph.woff", HTTP_GET, [](AsyncWebServerRequest * request) {
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "font/woff", WEBSRC_GLYPH_WOFF, WEBSRC_GLYPH_WOFF_LEN);
+    response->addHeader("Content-Encoding", "gzip");
+    request->send(response);
+  });
 
+  server.on("/fonts/glyph.woff2", HTTP_GET, [](AsyncWebServerRequest * request) {
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "font/woff", WEBSRC_GLYPH_WOFF2, WEBSRC_GLYPH_WOFF2_LEN);
+    response->addHeader("Content-Encoding", "gzip");
+    request->send(response);
+  });
+
+  server.on("/required/required.css", HTTP_GET, [](AsyncWebServerRequest * request) {
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "text/css", WEBSRC_REQUIRED_CSS, WEBSRC_REQUIRED_CSS_LEN);
+    response->addHeader("Content-Encoding", "gzip");
+    request->send(response);
+  });
+
+  server.on("/required/required.js", HTTP_GET, [](AsyncWebServerRequest * request) {
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "text/javascript", WEBSRC_REQUIRED_JS, WEBSRC_REQUIRED_JS_LEN);
+    response->addHeader("Content-Encoding", "gzip");
+    request->send(response);
+  });
+
+  server.on("/status_charging.svg", HTTP_GET, [](AsyncWebServerRequest * request) {
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "image/svg+xml", WEBSRC_STATUS_CHARGING_SVG, WEBSRC_STATUS_CHARGING_SVG_LEN);
+    response->addHeader("Content-Encoding", "gzip");
+    request->send(response);
+  });
+
+  server.on("/status_detected.svg", HTTP_GET, [](AsyncWebServerRequest * request) {
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "image/svg+xml", WEBSRC_STATUS_DETECTED_SVG, WEBSRC_STATUS_DETECTED_SVG_LEN);
+    response->addHeader("Content-Encoding", "gzip");
+    request->send(response);
+  });
+
+  server.on("/status_ready.svg", HTTP_GET, [](AsyncWebServerRequest * request) {
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "image/svg+xml", WEBSRC_STATUS_READY_SVG, WEBSRC_STATUS_READY_SVG_LEN);
+    response->addHeader("Content-Encoding", "gzip");
+    request->send(response);
+  });
+  
   //getParameters
   server.on("/getParameters", HTTP_GET, [](AsyncWebServerRequest * request) {
     AsyncResponseStream *response = request->beginResponseStream("application/json");
@@ -1192,7 +1210,7 @@ void startWebserver() {
   
   //getLog
   server.on("/getLog", HTTP_GET, [](AsyncWebServerRequest * request) {
-    AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/auth/latestlog.json", "application/json");
+    AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/latestlog.json", "application/json");
     request->send(response);
   });
   
@@ -1258,6 +1276,67 @@ void startWebserver() {
     }
   });
   
+}
+
+void fallbacktoAPMode() {
+  Serial.println(F("[ INFO ] SimpleEVSE Wifi is running in Fallback AP Mode"));
+  uint8_t macAddr[6];
+  WiFi.softAPmacAddress(macAddr);
+  char ssid[15];
+  sprintf(ssid, "evse-wifi-%02x%02x%02x", macAddr[3], macAddr[4], macAddr[5]);
+  isWifiConnected = startAP(ssid, defaultWifiPassword);
+  //server.serveStatic("/auth/", SPIFFS, "/auth/").setDefaultFile("index.htm").setAuthentication("admin", "admin");
+  void setWebEvents();
+}
+
+void startWebserver() {
+  // Start WebSocket Plug-in and handle incoming message on "onWsEvent" function
+  server.addHandler(&ws);
+  ws.onEvent(onWsEvent);
+  server.onNotFound([](AsyncWebServerRequest * request) {
+    AsyncWebServerResponse *response = request->beginResponse(404, "text/plain", "Not found");
+    request->send(response);
+  });
+
+  // Simple Firmware Update Handler
+  server.on("/update", HTTP_POST, [](AsyncWebServerRequest * request) {
+    toReboot = !Update.hasError();
+    AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", toReboot ? "OK" : "FAIL");
+    response->addHeader("Connection", "close");
+    request->send(response);
+  }, [](AsyncWebServerRequest * request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
+    if (!index) {
+      Serial.printf("[ UPDT ] Firmware update started: %s\n", filename.c_str());
+      Update.runAsync(true);
+      if (!Update.begin((ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000)) {
+        Update.printError(Serial);
+      }
+    }
+    if (!Update.hasError()) {
+      if (Update.write(data, len) != len) {
+        Update.printError(Serial);
+      }
+    }
+    if (final) {
+      if (Update.end(true)) {
+        Serial.printf("[ UPDT ] Firmware update finished: %uB\n", index + len);
+      } else {
+        Update.printError(Serial);
+      }
+    }
+  });
+
+  setWebEvents();
+
+  // HTTP basic authentication
+  server.on("/login", HTTP_GET, [](AsyncWebServerRequest * request) {
+      if (!request->authenticate("admin", adminpass)) {
+          return request->requestAuthentication();
+      }
+      request->send(200, "text/plain", "Success");
+  });
+  
+  server.rewrite("/", "/index.htm");
   server.begin();
 }
 

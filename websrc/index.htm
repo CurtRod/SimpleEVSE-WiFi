@@ -1,27 +1,219 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="">
-    <meta name="author" content="">
-    <link rel="icon" href="/favicon.ico">
-    <title>SimpleEVSE-WiFi - Settings</title>
-    <!-- Bootstrap core CSS -->
-    <link href="/required/required.css" rel="stylesheet">
-    <script src="/required/required.js" type="text/javascript"></script>
-    <script src="/auth/set.js" type="text/javascript"></script>
-  </head>
-  <body onload="start()">
-  	<div style="z-index: 99;" id="mySidenav" class="sidenav">
-		<a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
-		<a href="/auth/evse.htm"><nobr><span class="glyphicon glyphicon-road"></span>&nbsp;&nbsp;EVSE&nbsp;Control</nobr></a>
-		<a href="/auth/users.htm"><nobr><span class="glyphicon glyphicon-user"></span>&nbsp;&nbsp;Users</nobr></a>
-		<a href="/auth/settings.htm"><nobr><b><span class="glyphicon glyphicon-cog"></span>&nbsp;&nbsp;Settings</b></nobr></a>
-		<a href="/auth/log.htm"><nobr><span class="glyphicon glyphicon-list-alt"></span>&nbsp;&nbsp;Log</nobr></a>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="">
+  <meta name="author" content="">
+  <title>SimpleEVSE-WiFi</title>
+  <script src="/required/required.js" type="text/javascript"></script>
+  <link href="/required/required.css" rel="stylesheet">
+  <style>
+</style>
+</head>
+<body onload="start()">
+<div style="z-index: 99;" id="mySidenav" class="sidenav">
+  <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+  <a href="#" onclick="loadEVSEControl()"><nobr><b><span class="glyphicon glyphicon-road"></span>&nbsp;&nbsp;EVSE&nbsp;Control</b></nobr></a>
+  <a href="#" onclick="loadUsers()"><nobr><span class="glyphicon glyphicon-user"></span>&nbsp;&nbsp;Users</nobr></a>
+  <a href="#" onclick="loadSettings()"><nobr><span class="glyphicon glyphicon-cog"></span>&nbsp;&nbsp;Settings</nobr></a>
+  <a href="#" onclick="loadLog()"><nobr><span class="glyphicon glyphicon-list-alt"></span>&nbsp;&nbsp;Log</nobr></a>
+</div>
+<!-- Modal -->
+<div class="modal fade" id="currentModal" tabindex="-1" role="dialog" aria-labelledby="currentModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+	     <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+         <h4 class="modal-title" id="editor-title">Current&nbsp;<span id="slider_current"></span>&nbsp;A</h4>
+      </div>
+      <div class="modal-body">
+		<div class="""slidecontainer">
+			<input type="range" min="6" max="25" value="20" class="slider" id="myRange" oninput="handleSlider(this.value)">
+		</div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Abort</button>
+        <button type="submit" class="btn btn-primary" onclick="setEVSECurrent()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Login Container -->
+      <div class="container text-center" id="loginContent" style="display: block">
+         <div class="header clearfix">
+            <h3 class="text-muted">SimpleEVSE-WiFi</h3>
+         </div>
+         <div>
+            <div class="row">
+               <div class="well center-block" style="max-width:250px">
+                  <form id="loginForm" method="GET" onsubmit="login(); return false">
+                     <div class="form-group">
+                        <label for="password" class="control-label">Password</label>
+                        <input type="password" class="form-control" id="password" name="password" value="" required="" title="Please enter your password">
+                     </div>
+                     <button type="submit" class="btn btn-success btn-sm">Login</button>
+                  </form>
+               </div>
+            </div>
+         </div>
+      </div>
+<!-- EVSE Container -->
+  <div class="container" id="evseContent" style="display: none">
+    <div class="header clearfix">
+	<nav>
+       <ul class="nav pull-right" style="padding:10px">
+			<span class="text-muted" style="font-size:30px;cursor:pointer" onclick="openNav()">&#9776;</span>
+       </ul>
+    </nav>
+	<h3 class="text-muted">EVSE Control</h3>
 	</div>
-    <div class="container">
+	<div class="hidden" id="carStatusReady" align=center>
+		<img id="statusImg" src="/status_ready.svg">
+	</div>
+	<div class="hidden" id="carStatusDetected" align=center>
+		<img id="statusImg" src="/status_detected.svg">
+	</div>
+	<div class="hidden" id="carStatusCharging" align=center>
+		<img id="statusImg" src="/status_charging.svg">
+	</div>
+	<div>
+	<br>
+	<p id="evse_vehicle_state" class="text-center"></p>
+	<br>
+	</div>
+        <div class="panel panel-default table-responsive">
+          <table class="table table-hover" >
+            <tbody style="transition:0.5s">
+              <tr data-toggle="modal" data-target="#currentModal" style="transition:0.3s">
+                <th><span class="glyphicon glyphicon-cog"></span>&nbsp;&nbsp;Max. Current >></th>
+                <td id="evse_current_limit" class="text-right"></td>
+              </tr>
+              <tr  style="transition:0.3s">
+                <th><span class="glyphicon glyphicon-signal"></span>&nbsp;&nbsp;Power</th>
+                <td id="evse_current" class="text-right"></td>
+			  </tr>
+              <tr  style="transition:0.3s">
+                <th><span class="glyphicon glyphicon-time"></span>&nbsp;&nbsp;Duration</th>
+                <td id="evse_charging_time" class="text-right"></td>
+              </tr>
+              <tr  style="transition:0.3s">
+                <th><span class="glyphicon glyphicon-download-alt"></span>&nbsp;&nbsp;Energy</th>
+                <td id="evse_charged_kwh" class="text-right"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+		<div class="hidden" id="evseNotActive" align=center>
+			<button id="buttonActivate" type="button" class="btn btn-success" onclick="activateEVSE()">Activate EVSE</button>
+		</div>
+		<div class="hidden" id="evseActive" align=center>
+			<button id="buttonDeactivate" type="button" class="btn btn-danger" onclick="deactivateEVSE()">Deactivate EVSE</button>
+		</div>
+  </div>
+  <div class="container" id="mainContent">
+  </div>
+<!-- Users Container -->
+        <div class="container" id="usersContent" style="display: none">
+		<div class="header clearfix">
+		<nav>
+			<ul class="nav pull-right" style="padding:10px">
+			<span class="text-muted" style="font-size:30px;cursor:pointer" onclick="openNav()">&#9776;</span>
+			</ul>
+		</nav>
+		<h3 class="text-muted">Users</h3>
+		</div>
+            <div class="overlay">
+               <div>
+                  <h5>You can add new users by either scanning a RFID Tag or by clicking on "New User" button.</h5>
+               </div>
+               <br>
+            </div>
+            <div class="panel panel-default">
+               <table id="usertable" class="table" data-paging="true" data-filtering="true" data-sorting="true" data-editing="true" data-state="true"></table>
+            </div>
+            <div class="modal fade" id="editor-modal" tabindex="-1" role="dialog" aria-labelledby="editor-title">
+               <style scoped>
+                  .form-group.required .control-label:after {
+                  content: "*";
+                  color: red;
+                  margin-left: 4px;
+                  }
+               </style>
+               <div class="modal-dialog" role="document">
+                  <form class="modal-content form-horizontal" id="editor">
+                     <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                        <h4 class="modal-title" id="editor-title">Add User</h4>
+                     </div>
+                     <div class="modal-body">
+                        <input type="number" id="id" name="id" class="hidden" />
+                        <div class="form-group">
+                           <label for="picctype" class="col-sm-3 control-label">PICC Type</label>
+                           <div class="col-sm-9">
+                              <input type="text" class="form-control" id="picctype" name="picctype" placeholder="PICC Type" disabled>
+                           </div>
+                        </div>
+                        <div class="form-group required">
+                           <label for="uid" class="col-sm-3 control-label">UID</label>
+                           <div class="col-sm-9">
+                              <input type="text" class="form-control" id="uid" name="uid" placeholder="UID" required>
+                           </div>
+                        </div>
+                        <div class="form-group required">
+                           <label for="username" class="col-sm-3 control-label">User Name or Label</label>
+                           <div class="col-sm-9">
+                              <input type="text" class="form-control" id="username" name="username" placeholder="User Name or Label" required>
+                           </div>
+                        </div>
+                        <div class="form-group required">
+                           <label for="acctype" class="col-sm-3 control-label">Access Type</label>
+                           <div class="col-sm-9">
+                              <select class="form-control" id="acctype" required>
+                                 <option selected="selected" value="1">Active</option>
+                                 <option value="99">Admin</option>
+                                 <option value="0">Disabled</option>
+                              </select>
+                           </div>
+                        </div>
+                        <div class="form-group required">
+                           <label for="validuntil" class="col-sm-3 control-label">Valid Until</label>
+                           <div class="col-sm-9">
+                              <input type="date" class="form-control" id="validuntil" name="validuntil" value="2038-01-01" placeholder="Valid Until" required>
+                           </div>
+                        </div>
+                     </div>
+                     <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">Save changes</button>
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                     </div>
+                  </form>
+               </div>
+            </div>
+         <hr>
+         <footer class="footer">
+            <h6 class="text-muted"><a href="https://github.com/CurtRod/SimpleEVSE-WiFi" target="_blank">SimpleEVSE WiFi</a></h6>
+         </footer>
+      </div>
+	  
+<!-- Log Container -->
+        <div class="container" id="logContent" style="display: none">
+		<div class="header clearfix">
+		<nav>
+			<ul class="nav pull-right" style="padding:10px">
+			<span class="text-muted" style="font-size:30px;cursor:pointer" onclick="openNav()">&#9776;</span>
+			</ul>
+		</nav>
+		<h3 class="text-muted">Log</h3>
+		</div>
+            <div class="panel panel-default">
+                 <table id="latestlogtable" class="table" data-paging="false" data-filtering="true" data-sorting="true" data-editing="false" data-state="true" data-show-footer="true"></table>
+            </div>
+         <hr>
+      </div>
+<!-- Settings Container -->
+      <div class="container" id="settingsContent" style="display: none">
 		<div class="header clearfix">
 		<nav>
 			<ul class="nav pull-right" style="padding:10px">
@@ -31,10 +223,6 @@
 		<h3 class="text-muted">Settings</h3>
 		</div>
         <div class="alert alert-warning"><strong>Warning!</strong> Settings will take effect when the device is rebooted. 
-        </div>
-        <div id="loading-img" class="text-center">
-                            <img src="/load.gif">
-                  <h5>Please wait while fetching data... <span id="loadpages"></span></h5>
         </div>
         <div>
           <button data-toggle="collapse" data-target="#status" id="refstat" onclick="refreshStats()" class="btn btn-link btn-sm">Show Device Status</button>
@@ -373,7 +561,7 @@
               </span>
             </div>
             <div class="row form-group">
-              <div data-toggle="tooltip" title="Send your PC/Phone time to ESP, useful when the ESP does not have Internet connection." class="col-xs-3"><button onclick="syncBrowserTime(true)" class="btn btn-link btn-sm">Sync Browser Time to Device</button></div>
+              <div data-toggle="tooltip" title="Send your PC/Phone time to ESP, useful when the ESP does not have Internet connection." class="col-xs-3"><button onclick="syncBrowserTime(false)" class="btn btn-link btn-sm">Sync Browser Time to Device</button></div>
               </div>
             <div class="row form-group">
               <label class="col-xs-3">Time Zone</label> 
@@ -463,9 +651,9 @@
           </div>
           <div class="col-sm-6">
             <legend>Update Firmware</legend>
-			<h6 class="text-muted">Current Firmware Version:&nbsp;<span id="version"></span></h6>
+			<h6 class="text-muted">Current Firmware Version:&nbsp;0.2.1</h6>
             <h6 class="text-muted">Download <a href="https://github.com/CurtRod/SimpleEVSE-WiFi/releases" target="_blank">latest version</a> from GitHub.</h6>
-            <form class="form-inline" method="POST" action="/auth/update" enctype="multipart/form-data">
+            <form class="form-inline" method="POST" action="/update" enctype="multipart/form-data">
               <div class="form-group">
                 <input type="file" name="update">
               </div>
@@ -480,5 +668,6 @@
         <h6 class="text-muted"><a href="https://github.com/CurtRod/SimpleEVSE-WiFi" target="_blank">SimpleEVSE WiFi</a></h6>
       </footer>
     </div>
-  </body>
+  <script src="script.js" type="text/javascript"></script>
+</body>
 </html>

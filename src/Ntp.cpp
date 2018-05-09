@@ -87,7 +87,6 @@ String ICACHE_FLASH_ATTR NtpClient::iso8601DateTime() {
 
 	String hyphen = "-";
 	String colon = ":";
-
 	return	String(year()) + hyphen +
 	        zeroPaddedIntVal(month()) + hyphen +
 	        zeroPaddedIntVal(day()) + "T" +

@@ -1,6 +1,5 @@
 {
   "command": "configfile",
-  "version": "0.2.0",
   "bssid": "",
   "ssid": "evse-wifi",
   "wmode": "1",
@@ -17,6 +16,5 @@
   "hostnm": "evse-wifi",
   "adminpwd": "admin",
   "maxinstall": "10",
-  "buttonactive": false,
-  "consumption": "12.5"
+  "buttonactive": false
 }
