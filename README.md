@@ -40,19 +40,38 @@ At the users page you can define valid RFID tags that can unlock the EVSE.
 * (optional) n quantity of Mifare Classic 1KB (recommended due to available code base) PICCs (RFID Tags) equivalent to User Number
 
 #### Wiring (WeMos D1 mini/ NodeMcu)
+SimpleEVSE-WiFi supports not only the control of the EVSE WB but also the use of a simple button or an RC522 RFID card reader to activate the charging process. With an optional electricity meter, the power requirements of the individual charging processes can be output.
 
-* D0	->	Button (optional)
-* D1	->	TX EVSE
-* D2	->	RX EVSE
-* GND ->  GND EVSE
-* D3	->	Electricity Meter S0 (optional)*
-* D5	->	SCK RC522 (optional)
-* D6	->	MISO RC522 (optional)
-* D7	->	MOSI RC522 (optional)
-* D8	->	SDA RC522 (optional)
-* GND ->  Electricity Meter S0 (optional)*
-* GND ->  GND RC522 (optional)
-* 3.3V ->	3.3V RC522 (optinal)
+##### Mandatory
+This wiring is mandatory and absolutely needed to run SimpleEVSE-WiFi
+
+ESP8266-Pin | EVSE WB
+--------- | -----------
+D1 | TX
+D2 | RX
+GND | GND
+
+##### Button (optional)
+ESP8266-Pin | Button
+--------- | -----------
+D0 | Pin 1
+GND | Pin 2
+
+##### Electicity Meter (optional)*
+ESP8266-Pin | electricity meter
+--------- | -----------
+D3 | S0+
+GND | S0-
+
+##### RC522 RFID-Reader (optional)
+ESP8266-Pin | RC522
+--------- | -----------
+D5 | SCK
+D6 | MISO
+D7 | MOSI
+D8 | SDA
+GND | GND
+3.3V | 3.3V
 
 Be sure to use a suitable power supply for ESP. At least 200mA is recommended!
 
