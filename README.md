@@ -33,7 +33,7 @@ At the users page you can define valid RFID tags that can unlock the EVSE.
 ## What You Will Need
 
 ### Hardware
-* A complete Wallbox based on EVSE Wallbox [link](http://evracing.cz/simple-evse-wallbox/) (min. Software revision 8 is needed - read the manual there for updating your EVSE software)
+* A complete Wallbox based on EVSE Wallbox [link](http://evracing.cz/simple-evse-wallbox/) (min. Software revision 8 (2017-10-31) is needed - read the manual there for updating your EVSE software)
 * An ESP8266 module or a development board like **WeMos D1 mini** or **NodeMcu 1.0**
 * (optional) An electricity meter with S0 interface
 * (optional) A MFRC522 RFID Module (PN532 and Wiegand based RFID reader modules are not supported at this time)
