@@ -44,6 +44,7 @@ At the users page you can define valid RFID tags that can unlock the EVSE.
 * D0	->	Button (optional)
 * D1	->	TX EVSE
 * D2	->	RX EVSE
+* GND ->  GND EVSE
 * D3	->	Electricity Meter S0 (optional)*
 * D5	->	SCK RC522 (optional)
 * D6	->	MISO RC522 (optional)
