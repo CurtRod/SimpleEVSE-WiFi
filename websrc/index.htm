@@ -102,7 +102,11 @@
                 <th><span class="glyphicon glyphicon-download-alt"></span>&nbsp;&nbsp;Energy</th>
                 <td id="evse_charged_kwh" class="text-right"></td>
               </tr>
-            </tbody>
+              <tr  style="transition:0.3s">
+                <th><span class="glyphicon glyphicon-download-alt"></span>&nbsp;&nbsp;Charged mileage</th>
+                <td id="evse_charged_mileage" class="text-right"></td>
+              </tr>
+			  </tbody>
           </table>
         </div>
 		<div class="hidden" id="evseNotActive" align=center>
@@ -493,7 +497,14 @@
 						<input class="form-control input-sm" value="25" placeholder="in cent per kWh" id="price" type="text" name="price">
  						</span>
 			</div>
-          </div>
+			<div class="row form-group">
+ 						<label data-toggle="tooltip" title="Specify a factor with which the measured energy is to be multiplied (e.g. when using a single-phase meter in combination with a two- or three-phase charging vehicle). Use '1' if you don't need a factor." class="col-xs-3">Factor</label> 
+ 						<span class="col-xs-9 col-md-5">
+						<input class="form-control input-sm" value="1" placeholder="multiplication factor" id="factor" type="text" name="factor">
+ 						</span>
+			</div>
+			</div>
+			<br>
 		  <div class="col-sm-6">
 			<legend>EVSE Settings</legend>
             <div class="row form-group">
@@ -524,6 +535,19 @@
               </span>
             </div>
           </div>
+		</div>
+		<div class="row">
+		<div class="col-sm-6">
+            <legend>Car Settings</legend>
+           <div class="row form-group">
+              <label data-toggle="tooltip" title="Average energy consumtion of your car" class="col-xs-3">Average consuption</label> 
+              <span class="col-xs-6 col-md-5">
+              <input class="form-control input-sm" placeholder="Average consuption" id="avgconsumption" type="text">
+              </span>
+              <br>
+            </div>
+            <br>
+		  </div>
 		  </div>
         <br>
         <div class="row">
@@ -651,7 +675,7 @@
           </div>
           <div class="col-sm-6">
             <legend>Update Firmware</legend>
-			<h6 class="text-muted">Current Firmware Version:&nbsp;0.2.1</h6>
+			<h6 class="text-muted">Current Firmware Version:&nbsp;0.2.2</h6>
             <h6 class="text-muted">Download <a href="https://github.com/CurtRod/SimpleEVSE-WiFi/releases" target="_blank">latest version</a> from GitHub.</h6>
             <form class="form-inline" method="POST" action="/update" enctype="multipart/form-data">
               <div class="form-group">

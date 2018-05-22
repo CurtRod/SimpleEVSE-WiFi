@@ -23,11 +23,8 @@ var slot = 0;
 var page = 1;
 var haspages;
 var file = {};
-//var userdata = [];
 var completed = false;
 var wsUri;
-
-
 
 
 //Script data for EVSE Control
@@ -45,6 +42,7 @@ function listEVSEData(obj) {
   document.getElementById("evse_current").innerHTML = obj.evse_current + " kW";
   document.getElementById("evse_charging_time").innerHTML = obj.evse_charging_time;
   document.getElementById("evse_charged_kwh").innerHTML = obj.evse_charged_kwh + " kWh";
+  document.getElementById("evse_charged_mileage").innerHTML = obj.evse_charged_mileage + " km";
 	if (obj.evse_active === false){		//EVSE not active
 		$("#evseActive").addClass('hidden');
 		$("#evseNotActive").removeClass('hidden');
@@ -514,7 +512,24 @@ function listCONF(obj) {
   dlAnchorElem.setAttribute("href", dataStr);
   dlAnchorElem.setAttribute("download", "esp-rfid-settings.json");
   document.getElementById("maxinstall").value = obj.maxinstall;
+  document.getElementById("avgconsumption").value = obj.avgconsumption;
   document.getElementById("checkboxButtonActive").checked = obj.buttonactive;
+  
+  if (typeof obj.avgconsumption !== "undefined"){
+	  document.getElementById("avgconsumption").value = obj.avgconsumption;
+  }
+  else{
+	  document.getElementById("avgconsumption").value = "15.5";
+  }
+  
+  
+  if (typeof obj.factor !== "undefined"){
+	  document.getElementById("factor").value = obj.factor;
+  }
+  else {
+	  document.getElementById("factor").value = "1";
+  }
+  
   handleButtonActive();
 }
 
@@ -621,6 +636,7 @@ function listSSID(obj) {
     select.appendChild(opt);
   }
   document.getElementById("scanb").innerHTML = "Re-Scan";
+  listBSSID();
 }
 
 function listBSSID(obj) {
@@ -640,11 +656,17 @@ function scanWifi() {
 }
 
 function saveConf() {
+//Validate input
   var a = document.getElementById("adminpwd").value;
   if (a === null || a === "") {
     alert("Administrator Password cannot be empty");
     return;
   }
+  else if (a.length < 8 ){
+	alert("Administrator Password must be at least 8 characters");
+	return;
+  }
+  
   var ssid;
   if (document.getElementById("inputtohide").style.display === "none") {
     var b = document.getElementById("ssid");
@@ -658,9 +680,14 @@ function saveConf() {
   if (document.getElementById("wmodeap").checked) {
     wmode = "1";
     datatosend.bssid = document.getElementById("wifibssid").value = 0;
+	if (document.getElementById("wifipass").value.length < 8 &&
+		document.getElementById("wifipass").value.length !== 0)
+	alert("WiFi Password in AP mode must be at least 8 characters or empty (for wifi without protection)");
+	return;
   } else {
     datatosend.bssid = document.getElementById("wifibssid").value;
   }
+  
   datatosend.ssid = ssid;
   datatosend.wmode = wmode;
   datatosend.pswd = document.getElementById("wifipass").value;
@@ -672,11 +699,13 @@ function saveConf() {
   datatosend.buttonpin = document.getElementById("gpiobutton").value;
   datatosend.kwhimp = document.getElementById("impkwh").value;
   datatosend.price = document.getElementById("price").value;
+  datatosend.factor = document.getElementById("factor").value;
   datatosend.timezone = document.getElementById("DropDownTimezone").value;
   datatosend.hostnm = document.getElementById("hostname").value;
   datatosend.adminpwd = a;
   datatosend.maxinstall = document.getElementById("maxinstall").value;
   datatosend.buttonactive = document.getElementById("checkboxButtonActive").checked;
+  datatosend.avgconsumption = document.getElementById("avgconsumption").value;
 
   websock.send(JSON.stringify(datatosend));
   alert("Device now should reboot with new settings");
@@ -806,7 +835,7 @@ function listStats(obj) {
   document.getElementById("heap").style.width = (obj.heap * 100) / 81920 + "%";
   colorStatusbar(document.getElementById("heap"));
   document.getElementById("flash").innerHTML = obj.availsize + " B";
-  document.getElementById("flash").style.width = (obj.availsize * 100) / obj.spiffssize - 4177856 + "%";
+  document.getElementById("flash").style.width = (obj.availsize * 100) / (4194304 - obj.spiffssize) + "%";
   colorStatusbar(document.getElementById("flash"));
   document.getElementById("spiffs").innerHTML = obj.availspiffs + " B";
   document.getElementById("spiffs").style.width = (obj.availspiffs * 100) / obj.spiffssize + "%";

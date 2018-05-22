@@ -25,11 +25,10 @@
 #include <WiFiUdp.h>                  // Library for manipulating UDP packets which is used by NTP Client to get Timestamps
 #include <SoftwareSerial.h>           // Using GPIOs for Serial Modbus communication
 #include <ModbusMaster.h>
-#include <Pinger.h>
+#include <ESP8266Ping.h>
 #include "src/proto.h"
 #include "src/ntp.h"
 #include "src/websrc.h"
-NtpClient NTP;
 
 #ifdef ESP8266
 extern "C" {
@@ -45,6 +44,7 @@ unsigned long millisStartCharging = 0;
 unsigned long millisStopCharging = 0;
 int16_t iPrice = 0;
 uint8_t maxinstall = 0;
+uint8_t iFactor = 0;
 float consumption = 0.0;
 int currentToSet = 6;
 int8_t evseStatus = 0;
@@ -117,17 +117,17 @@ int timeZone;
 MFRC522 mfrc522 = MFRC522();  // Create MFRC522 RFID instance
 AsyncWebServer server(80);    // Create AsyncWebServer instance on port "80"
 AsyncWebSocket ws("/ws");     // Create WebSocket instance on URL "/ws"
-Pinger pinger;
+NtpClient NTP;
 
 //////////////////////////////////////////////////////////////////////////////////////////
 ///////       Auxiliary Functions
 //////////////////////////////////////////////////////////////////////////////////////////
 
-String printIP(IPAddress adress) {
+String ICACHE_FLASH_ATTR printIP(IPAddress adress) {
   return (String)adress[0] + "." + (String)adress[1] + "." + (String)adress[2] + "." + (String)adress[3];
 }
 
-void parseBytes(const char* str, char sep, byte* bytes, int maxBytes, int base) {
+void ICACHE_FLASH_ATTR parseBytes(const char* str, char sep, byte* bytes, int maxBytes, int base) {
   for (int i = 0; i < maxBytes; i++) {
     bytes[i] = strtoul(str, NULL, base);  // Convert byte
     str = strchr(str, sep);               // Find next separator
@@ -145,18 +145,18 @@ void ICACHE_RAM_ATTR handleMeterInt() {  //interrupt routine for metering
   }
 }
 
-void updateMeterData() {
+void ICACHE_FLASH_ATTR updateMeterData() {
   if (vehicleCharging){
-    currentKW = 3600.0 / float(meterImpMillis - previousMeterMillis) / float(kwhimp / 1000) ;  //Calculating kW
+    currentKW = 3600.0 / float(meterImpMillis - previousMeterMillis) / float(kwhimp / 1000) * (float)iFactor ;  //Calculating kW
     previousMeterMillis = meterImpMillis;
     meterImpMillis = meterImpMillis + 35;
     meterInterrupt = false;
     numberOfMeterImps ++;
-    meteredKWh = float(numberOfMeterImps) / float(kwhimp / 1000) / 1000.0;
+    meteredKWh = float(numberOfMeterImps) / float(kwhimp / 1000) / 1000.0 * float(iFactor);
   }
 }
 
-int getChargingTime(){
+int ICACHE_FLASH_ATTR getChargingTime(){
   int iTime;
   if(vehicleCharging == true){
     iTime = millis() - millisStartCharging;
@@ -170,7 +170,7 @@ int getChargingTime(){
 //////////////////////////////////////////////////////////////////////////////////////////
 ///////       RFID Functions
 //////////////////////////////////////////////////////////////////////////////////////////
-void rfidloop() {
+void ICACHE_FLASH_ATTR rfidloop() {
   //If a new PICC placed to RFID reader continue
   //debugMillis = millis();
   if ( ! mfrc522.PICC_IsNewCardPresent()) {
@@ -279,11 +279,11 @@ void rfidloop() {
   }
 }
 
-void pushWebsocketEVSEData(){
+void ICACHE_FLASH_ATTR pushWebsocketEVSEData(){
     sendEVSEdata();
 }
 
-void sendStatus() {
+void ICACHE_FLASH_ATTR sendStatus() {
   // Getting additional Modbus data
   uint8_t result;
   struct ip_info info;
@@ -405,7 +405,7 @@ void sendStatus() {
 }
 
 // Send Scanned SSIDs to websocket clients as JSON object
-void printScanResult(int networksFound) {
+void ICACHE_FLASH_ATTR printScanResult(int networksFound) {
   DynamicJsonBuffer jsonBuffer13;
   JsonObject& root = jsonBuffer13.createObject();
   root["command"] = "ssidlist";
@@ -432,7 +432,7 @@ void printScanResult(int networksFound) {
 //////////////////////////////////////////////////////////////////////////////////////////
 ///////       Log Functions
 //////////////////////////////////////////////////////////////////////////////////////////
-void logLatest(String uid, String username) {
+void ICACHE_FLASH_ATTR logLatest(String uid, String username) {
   File logFile = SPIFFS.open("/latestlog.json", "r");
   if (!logFile) {
     // Can not open file create it.
@@ -480,7 +480,7 @@ void logLatest(String uid, String username) {
   }
 }
 
-void updateLog(bool e) {
+void ICACHE_FLASH_ATTR updateLog(bool e) {
 File logFile = SPIFFS.open("/latestlog.json", "r");
   size_t size = logFile.size();
   std::unique_ptr<char[]> buf (new char[size]);
@@ -523,7 +523,7 @@ File logFile = SPIFFS.open("/latestlog.json", "r");
 //////////////////////////////////////////////////////////////////////////////////////////
 ///////       EVSE Modbus functions
 //////////////////////////////////////////////////////////////////////////////////////////
-bool queryEVSE(){
+bool ICACHE_FLASH_ATTR queryEVSE(){
   //New ModBus Master Library
   uint8_t result;
   
@@ -609,7 +609,7 @@ bool queryEVSE(){
   }
 }
 
-bool activateEVSE() {
+bool ICACHE_FLASH_ATTR activateEVSE() {
   static uint16_t iTransmit;
   Serial.println("[ ModBus ] Query Modbus before activating EVSE");
   queryEVSE();
@@ -652,7 +652,7 @@ bool activateEVSE() {
   return false;
 }
 
-bool deactivateEVSE(bool logUpdate) {
+bool ICACHE_FLASH_ATTR deactivateEVSE(bool logUpdate) {
   //New ModBus Master Library
   static uint16_t iTransmit = 16384;  // deactivate evse
   uint8_t result;
@@ -680,7 +680,7 @@ bool deactivateEVSE(bool logUpdate) {
   }
 }
 
-bool setEVSEcurrent(){  // telegram 1: write EVSE current
+bool ICACHE_FLASH_ATTR setEVSEcurrent(){  // telegram 1: write EVSE current
   //New ModBus Master Library
   uint8_t result;
   
@@ -708,7 +708,7 @@ bool setEVSEcurrent(){  // telegram 1: write EVSE current
 //////////////////////////////////////////////////////////////////////////////////////////
 ///////       Websocket Functions
 //////////////////////////////////////////////////////////////////////////////////////////
-void pushSessionTimeOut(){
+void ICACHE_FLASH_ATTR pushSessionTimeOut(){
   // push "TimeOut" to evse.htm!
   // Encode a JSON Object and send it to All WebSocket Clients
   DynamicJsonBuffer jsonBuffer15;
@@ -723,7 +723,7 @@ void pushSessionTimeOut(){
   Serial.println("TimeOut sent to browser!");
 }
 
-void sendEVSEdata(){
+void ICACHE_FLASH_ATTR sendEVSEdata(){
   if (evseSessionTimeOut == false){
     DynamicJsonBuffer jsonBuffer9;
     JsonObject& root = jsonBuffer9.createObject();
@@ -735,7 +735,8 @@ void sendEVSEdata(){
     root["evse_charging_time"] = getChargingTime();
     root["evse_charged_kwh"] = String(meteredKWh, 2); 
     root["evse_maximum_current"] = maxinstall;
-    root["charged_milage"] = String(int((int(meteredKWh * 100.0) / 100) / consumption * 100));
+    float f = roundf(10.334 * 100) / 100;
+    root["evse_charged_mileage"] = String((meteredKWh * 100.0 / consumption), 1);
     root["ap_mode"] = inAPMode;
     
     size_t len = root.measureLength();
@@ -747,7 +748,7 @@ void sendEVSEdata(){
   }
 }
 
-void sendTime() {
+void ICACHE_FLASH_ATTR sendTime() {
   DynamicJsonBuffer jsonBuffer10;
   JsonObject& root = jsonBuffer10.createObject();
   root["command"] = "gettime";
@@ -761,7 +762,7 @@ void sendTime() {
   }
 }
 
-void sendUserList(int page, AsyncWebSocketClient * client) {
+void ICACHE_FLASH_ATTR sendUserList(int page, AsyncWebSocketClient * client) {
   DynamicJsonBuffer jsonBuffer11;
   JsonObject& root = jsonBuffer11.createObject();
   root["command"] = "userlist";
@@ -810,7 +811,7 @@ void sendUserList(int page, AsyncWebSocketClient * client) {
   }
 }
 
-void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len) {
+void ICACHE_FLASH_ATTR onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len) {
   if (type == WS_EVT_ERROR) {
     Serial.printf("[ WARN ] WebSocket[%s][%u] error(%u): %s\r\n", server->url(), client->id(), *((uint16_t*)arg), (char*)data);
   }
@@ -937,7 +938,7 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
 //////////////////////////////////////////////////////////////////////////////////////////
 ///////       Setup Functions
 //////////////////////////////////////////////////////////////////////////////////////////
-void ShowReaderDetails() {
+void ICACHE_FLASH_ATTR ShowReaderDetails() {
   // Get the MFRC522 software version
   byte v = mfrc522.PCD_ReadRegister(mfrc522.VersionReg);
   Serial.print(F("[ INFO ] MFRC522 Version: 0x"));
@@ -957,7 +958,7 @@ void ShowReaderDetails() {
   }
 }
 
-void setupRFID(int rfidss, int rfidgain) {
+void ICACHE_FLASH_ATTR setupRFID(int rfidss, int rfidgain) {
   SPI.begin();           // MFRC522 Hardware uses SPI protocol
     mfrc522.PCD_Init(rfidss, UINT8_MAX);    // Initialize MFRC522 Hardware
     mfrc522.PCD_SetAntennaGain(rfidgain);
@@ -966,7 +967,7 @@ void setupRFID(int rfidss, int rfidgain) {
     ShowReaderDetails();
 }
 
-bool connectSTA(const char* ssid, const char* password, byte bssid[6]) {
+bool ICACHE_FLASH_ATTR connectSTA(const char* ssid, const char* password, byte bssid[6]) {
   WiFi.disconnect(true);
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password, 0, bssid);
@@ -997,7 +998,7 @@ bool connectSTA(const char* ssid, const char* password, byte bssid[6]) {
   }
 }
 
-bool startAP(const char * ssid, const char * password = NULL){
+bool ICACHE_FLASH_ATTR startAP(const char * ssid, const char * password = NULL){
   inAPMode = true;
   WiFi.mode(WIFI_AP);
   Serial.print(F("[ INFO ] Configuring access point... "));
@@ -1012,7 +1013,7 @@ bool startAP(const char * ssid, const char * password = NULL){
   return success;
 }
 
-bool loadConfiguration() {
+bool ICACHE_FLASH_ATTR loadConfiguration() {
   File configFile = SPIFFS.open("/config.json", "r");
   if (!configFile) {
     Serial.println(F("[ WARN ] Failed to open config file"));
@@ -1066,8 +1067,8 @@ bool loadConfiguration() {
     Serial.println("[ INFO ] No button is configured");
   }
 
-  if(json["consumption"] == true){
-    String sConsumption = json["consumption"];
+  if(json["avgconsumption"] == true){
+    String sConsumption = json["avgconsumption"];
     consumption = strtof((sConsumption).c_str(),0);
   }
   
@@ -1087,6 +1088,7 @@ bool loadConfiguration() {
   timeZone = json["timezone"];
   kwhimp = json["kwhimp"];
   iPrice = json["price"];
+  iFactor = json["factor"];
   maxinstall = json["maxinstall"];
 
   const char * ssid = json["ssid"];
@@ -1112,28 +1114,22 @@ bool loadConfiguration() {
   else if (!connectSTA(ssid, password, bssid)) {
     return false;
   }
-  
-  // Ping Google DNS
-  for (int i = 0; i < 3; i++){
-    pinger.Ping("pool.ntp.org");
-    delay(5);
-  }
-  ping_resp pingResponse = pinger.GetLastPingResponse();
-  
-  if(pingResponse.ping_err == -1){
+
+//Check internet connection
+  if(!Ping.ping("pool.ntp.org", 5)){
     Serial.println("[ NTP ] Error pinging pool.ntp.org - no NTP support!");
   }
-  else{
-    Serial.println("[ NTP ] Echo response received from pool.ntp.org - set up NTP");
+  else{ 
+    Serial.println("[ NTP ] Echo response received from pool.ntp.org - set up NTP"); 
     const char * ntpserver = "pool.ntp.org";
     IPAddress timeserverip;
     WiFi.hostByName(ntpserver, timeserverip);
     String ip = printIP(timeserverip);
-    NTP.Ntp(ntpserver, timeZone, 3600);   //use pool.ntp.org, timeZone, update every 60 minutes
+    NTP.Ntp(ntpserver, timeZone, 3600);   //use pool.ntp.org, timeZone, update every x minutes
   }
 }
 
-void setWebEvents(){
+void ICACHE_FLASH_ATTR setWebEvents(){
   server.on("/index.htm", HTTP_GET, [](AsyncWebServerRequest * request) {
     AsyncWebServerResponse * response = request->beginResponse_P(200, "text/html", WEBSRC_INDEX_HTM, WEBSRC_INDEX_HTM_LEN);
     response->addHeader("Content-Encoding", "gzip");
@@ -1278,18 +1274,18 @@ void setWebEvents(){
   
 }
 
-void fallbacktoAPMode() {
+void ICACHE_FLASH_ATTR fallbacktoAPMode() {
   Serial.println(F("[ INFO ] SimpleEVSE Wifi is running in Fallback AP Mode"));
   uint8_t macAddr[6];
   WiFi.softAPmacAddress(macAddr);
   char ssid[15];
   sprintf(ssid, "evse-wifi-%02x%02x%02x", macAddr[3], macAddr[4], macAddr[5]);
   isWifiConnected = startAP(ssid, defaultWifiPassword);
-  //server.serveStatic("/auth/", SPIFFS, "/auth/").setDefaultFile("index.htm").setAuthentication("admin", "admin");
+  Serial.println("ssid: " + (String)ssid + " pw: " + (String)defaultWifiPassword);
   void setWebEvents();
 }
 
-void startWebserver() {
+void ICACHE_FLASH_ATTR startWebserver() {
   // Start WebSocket Plug-in and handle incoming message on "onWsEvent" function
   server.addHandler(&ws);
   ws.onEvent(onWsEvent);
@@ -1343,7 +1339,7 @@ void startWebserver() {
 //////////////////////////////////////////////////////////////////////////////////////////
 ///////       Setup
 //////////////////////////////////////////////////////////////////////////////////////////
-void setup() {
+void ICACHE_FLASH_ATTR setup() {
   Serial.begin(115200);
   Serial.println();
   Serial.print("[ INFO ] SimpleEVSE WiFi");
@@ -1371,7 +1367,7 @@ void setup() {
 //////////////////////////////////////////////////////////////////////////////////////////
 ///////       Loop
 //////////////////////////////////////////////////////////////////////////////////////////
-void loop() {
+void ICACHE_RAM_ATTR loop() {
   unsigned long currentMillis = millis();
   unsigned long deltaTime = currentMillis - previousLoopMillis;
   unsigned long uptime = NTP.getUptimeSec();
