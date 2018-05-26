@@ -45,33 +45,33 @@ SimpleEVSE-WiFi supports not only the control of the EVSE WB but also the use of
 ##### Mandatory
 This wiring is mandatory and absolutely needed to run SimpleEVSE-WiFi
 
-ESP8266-Pin | EVSE WB
---------- | -----------
-D1 | TX
-D2 | RX
-GND | GND
+ESP8266-Pin | ESP8266-GPIO | EVSE WB
+----------- | ----------- | -----------
+D1 | GPIO5 | TX
+D2 | GPIO4 | RX
+GND |  | GND
 
 ##### Button (optional)
-ESP8266-Pin | Button
+ESP8266-Pin | ESP8266-GPIO | Button
 --------- | -----------
-D0 | Pin 1
-GND | Pin 2
+D4 | GPIO2 | Pin 1
+GND | | Pin 2
 
 ##### Electicity Meter (optional)*
 ESP8266-Pin | electricity meter
 --------- | -----------
-D3 | S0+
-GND | S0-
+D3 | GPIO0 | S0+
+GND | | S0-
 
 ##### RC522 RFID-Reader (optional)
 ESP8266-Pin | RC522
 --------- | -----------
-D5 | SCK
-D6 | MISO
-D7 | MOSI
-D8 | SDA
-GND | GND
-3.3V | 3.3V
+D5 | GPIO14 | SCK
+D6 | GPIO12 | MISO
+D7 | GPIO13 | MOSI
+D8 | GPIO15 | SDA
+GND |  | GND
+3.3V |  | 3.3V
 
 Be sure to use a suitable power supply for ESP. At least 200mA is recommended!
 
