@@ -53,19 +53,19 @@ GND |  | GND
 
 ##### Button (optional)
 ESP8266-Pin | ESP8266-GPIO | Button
---------- | -----------
+----------- | ----------- | -----------
 D4 | GPIO2 | Pin 1
 GND | | Pin 2
 
 ##### Electicity Meter (optional)*
-ESP8266-Pin | electricity meter
---------- | -----------
+ESP8266-Pin | ESP8266-GPIO | electricity meter
+----------- | ----------- | -----------
 D3 | GPIO0 | S0+
 GND | | S0-
 
 ##### RC522 RFID-Reader (optional)
-ESP8266-Pin | RC522
---------- | -----------
+ESP8266-Pin | ESP8266-GPIO | RC522
+----------- | ----------- | -----------
 D5 | GPIO14 | SCK
 D6 | GPIO12 | MISO
 D7 | GPIO13 | MOSI
