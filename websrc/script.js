@@ -681,9 +681,10 @@ function saveConf() {
     wmode = "1";
     datatosend.bssid = document.getElementById("wifibssid").value = 0;
 	if (document.getElementById("wifipass").value.length < 8 &&
-		document.getElementById("wifipass").value.length !== 0)
-	alert("WiFi Password in AP mode must be at least 8 characters or empty (for wifi without protection)");
-	return;
+	    document.getElementById("wifipass").value.length !== 0) {
+	  alert("WiFi Password in AP mode must be at least 8 characters or empty (for wifi without protection)");
+	  return;
+	}
   } else {
     datatosend.bssid = document.getElementById("wifibssid").value;
   }
