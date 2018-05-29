@@ -691,20 +691,12 @@ function saveConf() {
     wmode = "1";
     datatosend.bssid = document.getElementById("wifibssid").value = 0;
 	if (document.getElementById("wifipass").value.length < 8 &&
-<<<<<<< HEAD
 		document.getElementById("wifipass").value.length !== 0){
 		alert("WiFi Password in AP mode must be at least 8 characters or empty (for wifi without protection)");
 		return;
 		}
   }
   else {
-=======
-	    document.getElementById("wifipass").value.length !== 0) {
-	  alert("WiFi Password in AP mode must be at least 8 characters or empty (for wifi without protection)");
-	  return;
-	}
-  } else {
->>>>>>> 8d100614c4367750f2d5371956084c1662f9a16c
     datatosend.bssid = document.getElementById("wifibssid").value;
   }
  
