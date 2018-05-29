@@ -9,12 +9,13 @@
   "rfidgain": "32",
   "meter": false,
   "intpin": "0",
-  "buttonpin": "16",
+  "buttonpin": "2",
   "kwhimp": "1000",
   "price": "",
   "timezone": "",
   "hostnm": "evse-wifi",
   "adminpwd": "admin",
   "maxinstall": "10",
-  "buttonactive": false
+  "buttonactive": false,
+  "avgconsumption": "11.5"
 }

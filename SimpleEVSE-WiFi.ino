@@ -1,4 +1,4 @@
-  /*
+/*
   Copyright (c) 2018 CurtRod
 
   Released to Public Domain
@@ -53,7 +53,7 @@ bool evseActive = false;
 bool vehicleCharging = false;
 
 //Metering
-int meterPin;
+uint8_t meterPin;
 uint16_t meterTimeout = 6; //sec
 uint16_t kwhimp;
 unsigned long numberOfMeterImps = 0;
@@ -105,12 +105,12 @@ bool useRFID = false;
 bool useMeter = false;
 bool useButton = false;
 bool inAPMode = false;
+bool inFallbackMode = false;
 bool isWifiConnected = false;
 String lastUsername = "";
 String lastUID = "";
 char * deviceHostname = NULL;
-int buttonPin;
-const char * defaultWifiPassword = "evse";
+uint8_t buttonPin;
 char * adminpass = NULL;
 int timeZone;
 
@@ -147,12 +147,12 @@ void ICACHE_RAM_ATTR handleMeterInt() {  //interrupt routine for metering
 
 void ICACHE_FLASH_ATTR updateMeterData() {
   if (vehicleCharging){
-    currentKW = 3600.0 / float(meterImpMillis - previousMeterMillis) / float(kwhimp / 1000) * (float)iFactor ;  //Calculating kW
+    currentKW = 3600.0 / float(meterImpMillis - previousMeterMillis) / float(kwhimp / 1000.0) * (float)iFactor ;  //Calculating kW
     previousMeterMillis = meterImpMillis;
     meterImpMillis = meterImpMillis + 35;
     meterInterrupt = false;
     numberOfMeterImps ++;
-    meteredKWh = float(numberOfMeterImps) / float(kwhimp / 1000) / 1000.0 * float(iFactor);
+    meteredKWh = float(numberOfMeterImps) / float(kwhimp / 1000.0) / 1000.0 * float(iFactor);
   }
 }
 
@@ -671,6 +671,7 @@ bool ICACHE_FLASH_ATTR deactivateEVSE(bool logUpdate) {
   else{
     // register successufully written
     Serial.println("[ ModBus ] EVSE successfully deactivated");
+   
     toDeactivateEVSE = false;
     evseActive = false;
     if(logUpdate){
@@ -702,7 +703,27 @@ bool ICACHE_FLASH_ATTR setEVSEcurrent(){  // telegram 1: write EVSE current
     sendEVSEdata();               //foce update in WebUI
     toSetEVSEcurrent = false;
     return true;
-  } 
+  }
+}
+
+bool ICACHE_FLASH_ATTR setEVSERegister(uint16_t reg, uint16_t val){
+  uint8_t result;
+  node.clearTransmitBuffer();
+  node.setTransmitBuffer(0, val); // set word 0 of TX buffer (bits 15..0)
+  result = node.writeMultipleRegisters(reg, 1);  // write given register
+  
+  if (result != 0){
+    // error occured
+    Serial.print("[ ModBus ] Error ");
+    Serial.print(result, HEX);
+    Serial.println(" occured while setting EVSE Register " + (String)reg + " to " + (String)val);
+    return false;
+  }
+  else{   
+    // register successufully written
+    Serial.println("[ ModBus ] Register " + (String)reg + " successfully set to " + (String)val);
+    return true;
+  }
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -736,7 +757,12 @@ void ICACHE_FLASH_ATTR sendEVSEdata(){
     root["evse_charged_kwh"] = String(meteredKWh, 2); 
     root["evse_maximum_current"] = maxinstall;
     float f = roundf(10.334 * 100) / 100;
-    root["evse_charged_mileage"] = String((meteredKWh * 100.0 / consumption), 1);
+    if(meteredKWh == 0.0){
+      root["evse_charged_mileage"] = "0";  
+    }
+    else{
+      root["evse_charged_mileage"] = String((meteredKWh * 100.0 / consumption), 0);
+    }
     root["ap_mode"] = inAPMode;
     
     size_t len = root.measureLength();
@@ -930,7 +956,11 @@ void ICACHE_FLASH_ATTR onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient *
         toDeactivateEVSE = true;
         Serial.println("Deactivate EVSE via WebSocket");
       }
-      
+      else if (strcmp(command, "setevsereg") == 0){
+        uint16_t reg = atoi(root["register"]);
+        uint16_t val = atoi(root["value"]);
+        setEVSERegister(reg, val);
+      }
     }
   }
 }
@@ -999,6 +1029,7 @@ bool ICACHE_FLASH_ATTR connectSTA(const char* ssid, const char* password, byte b
 }
 
 bool ICACHE_FLASH_ATTR startAP(const char * ssid, const char * password = NULL){
+  WiFi.disconnect(true);
   inAPMode = true;
   WiFi.mode(WIFI_AP);
   Serial.print(F("[ INFO ] Configuring access point... "));
@@ -1095,7 +1126,6 @@ bool ICACHE_FLASH_ATTR loadConfiguration() {
   const char * password = json["pswd"];
   int wmode = json["wmode"];
   adminpass = strdup(json["adminpwd"]);
-  defaultWifiPassword = json["adminpwd"];
 
   ws.setAuthentication("admin", adminpass);
   server.addHandler(new SPIFFSEditor("admin", adminpass));
@@ -1109,6 +1139,7 @@ bool ICACHE_FLASH_ATTR loadConfiguration() {
 
   if (wmode == 1) {
     Serial.println(F("[ INFO ] SimpleEVSE Wifi is running in AP Mode "));
+    WiFi.disconnect(true);
     return startAP(ssid, password);
   }
   else if (!connectSTA(ssid, password, bssid)) {
@@ -1275,14 +1306,15 @@ void ICACHE_FLASH_ATTR setWebEvents(){
 }
 
 void ICACHE_FLASH_ATTR fallbacktoAPMode() {
+  WiFi.disconnect(true);
   Serial.println(F("[ INFO ] SimpleEVSE Wifi is running in Fallback AP Mode"));
   uint8_t macAddr[6];
   WiFi.softAPmacAddress(macAddr);
-  char ssid[15];
-  sprintf(ssid, "evse-wifi-%02x%02x%02x", macAddr[3], macAddr[4], macAddr[5]);
-  isWifiConnected = startAP(ssid, defaultWifiPassword);
-  Serial.println("ssid: " + (String)ssid + " pw: " + (String)defaultWifiPassword);
+  char ssid[16];
+  sprintf(ssid, "EVSE-WiFi-%02x%02x%02x", macAddr[3], macAddr[4], macAddr[5]);
+  isWifiConnected = startAP(ssid, adminpass);
   void setWebEvents();
+  inFallbackMode = true;
 }
 
 void ICACHE_FLASH_ATTR startWebserver() {
@@ -1368,6 +1400,7 @@ void ICACHE_FLASH_ATTR setup() {
 ///////       Loop
 //////////////////////////////////////////////////////////////////////////////////////////
 void ICACHE_RAM_ATTR loop() {
+  int buttonState;
   unsigned long currentMillis = millis();
   unsigned long deltaTime = currentMillis - previousLoopMillis;
   unsigned long uptime = NTP.getUptimeSec();
@@ -1379,6 +1412,9 @@ void ICACHE_RAM_ATTR loop() {
       delay(1000);
       toReboot = true;
     }
+  }
+  if (inFallbackMode && uptime > 600){
+    toReboot = true;
   }
   if (toReboot) {
     Serial.println(F("[ UPDT ] Rebooting..."));
@@ -1420,9 +1456,14 @@ void ICACHE_RAM_ATTR loop() {
     deactivateEVSE(true);
   }
   if (useButton){
-    int buttonState = digitalRead(buttonPin);
-    if (buttonState == LOW && evseActive == false) {
-      toActivateEVSE = true;
+    buttonState = digitalRead(buttonPin);
+    if (buttonState == LOW){
+      if (evseActive == false){
+        toActivateEVSE = true;
+      }
+      else if (evseActive == true){
+        toDeactivateEVSE = true;
+      }
     }
   }
   if (toSendStatus == true){

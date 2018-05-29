@@ -20,13 +20,13 @@
   <a href="#" onclick="loadSettings()"><nobr><span class="glyphicon glyphicon-cog"></span>&nbsp;&nbsp;Settings</nobr></a>
   <a href="#" onclick="loadLog()"><nobr><span class="glyphicon glyphicon-list-alt"></span>&nbsp;&nbsp;Log</nobr></a>
 </div>
-<!-- Modal -->
+<!-- Current Modal -->
 <div class="modal fade" id="currentModal" tabindex="-1" role="dialog" aria-labelledby="currentModalLabel" aria-hidden="true">
   <div class="modal-dialog" role="document">
-    <div class="modal-content">
+    <div class="modal-content form-horizontal" id="current-content">
       <div class="modal-header">
 	     <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-         <h4 class="modal-title" id="editor-title">Current&nbsp;<span id="slider_current"></span>&nbsp;A</h4>
+         <h4 class="modal-title" id="current-title">Current&nbsp;<span id="slider_current"></span>&nbsp;A</h4>
       </div>
       <div class="modal-body">
 		<div class="""slidecontainer">
@@ -36,6 +36,53 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-dismiss="modal">Abort</button>
         <button type="submit" class="btn btn-primary" onclick="setEVSECurrent()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Edit EVSE Register Modal -->
+<div class="modal fade" id="evseRegModal" tabindex="-1" role="dialog" aria-labelledby="evseRegModalLabel" aria-hidden="true">
+  <style scoped>
+     .form-group.required .control-label:after {
+     content: "*";
+     color: red;
+     margin-left: 4px;
+     }
+  </style>
+  <div class="modal-dialog" role="document">
+    <div class="modal-content form-horizontal" id="evseRegModal-content">
+      <div class="modal-header">
+	     <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+         <h4 class="modal-title" id="current-title">Edit EVSE Register</h4>
+      </div>
+      <div class="modal-body">
+	    <div class="form-group required">
+            <label for="evseRegToSet" class="col-sm-3 control-label">Register</label>
+            <div class="col-sm-9">
+				<select class="form-control" id="evseRegToSet" required>
+					<option value="1000">1000: Configured Current</option>
+					<option value="1004">1004: Turn off bit</option>
+					<option value="2000">2000: Current after boot</option>
+					<option value="2001">2001: Modbus Status</option>
+					<option value="2002">2002: Min. Current Value</option>
+					<option value="2003">2003: Analog Input Config</option>
+					<option value="2004">2004: Amps after boot (evse-button)</option>
+					<option value="2005">2005: Register 2005</option>
+					<option value="2006">2006: Current Sharing Mode</option>
+					<option value="2007">2007: PP-Detection</option>
+				</select>
+            </div>
+        </div>
+        <div class="form-group required">
+			<label for="evseRegValue" class="col-sm-3 control-label">Value</label>
+            <div class="col-sm-9">
+				<input type="number" class="form-control" id="evseRegValue" name="evseRegValue" placeholder="Value" required>
+            </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Abort</button>
+        <button type="submit" class="btn btn-primary" onclick="setEVSERegister()">Set Register</button>
       </div>
     </div>
   </div>
@@ -103,7 +150,7 @@
                 <td id="evse_charged_kwh" class="text-right"></td>
               </tr>
               <tr  style="transition:0.3s">
-                <th><span class="glyphicon glyphicon-download-alt"></span>&nbsp;&nbsp;Charged mileage</th>
+                <th><span class="glyphicon glyphicon-road"></span>&nbsp;&nbsp;Charged mileage</th>
                 <td id="evse_charged_mileage" class="text-right"></td>
               </tr>
 			  </tbody>
@@ -314,7 +361,10 @@
 			<div class="col-sm-6">
               <div class="panel panel-default table-responsive">
                 <table class="table table-hover table-striped">
-                  <caption>EVSE</caption>
+                  <caption>
+				  <span style="float: left">EVSE Registers</span>
+				  <span style="float: right" class="glyphicon glyphicon-pencil" data-toggle="modal" data-target="#evseRegModal" style="transition:0.3s"></span>
+				  </caption>
                   <tr>
                     <th>1000: Configured Current</th>
                     <td id="amps_conf"></td>
@@ -522,15 +572,15 @@
               </div>
             </div>
 			<div class="row form-group">
-              <label data-toggle="tooltip" title="Choose which ESP port is connected to Button for activating your EVSE" class="col-xs-3">Button Pin</label> 
+              <label data-toggle="tooltip" title="Choose which ESP port is connected to Button for activating/deactivating your EVSE" class="col-xs-3">Button Pin</label> 
               <span class="col-xs-9 col-md-5">
                 <select class="form-control input-sm" id="gpiobutton">
                   <option value="0">GPIO-0</option>
-                  <option value="2">GPIO-2</option>
+                  <option selected="selected" value="2">GPIO-2</option>
                   <option value="4">GPIO-4</option>
                   <option value="5">GPIO-5</option>
                   <option value="15">GPIO-15</option>
-                  <option selected="selected" value="16">GPIO-16</option>
+                  <option value="16">GPIO-16</option>
                 </select>
               </span>
             </div>
@@ -540,9 +590,9 @@
 		<div class="col-sm-6">
             <legend>Car Settings</legend>
            <div class="row form-group">
-              <label data-toggle="tooltip" title="Average energy consumtion of your car" class="col-xs-3">Average consuption</label> 
+              <label data-toggle="tooltip" title="Average energy consumption of your car" class="col-xs-3">Average consumption</label> 
               <span class="col-xs-6 col-md-5">
-              <input class="form-control input-sm" placeholder="Average consuption" id="avgconsumption" type="text">
+              <input class="form-control input-sm" placeholder="in kWh per 100km" id="avgconsumption" type="text">
               </span>
               <br>
             </div>
@@ -675,7 +725,7 @@
           </div>
           <div class="col-sm-6">
             <legend>Update Firmware</legend>
-			<h6 class="text-muted">Current Firmware Version:&nbsp;0.2.2</h6>
+			<h6 class="text-muted">Current Firmware Version:&nbsp;0.2.3</h6>
             <h6 class="text-muted">Download <a href="https://github.com/CurtRod/SimpleEVSE-WiFi/releases" target="_blank">latest version</a> from GitHub.</h6>
             <form class="form-inline" method="POST" action="/update" enctype="multipart/form-data">
               <div class="form-group">

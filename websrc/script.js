@@ -551,6 +551,16 @@ function deviceTime() {
 var t = setInterval(browserTime, 1000);
 var tt = setInterval(deviceTime, 1000);
 
+function setEVSERegister() {
+	var datatosend = {};
+	datatosend.command = "setevsereg";
+	datatosend.register = document.getElementById("evseRegToSet").value;
+	datatosend.value = document.getElementById("evseRegValue").value;
+	websock.send(JSON.stringify(datatosend));
+	$("#evseRegModal").modal("hide");
+	refreshStats();
+}
+
 function syncBrowserTime(reload) {
   var d = new Date();
   var timestamp = Math.floor((d.getTime() / 1000) + ((d.getTimezoneOffset() * 60) * -1));
@@ -681,13 +691,15 @@ function saveConf() {
     wmode = "1";
     datatosend.bssid = document.getElementById("wifibssid").value = 0;
 	if (document.getElementById("wifipass").value.length < 8 &&
-		document.getElementById("wifipass").value.length !== 0)
-	alert("WiFi Password in AP mode must be at least 8 characters or empty (for wifi without protection)");
-	return;
-  } else {
+		document.getElementById("wifipass").value.length !== 0){
+		alert("WiFi Password in AP mode must be at least 8 characters or empty (for wifi without protection)");
+		return;
+		}
+  }
+  else {
     datatosend.bssid = document.getElementById("wifibssid").value;
   }
-  
+ 
   datatosend.ssid = ssid;
   datatosend.wmode = wmode;
   datatosend.pswd = document.getElementById("wifipass").value;

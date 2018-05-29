@@ -30,3 +30,4 @@ void   ICACHE_FLASH_ATTR startWebserver();
 void   ICACHE_FLASH_ATTR setWebEvents();
 void   ICACHE_FLASH_ATTR loop();
 void   ICACHE_FLASH_ATTR setup();
+bool ICACHE_FLASH_ATTR setEVSERegister(uint16_t reg, uint16_t val);
