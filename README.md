@@ -101,6 +101,7 @@ Please install Arduino IDE if you didn't already, then add ESP8266 Core on top o
 * [ArduinoJson](https://github.com/bblanchon/ArduinoJson) - JSON Library for Arduino IDE
 * [NTPClientLib](https://github.com/gmag11/NtpClient/) - NTP Client Library for Arduino IDE
 * [TimeLib](https://github.com/PaulStoffregen/Time) - Mandatory for NTP Client Library
+* [ESP8266Ping](https://github.com/dancol90/ESP8266Ping) - Needed for checking online Status
 
 You also need to upload web files to your ESP with ESP8266FS Uploader.
 
