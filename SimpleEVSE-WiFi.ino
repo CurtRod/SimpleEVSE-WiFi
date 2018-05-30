@@ -24,8 +24,8 @@
 #include <TimeLib.h>                  // Library for converting epochtime to a date
 #include <WiFiUdp.h>                  // Library for manipulating UDP packets which is used by NTP Client to get Timestamps
 #include <SoftwareSerial.h>           // Using GPIOs for Serial Modbus communication
-#include <ModbusMaster.h>
-#include <ESP8266Ping.h>
+#include <ModbusMaster.h>             // Enable comunication with SimpleEVSE register minimum rel. 8 of SimpleEVSE
+#include <ESP8266Ping.h>              // Keep the comunication alive
 #include "src/proto.h"
 #include "src/ntp.h"
 #include "src/websrc.h"
@@ -117,7 +117,7 @@ int timeZone;
 MFRC522 mfrc522 = MFRC522();  // Create MFRC522 RFID instance
 AsyncWebServer server(80);    // Create AsyncWebServer instance on port "80"
 AsyncWebSocket ws("/ws");     // Create WebSocket instance on URL "/ws"
-NtpClient NTP;
+NtpClient NTP;                // Create NTP instance to get time and date from a realtime clo
 
 //////////////////////////////////////////////////////////////////////////////////////////
 ///////       Auxiliary Functions
@@ -1374,7 +1374,7 @@ void ICACHE_FLASH_ATTR startWebserver() {
 void ICACHE_FLASH_ATTR setup() {
   Serial.begin(115200);
   Serial.println();
-  Serial.print("[ INFO ] SimpleEVSE WiFi");
+  Serial.println("[ INFO ] SimpleEVSE WiFi");
   delay(2000);
   
   SPIFFS.begin();
@@ -1393,7 +1393,7 @@ void ICACHE_FLASH_ATTR setup() {
   }
   now();
   startWebserver();
-  Serial.println("End of setup routine");
+  Serial.println("[ INFO ] End of setup routine");
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
