@@ -34,6 +34,7 @@ ICACHE_FLASH_ATTR NtpClient::~NtpClient() {
 
 // send an NTP request to the time server at the given address
 time_t ICACHE_FLASH_ATTR NtpClient::getNtpTime() {
+	Serial.println("[ NTP ] Send an NTP request to the time server");
 	memset(NTPpacket, 0, sizeof(NTPpacket));
 	NTPpacket[0] = 0b11100011;
 	NTPpacket[1] = 0;
@@ -45,6 +46,7 @@ time_t ICACHE_FLASH_ATTR NtpClient::getNtpTime() {
 	NTPpacket[15] = 52;
 	if (udpListener.connect(timeServer, 123)) {
 		udpListener.onPacket([](AsyncUDPPacket packet) {
+			Serial.println("[ NTP ] received UDP packet");
 			unsigned long highWord = word(packet.data()[40], packet.data()[41]);
 			unsigned long lowWord = word(packet.data()[42], packet.data()[43]);
 			time_t UnixUTCtime = (highWord << 16 | lowWord) - 2208988800UL;
@@ -52,7 +54,7 @@ time_t ICACHE_FLASH_ATTR NtpClient::getNtpTime() {
 		});
 	}
 	else {
-  Serial.println("Error on setting Time!?");
+		Serial.println("[ NTP ] Error on setting Time!?");
 	}
 	udpListener.write(NTPpacket, sizeof(NTPpacket));
 	// ugly
@@ -60,7 +62,7 @@ time_t ICACHE_FLASH_ATTR NtpClient::getNtpTime() {
 }
 
 bool ICACHE_FLASH_ATTR NtpClient::processTime() {
-
+	Serial.println("[ NTP ] processing Time...");
 	timeStatus_t ts = timeStatus();
 
 	switch (ts) {
@@ -87,7 +89,6 @@ String ICACHE_FLASH_ATTR NtpClient::iso8601DateTime() {
 
 	String hyphen = "-";
 	String colon = ":";
-
 	return	String(year()) + hyphen +
 	        zeroPaddedIntVal(month()) + hyphen +
 	        zeroPaddedIntVal(day()) + "T" +
@@ -103,7 +104,9 @@ time_t NtpClient::getUptimeSec() {
 }
 
 deviceUptime ICACHE_FLASH_ATTR NtpClient::getDeviceUptime() {
-
+	
+	Serial.println("[ NTP ] processing getDeviceUptime");
+	
 	unsigned long currentmillis = millis();
 
 	deviceUptime uptime;
@@ -111,7 +114,7 @@ deviceUptime ICACHE_FLASH_ATTR NtpClient::getDeviceUptime() {
 	uptime.mins  = (long)((currentmillis / 60000) % 60);
 	uptime.hours = (long)((currentmillis / 3600000) % 24);
 	uptime.days  = (long)((currentmillis / 86400000) % 10);
-
+	
 	return uptime;
 
 }
@@ -131,5 +134,6 @@ String ICACHE_FLASH_ATTR NtpClient::getDeviceUptimeString() {
  * returns the current time as UTC (timezone offset removed)
  */
 ICACHE_FLASH_ATTR time_t NtpClient::getUtcTimeNow() {
+	Serial.println("[ NTP ] processing getUtcTimeNow");
 	return now() + (timezone * 3600);
 }
