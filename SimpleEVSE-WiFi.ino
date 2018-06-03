@@ -26,6 +26,7 @@
 #include <SoftwareSerial.h>           // Using GPIOs for Serial Modbus communication
 #include <ModbusMaster.h>
 #include <ESP8266Ping.h>
+
 #include "src/proto.h"
 #include "src/ntp.h"
 #include "src/websrc.h"
@@ -51,6 +52,7 @@ int8_t evseStatus = 0;
 bool evseSessionTimeOut = false;
 bool evseActive = false;
 bool vehicleCharging = false;
+int buttonState = HIGH;
 
 //Metering
 uint8_t meterPin;
@@ -66,6 +68,7 @@ float currentKW = 0;
 //SoftwareSerial and Modbus
 SoftwareSerial mySerial(D1, D2); //SoftwareSerial object (RX, TX)
 ModbusMaster node;
+
 uint8_t queryTimer = 5; // seconds
 unsigned long lastModbusAnswer = 0;
 unsigned long evseQueryTimeOut = 0;
@@ -1400,7 +1403,6 @@ void ICACHE_FLASH_ATTR setup() {
 ///////       Loop
 //////////////////////////////////////////////////////////////////////////////////////////
 void ICACHE_RAM_ATTR loop() {
-  int buttonState;
   unsigned long currentMillis = millis();
   unsigned long deltaTime = currentMillis - previousLoopMillis;
   unsigned long uptime = NTP.getUptimeSec();
@@ -1455,7 +1457,7 @@ void ICACHE_RAM_ATTR loop() {
   if (toDeactivateEVSE){
     deactivateEVSE(true);
   }
-  if (useButton){
+  if (useButton && digitalRead(buttonPin) != buttonState){
     buttonState = digitalRead(buttonPin);
     if (buttonState == LOW){
       if (evseActive == false){
