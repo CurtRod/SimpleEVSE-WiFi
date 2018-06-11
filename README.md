@@ -1,4 +1,5 @@
 # SimpleEVSE-WiFi
+[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/pools/c/85c7xRbeay)
 
 SimpleEVSE-WiFi brings WiFi functionality to your SimpleEVSE WB to control your Charging Station very easy. It uses an ESP8266 to communicate with SimpleEVSE WB via ModBus (UART) and offers a web interface to control it. Optional there is a possibility to connect an impulse meter via S0 and an RC522 RFID reader to detect valid RFID tags.
 
@@ -232,7 +233,6 @@ E0_could not activate EVSE - internal error | Internal error occured (unspecifie
 E0_could not deactivate EVSE - internal error | Internal error occured (unspecified)
 E1_could not process - give a valid value (true/false) | Wrong value was given
 E2_could not process - wrong parameter | Wrong parameter was given
-
 
 
 
