@@ -3,7 +3,7 @@
 
 SimpleEVSE-WiFi brings WiFi functionality to your SimpleEVSE WB to control your Charging Station very easy. It uses an ESP8266 to communicate with SimpleEVSE WB via ModBus (UART) and offers a web interface to control it. Optional there is a possibility to connect an impulse meter via S0 and an RC522 RFID reader to detect valid RFID tags.
 
-If you want to support my project, I would be very happy about a [donation](https://www.paypal.com/pools/c/85c7xRbeay).
+If you want to support this project, I would be very happy about a [donation](https://www.paypal.com/pools/c/85c7xRbeay).
 
 ## Main Features
 
@@ -114,6 +114,9 @@ Unlisted libraries are part of [ESP8266](https://github.com/esp8266/Arduino) Cor
 
 ## First boot
 When SimpleEVSE-WiFi starts for the first time it sets up a WiFi access point called 'evse-wifi'. You can connect without a password. To connect, open http://192.168.4.1 in your browser. The initial password is 'admin'. You should first check the Settings to bring the ESP in Client mode and connect it to your local WiFi network. The ESP will be restarted afterwards. If it doesn't restart, press the 'RST' button once. Sometimes the ESP must first be manually reset (this only has to happen after flashing a new firmware).
+
+## Support this Project
+The development of SimpleEVSE-WiFi is very time consuming. If you want to support this project, I would be very happy about a [donation](https://www.paypal.com/pools/c/85c7xRbeay).
 
 ## HTTP API
 Since version 0.2.0 there is an HTTP API implemented to let other devices control your EVSE WiFi. The API gives you the following possibilities of setting and fetching information.
