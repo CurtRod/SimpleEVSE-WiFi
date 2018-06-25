@@ -3,6 +3,8 @@
 
 SimpleEVSE-WiFi brings WiFi functionality to your SimpleEVSE WB to control your Charging Station very easy. It uses an ESP8266 to communicate with SimpleEVSE WB via ModBus (UART) and offers a web interface to control it. Optional there is a possibility to connect an impulse meter via S0 and an RC522 RFID reader to detect valid RFID tags.
 
+If you want to support my project, I would be very happy about a [donation](https://www.paypal.com/pools/c/85c7xRbeay).
+
 ## Main Features
 
 * WiFi functionality (as an access point or as a WiFi client)
