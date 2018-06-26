@@ -61,11 +61,24 @@ ESP8266-Pin | ESP8266-GPIO | Button
 D4 | GPIO2 | Pin 1
 GND | | Pin 2
 
-##### Electicity Meter (optional)*
+##### S0 Electicity Meter (optional)*
 ESP8266-Pin | ESP8266-GPIO | electricity meter
 ----------- | ----------- | -----------
 D3 | GPIO0 | S0+
 GND | | S0-
+
+##### Modbus Electicity Meter (optional - experimental!)**
+ESP8266-Pin | TTL->RS485 
+----------- | -----------
+RX | RX 
+TX | TX 
+
+TTL->RS485 | Modbus Meter 
+----------- | -----------
+A+ | A
+B- | B
+
+
 
 ##### RC522 RFID-Reader (optional)
 ESP8266-Pin | ESP8266-GPIO | RC522
@@ -79,7 +92,9 @@ GND |  | GND
 
 Be sure to use a suitable power supply for ESP. At least 200mA is recommended!
 
-*When you use an electricity meter be sure the S0 interface switches to GND, don't use 3.3V or 5V!
+\*When you use an electricity meter with S0 interface be sure the S0 interface switches to GND, don't use 3.3V or 5V!
+
+\*\*To use a Modbus electricity meter via RS485, you need a piece of extra hardware to translate UART to RS485. In this project a PCB like ![this](https://www.amazon.de/WINGONEER-RS485-Adapter-Serieller-Converter/dp/B06XHH6B6R/ref=sr_1_1?ie=UTF8&qid=1530052971&sr=8-1&keywords=rs485+uart) is recommended.
 
 #### Preparation of EVSE Wallbox
 To use SimpleEVSE-WiFi, the Modbus functionallity of EVSE Wallbox is needed! By default, Modbus functionality is disabled. To activate it, pull AN input of the EVSE Wallbox board to GND while booting for at least 5 times within 3 seconds. Modbus register 2001 will be set to 1 (Modbus is active). Attention: That change will not be saved! To save the settings, you have to give a R/W operation at a register >=2000. The easiest way to do this is to activate and deactivate EVSE through the WebUI in the "EVSE Control" page.
@@ -133,6 +148,7 @@ actualCurrent | Actual configured current in A (e.g. 20A)
 actualPower | actual power consumption (when S0 meter is used)
 duration | charging duration in milliseconds
 energy | charged energy of the current charging process in kWh
+mileage | charged energy in km
 
 #### Example
 `GET http://192.168.4.1/getParameters`
@@ -148,7 +164,8 @@ energy | charged energy of the current charging process in kWh
     "actualCurrent": 32,
     "actualPower": 5.79,
     "duration": 1821561,
-    "energy": "9.52"
+    "energy": "9.52",
+    "mileage": "82.3"
   }]
 }
 ```
