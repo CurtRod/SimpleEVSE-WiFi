@@ -90,7 +90,7 @@ D8 | GPIO15 | SDA
 GND |  | GND
 3.3V |  | 3.3V
 
-Be sure to use a suitable power supply for ESP. At least 200mA is recommended!
+Be sure to use a suitable power supply for ESP. At least 500mA is recommended!
 
 \*When you use an electricity meter with S0 interface be sure the S0 interface switches to GND, don't use 3.3V or 5V!
 
