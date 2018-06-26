@@ -13,12 +13,13 @@
 </style>
 </head>
 <body onload="start()">
-<div style="z-index: 99;" id="mySidenav" class="sidenav">
+<div style="z-index: 99" id="mySidenav" class="sidenav">
   <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
   <a href="#" onclick="loadEVSEControl()"><nobr><b><span class="glyphicon glyphicon-road"></span>&nbsp;&nbsp;EVSE&nbsp;Control</b></nobr></a>
   <a href="#" onclick="loadUsers()"><nobr><span class="glyphicon glyphicon-user"></span>&nbsp;&nbsp;Users</nobr></a>
   <a href="#" onclick="loadSettings()"><nobr><span class="glyphicon glyphicon-cog"></span>&nbsp;&nbsp;Settings</nobr></a>
   <a href="#" onclick="loadLog()"><nobr><span class="glyphicon glyphicon-list-alt"></span>&nbsp;&nbsp;Log</nobr></a>
+  <div style="position: fixed; bottom: 0px; padding: 10px 10px 10px 10px">v0.2.4</div>
 </div>
 <!-- Current Modal -->
 <div class="modal fade" id="currentModal" tabindex="-1" role="dialog" aria-labelledby="currentModalLabel" aria-hidden="true">
@@ -125,12 +126,14 @@
 	<div class="hidden" id="carStatusCharging" align=center>
 		<img id="statusImg" src="/status_charging.svg">
 	</div>
+	
 	<div>
-	<br>
-	<p id="evse_vehicle_state" class="text-center"></p>
-	<br>
+		<br>
+		<p id="evse_vehicle_state" class="text-center"></p>
+		<br>
 	</div>
-        <div class="panel panel-default table-responsive">
+    
+		<div class="panel panel-default table-responsive">
           <table class="table table-hover" >
             <tbody style="transition:0.5s">
               <tr data-toggle="modal" data-target="#currentModal" style="transition:0.3s">
@@ -428,6 +431,19 @@
                 </table>
               </div>
             </div>
+
+			<div id="meterRegisters" class="col-sm-6">
+              <div class="panel panel-default table-responsive">
+                <table class="table table-hover table-striped">
+                  <caption>Meter Registers</caption>
+                  <tr>
+                    <th>Total active energy </th>
+                    <td id="meter_total"></td>
+                  </tr>
+                </table>
+              </div>
+            </div>			
+			
           </div>
             <br>
         <div class="row">
@@ -468,11 +484,43 @@
                 <button id="shwifi" type="button" class="btn btn-primary btn-xs" onclick="shWifi()">show</button>
               </span>
             </div>
+			<div class="row form-group">
+              <label data-toggle="tooltip" title="Use a static IP Address instead of DHCP" class="col-xs-3">Static IP</label>
+              <div class="col-xs-9">
+                <form>
+                  <label class="checkbox-inline"><input type="checkbox" id="checkboxStaticIP" value="" onclick="handleStaticIP();">Active</label>
+                </form>
+              </div>
+            </div>
+			<div id="divIP" class="row form-group">
+				<label data-toggle="tooltip" title="Give an IP Address" class="col-xs-3">IP Address</label> 
+ 				<span class="col-xs-9 col-md-5">
+				<input class="form-control input-sm" placeholder="IP Address" id="ipch" type="text" name="ip">
+ 				</span>
+			</div>
+			<div id="divSubnet" class="row form-group">
+				<label data-toggle="tooltip" title="Give a Subnet Mask" class="col-xs-3">Subnet Mask</label> 
+ 				<span class="col-xs-9 col-md-5">
+				<input class="form-control input-sm" placeholder="Subnet Mask" id="subnetch" type="text" name="subnet">
+ 				</span>
+			</div>
+			<div id="divGateway" class="row form-group">
+				<label data-toggle="tooltip" title="Give a Gateway" class="col-xs-3">Gateway</label> 
+ 				<span class="col-xs-9 col-md-5">
+				<input class="form-control input-sm" placeholder="Gateway" id="gatewaych" type="text" name="gateway">
+ 				</span>
+			</div>
+			<div id="divDNS" class="row form-group">
+				<label data-toggle="tooltip" title="Give a DNS Server" class="col-xs-3">DNS Server</label> 
+ 				<span class="col-xs-9 col-md-5">
+				<input class="form-control input-sm" placeholder="DNS Server" id="dnsch" type="text" name="dns">
+ 				</span>
+			</div>
 			<br>
-    	  </div>
+		  </div>
           <div class="col-sm-6">
             <legend>RFID Hardware Settings</legend>
-            <h6 class="text-muted">Please refer the <a href="https://github.com/omersiar/esp-rfid#pin-layout">documentation</a> for pin configuration.</h6>
+            <h6 class="text-muted">Please refer the <a href="https://github.com/CurtRod/SimpleEVSE-WiFi#wiring-wemos-d1-mini-nodemcu">documentation</a> for pin configuration.</h6>
 			<div class="alert alert-warning"><strong>Warning!</strong> Activating RFID-Hardware when there is no RC522 connected to ESP, causes boot loop!</div>
 			<div class="row form-group">
               <label data-toggle="tooltip" title="When you want to use a RC522 RFID Hardware to activate your EVSE, please activate this option." class="col-xs-3">RFID-Hardware</label>
@@ -508,7 +556,7 @@
                 </select>
               </span>
             </div>
-            <br>
+			<br>
 		  </div>
 		</div>
 		 <div class="row">
@@ -523,28 +571,42 @@
               </div>
             </div>
 			<div class="row form-group">
-              <label data-toggle="tooltip" title="Choose which ESP port is connected to S0 interface of electricity meter" class="col-xs-3">Meter GPIO</label> 
+              <label data-toggle="tooltip" title="Choose whether you want to use an s0 meter or a modbus meter." class="col-xs-3">Type of Meter</label> 
               <span class="col-xs-9 col-md-5">
-                <select class="form-control input-sm" id="gpioint">
-                  <option value="0">GPIO-0</option>
-                  <option value="2">GPIO-2</option>
-                  <option value="4">GPIO-4</option>
-                  <option selected="selected" value="5">GPIO-5</option>
-                  <option value="15">GPIO-15</option>
-                  <option value="16">GPIO-16</option>
+                <select class="form-control input-sm" id="smetertype" onchange="handleMeterType()">
+                  <option selected value="m">Modbus Meter (experimental)</option>
+                  <option value="s">S0 Meter</option>
                 </select>
               </span>
             </div>
-            <div class="row form-group">
- 						<label data-toggle="tooltip" title="Depending on your meter setup, you can choose the impulses per kWh (usually 1000 or 2000 imp/kWh)" class="col-xs-3">Meter Type</label> 
+			<div id="divMeterPin" class="row form-group">
+              <label data-toggle="tooltip" title="Choose which ESP port is connected to S0 interface of electricity meter" class="col-xs-3">Meter GPIO</label> 
+              <span class="col-xs-9 col-md-5">
+                <select class="form-control input-sm" id="gpioint">
+                  <option selected="selected" value="0">GPIO-0</option>
+                  <option value="2">GPIO-2</option>
+                  <option value="4">GPIO-4</option>
+                  <option value="5">GPIO-5</option>
+                  <option value="15">GPIO-15</option>
+                </select>
+              </span>
+            </div>
+            <div id="divImpKwh" class="row form-group">
+ 						<label data-toggle="tooltip" title="Depending on your meter setup, you can choose the impulses per kWh (usually 1000 or 2000 imp/kWh)" class="col-xs-3">Impulses</label> 
  						<span class="col-xs-9 col-md-5">
-						<input class="form-control input-sm" value="1000" placeholder="in impulses per kWh" id="impkwh" type="text" name="impsperkwh">
+						<input class="form-control input-sm" value="1000" placeholder="impulses per kWh" id="impkwh" type="text" name="impsperkwh">
+ 						</span>
+			</div>
+            <div id="divImpLen" class="row form-group">
+ 						<label data-toggle="tooltip" title="Depending on your meter setup, you can choose the impulse length in milliseconds (for SDM120 use 90). Default: 30ms" class="col-xs-3">Impulse Length</label> 
+ 						<span class="col-xs-9 col-md-5">
+						<input class="form-control input-sm" placeholder="impulse length in ms" id="implen" type="text" name="implength">
  						</span>
 			</div>
 			<div class="row form-group">
  						<label data-toggle="tooltip" title="Price per kWh in cent" class="col-xs-3">Price</label> 
  						<span class="col-xs-9 col-md-5">
-						<input class="form-control input-sm" value="25" placeholder="in cent per kWh" id="price" type="text" name="price">
+						<input class="form-control input-sm" value="25" placeholder="cent per kWh" id="price" type="text" name="price">
  						</span>
 			</div>
 			<div class="row form-group">
@@ -553,14 +615,14 @@
 						<input class="form-control input-sm" value="1" placeholder="multiplication factor" id="factor" type="text" name="factor">
  						</span>
 			</div>
-			</div>
 			<br>
+			</div>
 		  <div class="col-sm-6">
 			<legend>EVSE Settings</legend>
             <div class="row form-group">
- 						<label data-toggle="tooltip" title="Enter the maximum current (A) allowed by your electical installation." class="col-xs-3">Max Current</label> 
+ 						<label data-toggle="tooltip" title="Enter the maximum current (A) allowed by your electical installation to limit the slider in /'EVSE Control/'." class="col-xs-3">Max Current</label> 
  						<span class="col-xs-9 col-md-5">
-						<input class="form-control input-sm" value="6" placeholder="in A" id="maxinstall" type="text" name="maxinstall">
+						<input class="form-control input-sm" value="6" placeholder="Ampere" id="maxinstall" type="text" name="maxinstall">
  						</span>
 			</div>
 			<div class="row form-group">
@@ -580,10 +642,10 @@
                   <option value="4">GPIO-4</option>
                   <option value="5">GPIO-5</option>
                   <option value="15">GPIO-15</option>
-                  <option value="16">GPIO-16</option>
                 </select>
               </span>
             </div>
+			<br>
           </div>
 		</div>
 		<div class="row">
@@ -592,14 +654,13 @@
            <div class="row form-group">
               <label data-toggle="tooltip" title="Average energy consumption of your car" class="col-xs-3">Average consumption</label> 
               <span class="col-xs-6 col-md-5">
-              <input class="form-control input-sm" placeholder="in kWh per 100km" id="avgconsumption" type="text">
+              <input class="form-control input-sm" placeholder="kWh per 100km" id="avgconsumption" type="text">
               </span>
               <br>
             </div>
             <br>
 		  </div>
 		  </div>
-        <br>
         <div class="row">
           <div class="col-sm-6">
             <legend>General Settings</legend>
@@ -618,8 +679,8 @@
               <span class="col-xs-9 col-md-5">
               <input class="form-control input-sm" placeholder="Hostname" value="evse-wifi" id="hostname" type="text">
               </span>
-              <br>
             </div>
+			<br>
           </div>
           <div class="col-sm-6">
             <legend>Time Settings</legend>
@@ -674,8 +735,8 @@
                   <option value="12">(GMT +12:00) Auckland, Wellington, Fiji, Kamchatka</option>
                 </select>
               </span>
-              <br>
             </div>
+			<br>
           </div>
         </div>
         <hr>
@@ -725,7 +786,7 @@
           </div>
           <div class="col-sm-6">
             <legend>Update Firmware</legend>
-			<h6 class="text-muted">Current Firmware Version:&nbsp;0.2.3-patch1</h6>
+			<h6 class="text-muted">Current Firmware Version:&nbsp;0.2.4</h6>
             <h6 class="text-muted">Download <a href="https://github.com/CurtRod/SimpleEVSE-WiFi/releases" target="_blank">latest version</a> from GitHub.</h6>
             <form class="form-inline" method="POST" action="/update" enctype="multipart/form-data">
               <div class="form-group">

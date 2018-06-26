@@ -4,6 +4,8 @@ var wsUri;
 
 //EVSE Control
 var firstEVSEData = true;
+var chargingTime;
+var evseActive;
 
 //Users
 var timezone;
@@ -38,9 +40,11 @@ function loadEVSEControl() {
 	closeNav();
 }
 function listEVSEData(obj) {
+  chargingTime = obj.evse_charging_time;
+  evseActive = obj.evse_active;
+  document.getElementById("evse_charging_time").innerHTML = getTimeFormat(obj.evse_charging_time);
   document.getElementById("evse_current_limit").innerHTML = obj.evse_current_limit + " A";
   document.getElementById("evse_current").innerHTML = obj.evse_current + " kW";
-  document.getElementById("evse_charging_time").innerHTML = obj.evse_charging_time;
   document.getElementById("evse_charged_kwh").innerHTML = obj.evse_charged_kwh + " kWh";
   document.getElementById("evse_charged_mileage").innerHTML = obj.evse_charged_mileage + " km";
 	if (obj.evse_active === false){		//EVSE not active
@@ -480,18 +484,42 @@ function loadSettings() {
 	
 	websock.send("{\"command\":\"getconf\"}");
 	handleRFID();
-	handleMeter(); 
+	handleMeter();
+	handleMeterType();
+	handleButtonActive();
+	handleStaticIP();
 }
 function listCONF(obj) {
   document.getElementById("inputtohide").value = obj.ssid;
   document.getElementById("wifipass").value = obj.pswd;
   document.getElementById("wifibssid").value = obj.bssid;
+  if (typeof obj.staticip !== "undefined"){
+	document.getElementById("checkboxStaticIP").checked = obj.staticip;
+	document.getElementById("ipch").value = obj.ip;
+	document.getElementById("subnetch").value = obj.subnet;
+	document.getElementById("gatewaych").value = obj.gateway;
+	document.getElementById("dnsch").value = obj.dns;
+  }
+  handleStaticIP();
+  
   document.getElementById("gpioss").value = obj.sspin;
   document.getElementById("gain").value = obj.rfidgain;
-  document.getElementById("gpioint").value = obj.intpin;
   document.getElementById("gpiobutton").value = obj.buttonpin;
-  document.getElementById("impkwh").value = obj.kwhimp;
-  document.getElementById("price").value = obj.price;
+  
+  if (typeof obj.intpin !== "undefined"){
+	document.getElementById("gpioint").value = obj.intpin;
+  }
+  if (typeof obj.kwhimp !== "undefined"){
+	document.getElementById("impkwh").value = obj.kwhimp;
+  }
+  if (typeof obj.implen !== "undefined"){
+	document.getElementById("implen").value = obj.implen;
+  }
+  document.getElementById("smetertype").value = obj.metertype;
+  handleMeterType();
+  if (typeof obj.price !== "undefined"){
+	document.getElementById("price").value = obj.price;
+  }
   document.getElementById("adminpwd").value = obj.adminpwd;
   document.getElementById("DropDownTimezone").value = obj.timezone;
   document.getElementById("hostname").value = obj.hostnm;
@@ -529,7 +557,6 @@ function listCONF(obj) {
   else {
 	  document.getElementById("factor").value = "1";
   }
-  
   handleButtonActive();
 }
 
@@ -548,8 +575,16 @@ function deviceTime() {
 	utcSeconds = utcSeconds + 1;
 }
 
+function chargingTime(){
+	if (evseActive === true){
+		chargingTime = chargingTime + 1000;
+		document.getElementById("evse_charging_time").innerHTML = getTimeFormat(chargingTime);
+	}
+}
+
 var t = setInterval(browserTime, 1000);
 var tt = setInterval(deviceTime, 1000);
+var ttt = setInterval(chargingTime, 1000);
 
 function setEVSERegister() {
 	var datatosend = {};
@@ -582,6 +617,21 @@ function handleSTA() {
   document.getElementById("hideBSSID").style.display = "block";
 }
 
+function handleStaticIP(){
+	if (document.getElementById("checkboxStaticIP").checked === true){
+		document.getElementById("divIP").style.display = "block";
+		document.getElementById("divSubnet").style.display = "block";
+		document.getElementById("divGateway").style.display = "block";
+		document.getElementById("divDNS").style.display = "block";
+	}
+	else{
+		document.getElementById("divIP").style.display = "none";
+		document.getElementById("divSubnet").style.display = "none";
+		document.getElementById("divGateway").style.display = "none";
+		document.getElementById("divDNS").style.display = "none";
+	}
+}
+
 function handleRFID() {
 	if (document.getElementById("checkboxRfid").checked === true){
 		document.getElementById("gain").disabled = false;
@@ -597,14 +647,34 @@ function handleMeter(){
 	if (document.getElementById("checkboxMeter").checked === true){
 		document.getElementById("gpioint").disabled = false;
 		document.getElementById("impkwh").disabled = false;
+		document.getElementById("implen").disabled = false;
 		document.getElementById("price").disabled = false;
+		document.getElementById("smetertype").disabled = false;
 	}
 	else {
 		document.getElementById("gpioint").disabled = true;
 		document.getElementById("impkwh").disabled = true;	
+		document.getElementById("implen").disabled = true;
 		document.getElementById("price").disabled = true;
+		document.getElementById("smetertype").disabled = true;
 	}
 }
+
+function handleMeterType(){
+	if (document.getElementById("smetertype").value === "m"){
+		document.getElementById("divImpKwh").style.display = "none";
+		document.getElementById("divImpLen").style.display = "none";
+		document.getElementById("divMeterPin").style.display = "none";
+		document.getElementById("meterRegisters").style.display = "block";
+	}
+	else{
+		document.getElementById("divImpKwh").style.display = "block";
+		document.getElementById("divMeterPin").style.display = "block";
+		document.getElementById("divImpLen").style.display = "block";
+		document.getElementById("meterRegisters").style.display = "none";
+	}
+}
+
 function handleButtonActive(){
 	if(document.getElementById("checkboxButtonActive").checked === true){
 		document.getElementById("gpiobutton").disabled = false;
@@ -703,14 +773,31 @@ function saveConf() {
   datatosend.ssid = ssid;
   datatosend.wmode = wmode;
   datatosend.pswd = document.getElementById("wifipass").value;
+  
+  if (document.getElementById("checkboxStaticIP").checked === true){
+	datatosend.staticip = document.getElementById("checkboxStaticIP").checked;
+	datatosend.ip = document.getElementById("ipch").value;
+	datatosend.subnet = document.getElementById("subnetch").value;
+	datatosend.gateway = document.getElementById("gatewaych").value;
+	datatosend.dns = document.getElementById("dnsch").value;
+  }
+  
   datatosend.rfid = document.getElementById("checkboxRfid").checked;
   datatosend.sspin = document.getElementById("gpioss").value;
   datatosend.rfidgain = document.getElementById("gain").value;
-  datatosend.meter = document.getElementById("checkboxMeter").checked;
-  datatosend.intpin = document.getElementById("gpioint").value;
+  
+  
+  if (document.getElementById("checkboxMeter").checked === true){
+	  datatosend.meter = document.getElementById("checkboxMeter").checked;
+	  datatosend.metertype = document.getElementById("smetertype").value;
+	  datatosend.price = document.getElementById("price").value;
+	  if (document.getElementById("smetertype").value === "s"){
+		datatosend.intpin = document.getElementById("gpioint").value;
+		datatosend.kwhimp = document.getElementById("impkwh").value;
+		datatosend.implen = document.getElementById("implen").value;
+	  }
+  }
   datatosend.buttonpin = document.getElementById("gpiobutton").value;
-  datatosend.kwhimp = document.getElementById("impkwh").value;
-  datatosend.price = document.getElementById("price").value;
   datatosend.factor = document.getElementById("factor").value;
   datatosend.timezone = document.getElementById("DropDownTimezone").value;
   datatosend.hostnm = document.getElementById("hostname").value;
@@ -873,6 +960,8 @@ function listStats(obj) {
   document.getElementById("evse_2005").innerHTML = obj.evse_2005;				//2005
   document.getElementById("evse_sharing_mode").innerHTML = obj.evse_sharing_mode;//2006
   document.getElementById("pp_detection").innerHTML = obj.evse_pp_detection;	//2007
+  
+  document.getElementById("meter_total").innerHTML = obj.meter_total;
 }
 
 //General functions
