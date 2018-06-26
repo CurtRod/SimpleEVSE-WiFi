@@ -68,10 +68,12 @@ D3 | GPIO0 | S0+
 GND | | S0-
 
 ##### Modbus Electicity Meter (optional - experimental!)**
-ESP8266-Pin | TTL->RS485 
+TTL->RS485 | ESP8266-Pin
 ----------- | -----------
 RX | RX 
 TX | TX 
+VCC | 5V
+GND | GND
 
 TTL->RS485 | Modbus Meter 
 ----------- | -----------
@@ -94,7 +96,7 @@ Be sure to use a suitable power supply for ESP. At least 500mA is recommended!
 
 \*When you use an electricity meter with S0 interface be sure the S0 interface switches to GND, don't use 3.3V or 5V!
 
-\*\*To use a Modbus electricity meter via RS485, you need a piece of extra hardware to translate UART to RS485. In this project a PCB like [this](https://www.amazon.de/WINGONEER-RS485-Adapter-Serieller-Converter/dp/B06XHH6B6R/ref=sr_1_1?ie=UTF8&qid=1530052971&sr=8-1&keywords=rs485+uart) is recommended.
+\*\*To use a Modbus electricity meter via RS485, you need a piece of extra hardware to translate UART to RS485. In this project a PCB like [this](https://www.amazon.de/WINGONEER-RS485-Adapter-Serieller-Converter/dp/B06XHH6B6R/ref=sr_1_1?ie=UTF8&qid=1530052971&sr=8-1&keywords=rs485+uart) is required.
 
 #### Preparation of EVSE Wallbox
 To use SimpleEVSE-WiFi, the Modbus functionallity of EVSE Wallbox is needed! By default, Modbus functionality is disabled. To activate it, pull AN input of the EVSE Wallbox board to GND while booting for at least 5 times within 3 seconds. Modbus register 2001 will be set to 1 (Modbus is active). Attention: That change will not be saved! To save the settings, you have to give a R/W operation at a register >=2000. The easiest way to do this is to activate and deactivate EVSE through the WebUI in the "EVSE Control" page.
