@@ -96,7 +96,7 @@ Be sure to use a suitable power supply for ESP. At least 500mA is recommended!
 
 \*When you use an electricity meter with S0 interface be sure the S0 interface switches to GND, don't use 3.3V or 5V!
 
-\*\*To use a Modbus electricity meter via RS485, you need a piece of extra hardware to translate UART to RS485. In this project a PCB like [this](https://www.amazon.de/WINGONEER-RS485-Adapter-Serieller-Converter/dp/B06XHH6B6R/ref=sr_1_1?ie=UTF8&qid=1530052971&sr=8-1&keywords=rs485+uart) is required.
+\*\*To use a Modbus electricity meter via RS485, you need a extra piece of hardware to translate UART to RS485. In this project a PCB like [this](https://www.amazon.de/WINGONEER-RS485-Adapter-Serieller-Converter/dp/B06XHH6B6R/ref=sr_1_1?ie=UTF8&qid=1530052971&sr=8-1&keywords=rs485+uart) is required. Set your meter to baud rate 9600 and slave ID to "002".
 
 #### Preparation of EVSE Wallbox
 To use SimpleEVSE-WiFi, the Modbus functionallity of EVSE Wallbox is needed! By default, Modbus functionality is disabled. To activate it, pull AN input of the EVSE Wallbox board to GND while booting for at least 5 times within 3 seconds. Modbus register 2001 will be set to 1 (Modbus is active). Attention: That change will not be saved! To save the settings, you have to give a R/W operation at a register >=2000. The easiest way to do this is to activate and deactivate EVSE through the WebUI in the "EVSE Control" page.
@@ -166,8 +166,8 @@ mileage | charged energy in km
     "actualCurrent": 32,
     "actualPower": 5.79,
     "duration": 1821561,
-    "energy": "9.52",
-    "mileage": "82.3"
+    "energy": 9.52,
+    "mileage": 82.3
   }]
 }
 ```
@@ -197,14 +197,14 @@ price | Defined price per kWh in cent
     "username": "GUI",
     "timestamp": 1523295915,
     "duration": 7504266,
-    "energy": "10.32",
+    "energy": 10.32,
     "price": 21
   }, {
     "uid": "-",
     "username": "GUI",
     "timestamp": 1523568920,
     "duration": 1152251,
-    "energy": "2.17",
+    "energy": 2.17,
     "price": 23
   }]
 }
