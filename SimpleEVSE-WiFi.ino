@@ -178,7 +178,7 @@ void ICACHE_FLASH_ATTR updateMMeterData() {
 }
 
 int ICACHE_FLASH_ATTR getChargingTime(){
-  int iTime;
+  uint32_t iTime;
   if(vehicleCharging == true){
     iTime = millis() - millisStartCharging;
   }
@@ -530,7 +530,7 @@ File logFile = SPIFFS.open("/latestlog.json", "r");
     item["timestamp"] = timestamp;
     if (!e){
       item["duration"] = getChargingTime();
-      item["energy"] = String(meteredKWh, 2);
+      item["energy"] = float(int((meteredKWh + 0.05) * 100.0)) / 100.0;
       item["price"] = iPrice;
     }
     else{
@@ -1343,10 +1343,10 @@ void ICACHE_FLASH_ATTR setWebEvents(){
     item["vehicleState"] = evseStatus;
     item["evseState"] = evseActive;
     item["actualCurrent"] = evseAmpsConfig;
-    item["actualPower"] =  float((int(currentKW + 0.05)*100)/100) ;
+    item["actualPower"] =  float(int((currentKW + 0.005) * 100.0)) / 100.0;
     item["duration"] = getChargingTime();
-    item["energy"] = String(meteredKWh, 2);
-    item["mileage"] = String((meteredKWh * 100.0 / consumption), 1);
+    item["energy"] = float(int((meteredKWh + 0.005) * 100.0)) / 100.0;
+    item["mileage"] = float(int(((meteredKWh * 100.0 / consumption) + 0.05) * 10.0)) / 10.0;
     list.add(item);
     root.printTo(*response);
     request->send(response);
