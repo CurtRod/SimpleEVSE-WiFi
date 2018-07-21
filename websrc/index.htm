@@ -19,7 +19,7 @@
   <a href="#" onclick="loadUsers()"><nobr><span class="glyphicon glyphicon-user"></span>&nbsp;&nbsp;Users</nobr></a>
   <a href="#" onclick="loadSettings()"><nobr><span class="glyphicon glyphicon-cog"></span>&nbsp;&nbsp;Settings</nobr></a>
   <a href="#" onclick="loadLog()"><nobr><span class="glyphicon glyphicon-list-alt"></span>&nbsp;&nbsp;Log</nobr></a>
-  <div style="position: fixed; bottom: 0px; padding: 10px 10px 10px 10px">v0.2.4-patch1</div>
+  <div style="position: fixed; bottom: 0px; padding: 10px 10px 10px 10px">v0.2.5</div>
 </div>
 <!-- Current Modal -->
 <div class="modal fade" id="currentModal" tabindex="-1" role="dialog" aria-labelledby="currentModalLabel" aria-hidden="true">
@@ -574,8 +574,9 @@
               <label data-toggle="tooltip" title="Choose whether you want to use an s0 meter or a modbus meter." class="col-xs-3">Type of Meter</label> 
               <span class="col-xs-9 col-md-5">
                 <select class="form-control input-sm" id="smetertype" onchange="handleMeterType()">
-                  <option selected value="m">Modbus Meter (experimental)</option>
-                  <option value="s">S0 Meter</option>
+                  <option selected value="S0">S0 Meter</option>
+				  <option value="SDM120">SDM120 (Modbus - experimental)</option>
+				  <option value="SDM630">SDM630 (Modbus - experimental)</option>
                 </select>
               </span>
             </div>
@@ -588,6 +589,15 @@
                   <option value="4">GPIO-4</option>
                   <option value="5">GPIO-5</option>
                   <option value="15">GPIO-15</option>
+                </select>
+              </span>
+            </div>
+			<div id="divMeterPhase" class="row form-group">
+              <label data-toggle="tooltip" title="Choose the kind of Meter you Use" class="col-xs-3">Meter Phases</label> 
+              <span class="col-xs-9 col-md-5">
+                <select class="form-control input-sm" id="meterphase">
+                  <option selected="selected" value="1">1-phase</option>
+                  <option value="3">3-phase</option>
                 </select>
               </span>
             </div>
@@ -607,12 +617,6 @@
  						<label data-toggle="tooltip" title="Price per kWh in cent" class="col-xs-3">Price</label> 
  						<span class="col-xs-9 col-md-5">
 						<input class="form-control input-sm" value="25" placeholder="cent per kWh" id="price" type="text" name="price">
- 						</span>
-			</div>
-			<div class="row form-group">
- 						<label data-toggle="tooltip" title="Specify a factor with which the measured energy is to be multiplied (e.g. when using a single-phase meter in combination with a two- or three-phase charging vehicle). Use '1' if you don't need a factor." class="col-xs-3">Factor</label> 
- 						<span class="col-xs-9 col-md-5">
-						<input class="form-control input-sm" value="1" placeholder="multiplication factor" id="factor" type="text" name="factor">
  						</span>
 			</div>
 			<br>
@@ -658,6 +662,16 @@
               </span>
               <br>
             </div>
+			<div class="row form-group">
+ 				<label data-toggle="tooltip" title="Specify a factor with which the measured energy is to be multiplied (e.g. when using a single-phase meter in combination with a two- or three-phase charging vehicle). Use '1' if you don't need a factor." class="col-xs-3">Factor</label> 
+ 				<span class="col-xs-9 col-md-5">
+					<select class="form-control input-sm" id="factor">
+						<option selected="selected" value="1">Factor 1 (no Factor)</option>
+						<option value="2">Factor 2</option>
+						<option value="3">Factor 3</option>
+					</select>
+ 				</span>
+			</div>
             <br>
 		  </div>
 		  </div>
@@ -680,10 +694,24 @@
               <input class="form-control input-sm" placeholder="Hostname" value="evse-wifi" id="hostname" type="text">
               </span>
             </div>
+			<div class="row form-group">
+              <label data-toggle="tooltip" title="Enable Debug Mode" class="col-xs-3">Debug Mode</label> 
+              <span class="col-xs-9 col-md-5">
+                <form>
+                  <label class="checkbox-inline"><input type="checkbox" id="checkboxDebug" value="">Active</label>
+                </form>
+              </span>
+            </div>
 			<br>
           </div>
           <div class="col-sm-6">
             <legend>Time Settings</legend>
+            <div class="row form-group">
+              <label data-toggle="tooltip" title="Choose an NTP Server (recommended: pool.ntp.org)" class="col-xs-3">NTP Server</label> 
+              <span class="col-xs-9 col-md-5">
+              <input class="form-control input-sm" placeholder="NTP Server" value="pool.ntp.org" id="ntpIP" type="text">
+              </span>
+            </div>
             <h6 class="text-muted">Small differences between device time and local time can be ignored.</h6>
             <div class="row form-group">
               <label class="col-xs-3">Device Time</label> 
@@ -785,8 +813,15 @@
 			</div>
           </div>
           <div class="col-sm-6">
+		   <div>
+			<legend>Support this Project</legend>
+			<h6 class="text-muted"><b>The development of SimpleEVSE-WiFi is very time consuming. If you want to support this project, I would be very happy about a donation.</b></h6>
+			<h4><a href="https://www.paypal.com/pools/c/85c7xRbeay">Donate now!</a></h4>
+			<br>
+		   </div>
+		   <div>
             <legend>Update Firmware</legend>
-			<h6 class="text-muted">Current Firmware Version:&nbsp;0.2.4-patch1</h6>
+			<h6 class="text-muted">Current Firmware Version:&nbsp;0.2.5</h6>
             <h6 class="text-muted">Download <a href="https://github.com/CurtRod/SimpleEVSE-WiFi/releases" target="_blank">latest version</a> from GitHub.</h6>
             <form class="form-inline" method="POST" action="/update" enctype="multipart/form-data">
               <div class="form-group">
@@ -794,7 +829,8 @@
               </div>
               <button type="submit" class="btn btn-primary btn-sm">Upload</button>
             </form>
-            <br>
+		   </div>
+
           </div>
         </div>
       </div>

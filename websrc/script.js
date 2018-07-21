@@ -45,7 +45,7 @@ function listEVSEData(obj) {
   document.getElementById("evse_charging_time").innerHTML = getTimeFormat(obj.evse_charging_time);
   document.getElementById("evse_current_limit").innerHTML = obj.evse_current_limit + " A";
   document.getElementById("evse_current").innerHTML = obj.evse_current + " kW";
-  document.getElementById("evse_charged_kwh").innerHTML = obj.evse_charged_kwh + " kWh";
+  document.getElementById("evse_charged_kwh").innerHTML = obj.evse_charged_kwh + " kWh / " + obj.evse_charged_amount + " €";
   document.getElementById("evse_charged_mileage").innerHTML = obj.evse_charged_mileage + " km";
 	if (obj.evse_active === false){		//EVSE not active
 		$("#evseActive").addClass('hidden');
@@ -506,6 +506,9 @@ function listCONF(obj) {
   document.getElementById("gain").value = obj.rfidgain;
   document.getElementById("gpiobutton").value = obj.buttonpin;
   
+  if (typeof obj.debug !== "undefined"){
+	document.getElementById("checkboxDebug").checked = obj.debug;
+  }
   if (typeof obj.intpin !== "undefined"){
 	document.getElementById("gpioint").value = obj.intpin;
   }
@@ -514,6 +517,9 @@ function listCONF(obj) {
   }
   if (typeof obj.implen !== "undefined"){
 	document.getElementById("implen").value = obj.implen;
+  }
+  if (typeof obj.meterphase !== "undefined"){
+	document.getElementById("meterphase").value = obj.meterphase;
   }
   document.getElementById("smetertype").value = obj.metertype;
   handleMeterType();
@@ -540,7 +546,6 @@ function listCONF(obj) {
   dlAnchorElem.setAttribute("href", dataStr);
   dlAnchorElem.setAttribute("download", "esp-rfid-settings.json");
   document.getElementById("maxinstall").value = obj.maxinstall;
-  document.getElementById("avgconsumption").value = obj.avgconsumption;
   document.getElementById("checkboxButtonActive").checked = obj.buttonactive;
   
   if (typeof obj.avgconsumption !== "undefined"){
@@ -556,6 +561,9 @@ function listCONF(obj) {
   }
   else {
 	  document.getElementById("factor").value = "1";
+  }
+  if (typeof obj.ntpIP !== "undefined"){
+	  document.getElementById("ntpIP").value = obj.ntpIP;
   }
   handleButtonActive();
 }
@@ -661,15 +669,17 @@ function handleMeter(){
 }
 
 function handleMeterType(){
-	if (document.getElementById("smetertype").value === "m"){
+	if (document.getElementById("smetertype").value !== "S0"){
 		document.getElementById("divImpKwh").style.display = "none";
 		document.getElementById("divImpLen").style.display = "none";
 		document.getElementById("divMeterPin").style.display = "none";
+		document.getElementById("divMeterPhase").style.display = "none";
 		document.getElementById("meterRegisters").style.display = "block";
 	}
 	else{
 		document.getElementById("divImpKwh").style.display = "block";
 		document.getElementById("divMeterPin").style.display = "block";
+		document.getElementById("divMeterPhase").style.display = "block";
 		document.getElementById("divImpLen").style.display = "block";
 		document.getElementById("meterRegisters").style.display = "none";
 	}
@@ -782,6 +792,8 @@ function saveConf() {
 	datatosend.dns = document.getElementById("dnsch").value;
   }
   
+  datatosend.debug = document.getElementById("checkboxDebug").checked;
+
   datatosend.rfid = document.getElementById("checkboxRfid").checked;
   datatosend.sspin = document.getElementById("gpioss").value;
   datatosend.rfidgain = document.getElementById("gain").value;
@@ -791,10 +803,11 @@ function saveConf() {
 	  datatosend.meter = document.getElementById("checkboxMeter").checked;
 	  datatosend.metertype = document.getElementById("smetertype").value;
 	  datatosend.price = document.getElementById("price").value;
-	  if (document.getElementById("smetertype").value === "s"){
+	  if (document.getElementById("smetertype").value === "S0"){
 		datatosend.intpin = document.getElementById("gpioint").value;
 		datatosend.kwhimp = document.getElementById("impkwh").value;
 		datatosend.implen = document.getElementById("implen").value;
+		datatosend.meterphase = document.getElementById("meterphase").value;
 	  }
   }
   datatosend.buttonpin = document.getElementById("gpiobutton").value;
@@ -806,6 +819,8 @@ function saveConf() {
   datatosend.buttonactive = document.getElementById("checkboxButtonActive").checked;
   datatosend.avgconsumption = document.getElementById("avgconsumption").value;
 
+  datatosend.ntpIP = document.getElementById("ntpIP").value;
+  
   websock.send(JSON.stringify(datatosend));
   alert("Device now should reboot with new settings");
   location.reload();
