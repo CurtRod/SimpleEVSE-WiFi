@@ -96,7 +96,7 @@ Be sure to use a suitable power supply for ESP. At least 500mA is recommended!
 
 \*When you use an electricity meter with S0 interface be sure the S0 interface switches to GND, don't use 3.3V or 5V!
 
-\*\*To use a Modbus electricity meter via RS485, you need a extra piece of hardware to translate UART to RS485. In this project a PCB like [this](https://www.amazon.de/WINGONEER-RS485-Adapter-Serieller-Converter/dp/B06XHH6B6R/ref=sr_1_1?ie=UTF8&qid=1530052971&sr=8-1&keywords=rs485+uart) is required. Set your meter to baud rate 9600 and slave ID to "002".
+\*\*To use a Modbus electricity meter via RS485, you need a extra piece of hardware to translate UART to RS485. In this project a PCB like [this](https://www.amazon.de/WINGONEER-RS485-Adapter-Serieller-Converter/dp/B06XHH6B6R/ref=sr_1_1?ie=UTF8&qid=1530052971&sr=8-1&keywords=rs485+uart) is required. Set your meter to baud rate 9600 and slave ID to "002". Until now only SDM120 and SDM630 Modbus meters are supported! If you have another one you can use it with the S0 interface.
 
 #### Preparation of EVSE Wallbox
 To use SimpleEVSE-WiFi, the Modbus functionallity of EVSE Wallbox is needed! By default, Modbus functionality is disabled. To activate it, pull AN input of the EVSE Wallbox board to GND while booting for at least 5 times within 3 seconds. Modbus register 2001 will be set to 1 (Modbus is active). Attention: That change will not be saved! To save the settings, you have to give a R/W operation at a register >=2000. The easiest way to do this is to activate and deactivate EVSE through the WebUI in the "EVSE Control" page.
@@ -151,6 +151,11 @@ actualPower | actual power consumption (when S0 meter is used)
 duration | charging duration in milliseconds
 energy | charged energy of the current charging process in kWh
 mileage | charged energy in km
+meterReading | actual meter reading in kWh
+currentP1 | actual current in A (phase 1)
+currentP2 | actual current in A (phase 2)
+currentP3 | actual current in A (phase 3)
+
 
 #### Example
 `GET http://192.168.4.1/getParameters`
@@ -167,7 +172,11 @@ mileage | charged energy in km
     "actualPower": 5.79,
     "duration": 1821561,
     "energy": 9.52,
-    "mileage": 82.3
+    "mileage": 82.3,
+    "meterReading": 54.35,
+    "currentP1": 8.54,
+    "currentP2": 8.54,
+    "currentP3": 8.54
   }]
 }
 ```
@@ -258,6 +267,8 @@ E0_could not activate EVSE - internal error | Internal error occured (unspecifie
 E0_could not deactivate EVSE - internal error | Internal error occured (unspecified)
 E1_could not process - give a valid value (true/false) | Wrong value was given
 E2_could not process - wrong parameter | Wrong parameter was given
+E3_could not activate EVSE - EVSE already activated! | EVSE is already in state "active"
+E3_could not deactivate EVSE - EVSE already deactivated! | EVSE is already in state "deactive"
 
 
 
