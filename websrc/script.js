@@ -915,7 +915,7 @@ function restoreUser() {
           alert("Not a valid backup file");
           return;
         }
-        if (json.type === "esp-rfid-userbackup") {
+        if (json.type === "evse-wifi-userbackup") {
           var x = confirm("File seems to be valid, do you wish to continue?");
           if (x) {
             recordstorestore = json.list.length;
@@ -928,6 +928,35 @@ function restoreUser() {
       reader.readAsText(input.files[0]);
     }
   }
+}
+
+function resetLogFile() {
+	if (confirm("Are you sure to reset all your charging logs?")){
+		websock.send("{\"command\":\"initlog\"}");
+		alert("Log File Resetted!");
+		location.reload();
+	}
+	else {
+		alert("Aborted!");
+	}
+	
+}
+
+var FWUpdatePerc = 0;
+
+function firwareUpdate(){
+	//var tFirmware = setInterval(progressFWUpdate, 1200);
+	$("#updatemodal").modal();
+}
+
+function progressFWUpdate(){
+	if (FWUpdatePerc === 100){
+		setTimeout(function(){location.reload()}, 1000);
+	}
+	else {
+		FWUpdatePerc = FWUpdatePerc + 4;
+		document.getElementById("dynamicFWUpdate").style.width = FQUpdatePerc + "%";
+	}
 }
 
 function colorStatusbar(ref) {
@@ -1016,7 +1045,9 @@ function socketMessageListener(evt) {
 	  }
   }
   else if (obj.command === "piccscan") {
-    listSCAN(obj);
+	  if(document.getElementById("usersContent").style.display === "block"){
+		listSCAN(obj);
+	  }
   }
   else if (obj.command === "gettime") {
     timezone = obj.timezone;

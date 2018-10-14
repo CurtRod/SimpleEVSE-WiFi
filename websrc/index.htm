@@ -792,6 +792,11 @@
               <label for="restoreSet" class="btn btn-link btn-sm">Restore Settings</label>
               <input id="restoreSet" type="file" accept="text/json" onchange="restoreSet()" style="display:none;">
             </div>
+			<div>
+              <legend>Reset</legend>
+              <h6 class="text-muted">Choose the kind of reset.</h6>
+              <button class="btn btn-link btn-sm" onclick="resetLogFile()">Reset Log File</button>
+            </div>
             <br>
             <div id="restoremodal" class="modal fade" role="dialog">
 				<div class="modal-dialog">
@@ -811,6 +816,24 @@
 					</div>
 				</div>
 			</div>
+            <div id="updatemodal" class="modal fade" role="dialog">
+				<div class="modal-dialog">
+					<div class="modal-content">
+						<div class="modal-header">
+							<h4 class="modal-title">Please wait while uploading...</h4>
+						</div>
+						<div class="modal-body">
+							<!-- <div id="pbarFWUpdate" class="progress">
+								<div id="dynamicFWUpdate" class="progress-bar progress-bar-primary progress-bar-striped active">Updating...</div>
+							</div> -->
+							<div class="loader"></div>
+						</div>
+						<div class="modal-footer">
+							<button type="button" id="restoreclose" style="display:none;" class="btn btn-default" data-dismiss="modal">Close</button>
+						</div>
+					</div>
+				</div>
+			</div>
           </div>
           <div class="col-sm-6">
 		   <div>
@@ -821,13 +844,13 @@
 		   </div>
 		   <div>
             <legend>Update Firmware</legend>
-			<h6 class="text-muted">Current Firmware Version:&nbsp;0.2.5</h6>
+			<h6 class="text-muted">Current Firmware Version:&nbsp;0.2.6</h6>
             <h6 class="text-muted">Download <a href="https://github.com/CurtRod/SimpleEVSE-WiFi/releases" target="_blank">latest version</a> from GitHub.</h6>
             <form class="form-inline" method="POST" action="/update" enctype="multipart/form-data">
               <div class="form-group">
                 <input type="file" name="update">
               </div>
-              <button type="submit" class="btn btn-primary btn-sm">Upload</button>
+              <button type="submit" onclick="firwareUpdate()" class="btn btn-primary btn-sm">Upload</button>
             </form>
 		   </div>
 
