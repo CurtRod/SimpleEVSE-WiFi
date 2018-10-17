@@ -602,6 +602,7 @@ File logFile = SPIFFS.open("/latestlog.json", "r");
   millisStartCharging = 0;
   millisStopCharging = 0;
   meteredKWh = 0.0;
+  currentKW = 0.0;
 }
 
 float ICACHE_FLASH_ATTR getS0MeterReading(){
@@ -1604,7 +1605,7 @@ void ICACHE_FLASH_ATTR setWebEvents(){
       }
       else if(strcmp(awp->value().c_str(), "false") == 0){
         if(evseActive){
-          if(deactivateEVSE(false)){
+          if(deactivateEVSE(true)){
             request->send(200, "text/plain", "S0_EVSE successfully deactivated");
           }
           else{
