@@ -19,7 +19,7 @@
   <a href="#" onclick="loadUsers()"><nobr><span class="glyphicon glyphicon-user"></span>&nbsp;&nbsp;Users</nobr></a>
   <a href="#" onclick="loadSettings()"><nobr><span class="glyphicon glyphicon-cog"></span>&nbsp;&nbsp;Settings</nobr></a>
   <a href="#" onclick="loadLog()"><nobr><span class="glyphicon glyphicon-list-alt"></span>&nbsp;&nbsp;Log</nobr></a>
-  <div style="position: fixed; bottom: 0px; padding: 10px 10px 10px 10px">v0.2.6-patch1</div>
+  <div style="position: fixed; bottom: 0px; padding: 10px 10px 10px 10px">v0.2.7</div>
 </div>
 <!-- Current Modal -->
 <div class="modal fade" id="currentModal" tabindex="-1" role="dialog" aria-labelledby="currentModalLabel" aria-hidden="true">
@@ -30,7 +30,7 @@
          <h4 class="modal-title" id="current-title">Current&nbsp;<span id="slider_current"></span>&nbsp;A</h4>
       </div>
       <div class="modal-body">
-		<div class="""slidecontainer">
+		<div class="slidecontainer">
 			<input type="range" min="6" max="25" value="20" class="slider" id="myRange" oninput="handleSlider(this.value)">
 		</div>
       </div>
@@ -136,7 +136,7 @@
 		<div class="panel panel-default table-responsive">
           <table class="table table-hover" >
             <tbody style="transition:0.5s">
-              <tr data-toggle="modal" data-target="#currentModal" style="transition:0.3s">
+              <tr onclick="showCurrentModal()">
                 <th><span class="glyphicon glyphicon-cog"></span>&nbsp;&nbsp;Max. Current >></th>
                 <td id="evse_current_limit" class="text-right"></td>
               </tr>
@@ -366,7 +366,7 @@
                 <table class="table table-hover table-striped">
                   <caption>
 				  <span style="float: left">EVSE Registers</span>
-				  <span style="float: right" class="glyphicon glyphicon-pencil" data-toggle="modal" data-target="#evseRegModal" style="transition:0.3s"></span>
+				  <span style="float: right" class="glyphicon glyphicon-pencil" onclick="showEvseRegModal()"></span>
 				  </caption>
                   <tr>
                     <th>1000: Configured Current</th>
@@ -702,6 +702,14 @@
                 </form>
               </span>
             </div>
+			<div class="row form-group">
+               <label data-toggle="tooltip" title="Disables BasicAuthentication for Websocket. This opens a security hole but is necessary when using Safari Browser." class="col-xs-3">Disable BasicAuth (Safari Mode)</label> 
+               <span class="col-xs-9 col-md-5">
+                 <form>
+                   <label class="checkbox-inline"><input type="checkbox" id="checkboxSafari" value="">Active</label>
+                 </form>
+               </span>
+            </div>
 			<br>
           </div>
           <div class="col-sm-6">
@@ -844,7 +852,7 @@
 		   </div>
 		   <div>
             <legend>Update Firmware</legend>
-			<h6 class="text-muted">Current Firmware Version:&nbsp;0.2.6-patch1</h6>
+			<h6 class="text-muted">Current Firmware Version:&nbsp;0.2.7</h6>
             <h6 class="text-muted">Download <a href="https://github.com/CurtRod/SimpleEVSE-WiFi/releases" target="_blank">latest version</a> from GitHub.</h6>
             <form class="form-inline" method="POST" action="/update" enctype="multipart/form-data">
               <div class="form-group">

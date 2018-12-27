@@ -18,4 +18,5 @@
   "maxinstall": "10",
   "buttonactive": false,
   "avgconsumption": "11.5"
+  "wsauth": false
 }

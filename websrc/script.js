@@ -506,6 +506,9 @@ function listCONF(obj) {
   document.getElementById("gain").value = obj.rfidgain;
   document.getElementById("gpiobutton").value = obj.buttonpin;
   
+  if (typeof obj.wsauth !== "undefined"){
+	document.getElementById("checkboxSafari").checked = obj.wsauth;
+  }
   if (typeof obj.debug !== "undefined"){
 	document.getElementById("checkboxDebug").checked = obj.debug;
   }
@@ -792,6 +795,7 @@ function saveConf() {
 	datatosend.dns = document.getElementById("dnsch").value;
   }
   
+  datatosend.wsauth = document.getElementById("checkboxSafari").checked;
   datatosend.debug = document.getElementById("checkboxDebug").checked;
 
   datatosend.rfid = document.getElementById("checkboxRfid").checked;
@@ -1030,6 +1034,14 @@ function closeNav() {
     document.getElementById("mySidenav").style.width = "0";
 }
 
+function showCurrentModal() {
+	$("#currentModal").modal();
+}
+
+function showEvseRegModal() {
+	$("#evseRegModal").modal();
+}
+
 $(document).ready(function(){
     $('[data-toggle="tooltip"]').tooltip();
 });
@@ -1135,10 +1147,10 @@ function socketErrorListener(evt) {
 }
 function login() {
     var username = "admin"
-    var password = document.getElementById("password").value;
+    var passwd = document.getElementById("password").value;
     var url = "/login";
     var xhr = new XMLHttpRequest();
-    xhr.open("get", url, true, username, password);
+    xhr.open("get", url, true, username, passwd);
     xhr.onload = function(e) {
       if (xhr.readyState === 4) {
         if (xhr.status === 200) {

@@ -133,6 +133,7 @@ bool useRFID = false;
 bool useSMeter = false;
 bool useMMeter = false;
 bool useButton = false;
+bool dontUseWsAuthentication = false;
 bool inAPMode = false;
 bool inFallbackMode = false;
 bool isWifiConnected = false;
@@ -849,6 +850,9 @@ bool ICACHE_FLASH_ATTR deactivateEVSE(bool logUpdate) {
         meteredKWh = readMeter(0x0156) - startTotal;
       }
     }
+    else{
+      startTotal += meteredKWh;
+    }
     if(logUpdate){
       updateLog(false);
     }
@@ -878,7 +882,7 @@ bool ICACHE_FLASH_ATTR setEVSEcurrent(){  // telegram 1: write EVSE current
     Serial.println(" occured while setting current in EVSE - trying again...");
     return false;
   }
-  else{   
+  else{
     // register successufully written
     if(debug) Serial.println("[ ModBus ] Current successfully set");
     evseAmpsConfig = currentToSet;  //foce update in WebUI
@@ -1384,7 +1388,14 @@ bool ICACHE_FLASH_ATTR loadConfiguration() {
   int wmode = json["wmode"];
   adminpass = strdup(json["adminpwd"]);
 
-  ws.setAuthentication("admin", adminpass);
+  if(json.containsKey("wsauth")){
+    dontUseWsAuthentication = json["wsauth"];
+  }
+ 
+  if(!dontUseWsAuthentication){
+    ws.setAuthentication("admin", adminpass);
+    if(debug)Serial.println("[ Websocket ] Use Basic Authentication for Websocket");
+  }
   server.addHandler(new SPIFFSEditor("admin", adminpass));
 
   queryEVSE();
@@ -1721,7 +1732,7 @@ void ICACHE_FLASH_ATTR startWebserver() {
   // HTTP basic authentication
   server.on("/login", HTTP_GET, [](AsyncWebServerRequest * request) {
       if (!request->authenticate("admin", adminpass)) {
-          return request->requestAuthentication();
+        return request->requestAuthentication();
       }
       request->send(200, "text/plain", "Success");
   });
