@@ -38,6 +38,7 @@ At the users page you can define valid RFID tags that can unlock the EVSE.
 
 ### Hardware
 * A complete Wallbox based on EVSE Wallbox [link](http://evracing.cz/simple-evse-wallbox/) (min. Software revision 8 (2017-10-31) is needed - read the manual there for updating your EVSE software)
+**Attention: revision 9 does not work, because there is a bug in the firmware.**
 * An ESP8266 module or a development board like **WeMos D1 mini** or **NodeMcu 1.0**
 * (optional) An electricity meter with S0 interface
 * (optional) A MFRC522 RFID Module (PN532 and Wiegand based RFID reader modules are not supported at this time)
@@ -131,7 +132,7 @@ You also need to upload web files to your ESP with ESP8266FS Uploader.
 Unlisted libraries are part of [ESP8266](https://github.com/esp8266/Arduino) Core for Arduino IDE, so you don't need to download them, but check that at least you have v2.4.0 or above installed.
 
 ## First boot
-When SimpleEVSE-WiFi starts for the first time it sets up a WiFi access point called 'evse-wifi'. You can connect without a password. To connect, open http://192.168.4.1 in your browser. The initial password is 'admin'. You should first check the Settings to bring the ESP in Client mode and connect it to your local WiFi network. The ESP will be restarted afterwards. If it doesn't restart, press the 'RST' button once. Sometimes the ESP must first be manually reset (this only has to happen after flashing a new firmware).
+When SimpleEVSE-WiFi starts for the first time it sets up a WiFi access point called 'evse-wifi'. You can connect without a password. To connect, open http://192.168.4.1 in your browser. The initial password is 'adminadmin'. You should first check the Settings to bring the ESP in Client mode and connect it to your local WiFi network. The ESP will be restarted afterwards. If it doesn't restart, press the 'RST' button once. Sometimes the ESP must first be manually reset (this only has to happen after flashing a new firmware).
 
 ## Support this Project
 The development of SimpleEVSE-WiFi is very time consuming. If you want to support this project, I would be very happy about a [donation](https://www.paypal.com/pools/c/85c7xRbeay).

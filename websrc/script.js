@@ -506,6 +506,9 @@ function listCONF(obj) {
   document.getElementById("gain").value = obj.rfidgain;
   document.getElementById("gpiobutton").value = obj.buttonpin;
   
+  if (typeof obj.wsauth !== "undefined"){
+	document.getElementById("checkboxSafari").checked = obj.wsauth;
+  }
   if (typeof obj.debug !== "undefined"){
 	document.getElementById("checkboxDebug").checked = obj.debug;
   }
@@ -792,6 +795,7 @@ function saveConf() {
 	datatosend.dns = document.getElementById("dnsch").value;
   }
   
+  datatosend.wsauth = document.getElementById("checkboxSafari").checked;
   datatosend.debug = document.getElementById("checkboxDebug").checked;
 
   datatosend.rfid = document.getElementById("checkboxRfid").checked;
@@ -915,7 +919,7 @@ function restoreUser() {
           alert("Not a valid backup file");
           return;
         }
-        if (json.type === "esp-rfid-userbackup") {
+        if (json.type === "evse-wifi-userbackup") {
           var x = confirm("File seems to be valid, do you wish to continue?");
           if (x) {
             recordstorestore = json.list.length;
@@ -928,6 +932,35 @@ function restoreUser() {
       reader.readAsText(input.files[0]);
     }
   }
+}
+
+function resetLogFile() {
+	if (confirm("Are you sure to reset all your charging logs?")){
+		websock.send("{\"command\":\"initlog\"}");
+		alert("Log File Resetted!");
+		location.reload();
+	}
+	else {
+		alert("Aborted!");
+	}
+	
+}
+
+var FWUpdatePerc = 0;
+
+function firwareUpdate(){
+	//var tFirmware = setInterval(progressFWUpdate, 1200);
+	$("#updatemodal").modal();
+}
+
+function progressFWUpdate(){
+	if (FWUpdatePerc === 100){
+		setTimeout(function(){location.reload()}, 1000);
+	}
+	else {
+		FWUpdatePerc = FWUpdatePerc + 4;
+		document.getElementById("dynamicFWUpdate").style.width = FQUpdatePerc + "%";
+	}
 }
 
 function colorStatusbar(ref) {
@@ -1001,6 +1034,14 @@ function closeNav() {
     document.getElementById("mySidenav").style.width = "0";
 }
 
+function showCurrentModal() {
+	$("#currentModal").modal();
+}
+
+function showEvseRegModal() {
+	$("#evseRegModal").modal();
+}
+
 $(document).ready(function(){
     $('[data-toggle="tooltip"]').tooltip();
 });
@@ -1016,7 +1057,9 @@ function socketMessageListener(evt) {
 	  }
   }
   else if (obj.command === "piccscan") {
-    listSCAN(obj);
+	  if(document.getElementById("usersContent").style.display === "block"){
+		listSCAN(obj);
+	  }
   }
   else if (obj.command === "gettime") {
     timezone = obj.timezone;
@@ -1104,10 +1147,10 @@ function socketErrorListener(evt) {
 }
 function login() {
     var username = "admin"
-    var password = document.getElementById("password").value;
+    var passwd = document.getElementById("password").value;
     var url = "/login";
     var xhr = new XMLHttpRequest();
-    xhr.open("get", url, true, username, password);
+    xhr.open("get", url, true, username, passwd);
     xhr.onload = function(e) {
       if (xhr.readyState === 4) {
         if (xhr.status === 200) {
