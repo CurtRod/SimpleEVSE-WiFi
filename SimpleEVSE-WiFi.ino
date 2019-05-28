@@ -12,13 +12,24 @@
   THE SOFTWARE. 
 */
 
-#include <ESP8266WiFi.h>              // Whole thing is about using Wi-Fi networks
+// #include <Arduino.h>
+
+#ifdef ESP8266
+#include <ESP8266WiFi.h> // Whole thing is about using Wi-Fi networks
+#include <ESP8266mDNS.h> // Zero-config Library (Bonjour, Avahi)
+#include <ESPAsyncTCP.h> // Async TCP Library is mandatory for Async Web Server
+#endif
+
+#ifdef ESP32
+#include <WiFi.h>
+#include <SPIFFS.h>
+#include <ESPmDNS.h>
+#endif
+
 #include <SPI.h>                      // RFID MFRC522 Module uses SPI protocol
-#include <ESP8266mDNS.h>              // Zero-config Library (Bonjour, Avahi)
 #include <MFRC522.h>                  // Library for Mifare RC522 Devices
 #include <ArduinoJson.h>              // JSON Library for Encoding and Parsing Json object to send browser
 #include <FS.h>                       // SPIFFS Library for storing web files to serve to web browsers
-#include <ESPAsyncTCP.h>              // Async TCP Library is mandatory for Async Web Server
 #include <ESPAsyncWebServer.h>        // Async Web Server with built-in WebSocket Plug-in
 #include <SPIFFSEditor.h>             // This creates a web page on server which can be used to edit text based files
 #include <TimeLib.h>                  // Library for converting epochtime to a date

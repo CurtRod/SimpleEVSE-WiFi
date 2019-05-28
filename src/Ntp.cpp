@@ -6,7 +6,6 @@
  */
 
 #include "Ntp.h"
-#include <ESPAsyncUDP.h>
 
 char * NtpClient::TimeServerName;
 int8_t NtpClient::timezone;
