@@ -227,7 +227,7 @@ void ICACHE_FLASH_ATTR updateSDMMeterCurrent() {
   result = meterNode.readInputRegisters(0x0006, regsToRead); // read 6 registers starting at 0x0000
   if (debug) Serial.println("");
 
-  if (result != meterNode.ku8MBSuccess) {
+  if (result != 0) {
     Serial.print("[ ModBus ] Error ");
     Serial.print(result, HEX);
     Serial.println(" occured while getting current Meter Data");
@@ -417,7 +417,7 @@ void ICACHE_FLASH_ATTR sendStatus() {
   evseNode.clearResponseBuffer();
   result = evseNode.readHoldingRegisters(0x07D0, 10);  // read 10 registers starting at 0x07D0 (2000)
 
-  if (result != meterNode.ku8MBSuccess) {
+  if (result != 0) {
     // error occured
     evseVehicleStatus = 0;
     Serial.print("[ ModBus ] Error ");
@@ -664,7 +664,7 @@ float ICACHE_FLASH_ATTR readMeter(uint16_t reg) {
   result = meterNode.readInputRegisters(reg, 2);  // read 7 registers starting at 0x0000
   if (debug) Serial.println("");
 
-  if (result != meterNode.ku8MBSuccess) {
+  if (result != 0) {
     Serial.print("[ ModBus ] Error ");
     Serial.print(result, HEX);
     Serial.println(" occured while getting Meter Data");
@@ -690,7 +690,7 @@ bool ICACHE_FLASH_ATTR queryEVSE() {
   evseNode.clearResponseBuffer();
   result = evseNode.readHoldingRegisters(0x03E8, 7);  // read 7 registers starting at 0x03E8 (1000)
 
-  if (result != meterNode.ku8MBSuccess) {
+  if (result != 0) {
     evseVehicleStatus = 0;
     Serial.print("[ ModBus ] Error ");
     Serial.print(result, HEX);
@@ -782,7 +782,7 @@ bool ICACHE_FLASH_ATTR activateEVSE() {
     evseNode.setTransmitBuffer(0, iTransmit); // set word 0 of TX buffer (bits 15..0)
     result = evseNode.writeMultipleRegisters(0x07D5, 1);  // write register 0x07D5 (2005)
 
-    if (result != meterNode.ku8MBSuccess) {
+    if (result != 0) {
       // error occured
       Serial.print("[ ModBus ] Error ");
       Serial.print(result, HEX);
@@ -836,7 +836,7 @@ bool ICACHE_FLASH_ATTR deactivateEVSE(bool logUpdate) {
   evseNode.setTransmitBuffer(0, iTransmit); // set word 0 of TX buffer (bits 15..0)
   result = evseNode.writeMultipleRegisters(0x07D5, 1);  // write register 0x07D5 (2005)
 
-  if (result != meterNode.ku8MBSuccess) {
+  if (result != 0) {
     // error occured
     Serial.print("[ ModBus ] Error ");
     Serial.print(result, HEX);
@@ -879,7 +879,7 @@ bool ICACHE_FLASH_ATTR setEVSEcurrent() {  // telegram 1: write EVSE current
   evseNode.setTransmitBuffer(0, currentToSet); // set word 0 of TX buffer (bits 15..0)
   result = evseNode.writeMultipleRegisters(0x03E8, 1);  // write register 0x03E8 (1000 - Actual configured amps value)
 
-  if (result != meterNode.ku8MBSuccess) {
+  if (result != 0) {
     // error occured
     Serial.print("[ ModBus ] Error ");
     Serial.print(result, HEX);
@@ -901,7 +901,7 @@ bool ICACHE_FLASH_ATTR setEVSERegister(uint16_t reg, uint16_t val) {
   evseNode.setTransmitBuffer(0, val); // set word 0 of TX buffer (bits 15..0)
   result = evseNode.writeMultipleRegisters(reg, 1);  // write given register
 
-  if (result != meterNode.ku8MBSuccess) {
+  if (result != 0) {
     // error occured
     Serial.print("[ ModBus ] Error ");
     Serial.print(result, HEX);
