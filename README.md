@@ -18,6 +18,13 @@ If you want to support this project, I would be very happy about a donation.
 * Rudimentary settings (WiFi settings, password for web interface, maximum charging current, etc.)
 * Output of all important parameters of the SimpleEVSE WB (Modbus)
 
+## Buy the EVSE-WiFi-Module
+
+If you do not have the time and desire to flash an ESP module and customize the libraries, you can also purchase the already prepared module in the shop with all wires and additional Hardware you need.
+
+[www.evse-wifi.de](https://www.evse-wifi.de/shop/)
+
+
 ## Preview
 
 Control the Current your EVSE communicates to the vehicle. This page also shows additional data like metered energy and the charging time.
