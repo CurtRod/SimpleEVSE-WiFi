@@ -31,7 +31,7 @@ void   ICACHE_FLASH_ATTR setWebEvents();
 void   ICACHE_FLASH_ATTR loop();
 void   ICACHE_FLASH_ATTR setup();
 bool   ICACHE_FLASH_ATTR setEVSERegister(uint16_t reg, uint16_t val);
-float  ICACHE_FLASH_ATTR readMeter(uint16_t reg);
+float   ICACHE_FLASH_ATTR readMeter(uint16_t reg);
 void   ICACHE_FLASH_ATTR updateMMeterData();
 void   ICACHE_FLASH_ATTR updateSDMMeterCurrent();
 bool   ICACHE_FLASH_ATTR initLogFile();
