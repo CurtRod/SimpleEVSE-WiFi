@@ -116,7 +116,6 @@ unsigned long cooldown = 0;
 bool toSetEVSEcurrent = false;
 bool toActivateEVSE = false;
 bool toDeactivateEVSE = false;
-bool toQueryEVSE = false;
 bool toSendStatus = false;
 bool toReboot = false;
 
@@ -761,7 +760,7 @@ bool ICACHE_FLASH_ATTR queryEVSE() {
   }
   else if (evseVehicleStatus == 3) {
     evseStatus = 3; //charging
-    if (vehicleCharging == false) {
+    if (vehicleCharging == false && toDeactivateEVSE == false) {
       vehicleCharging = true;
     }
   }
@@ -1155,7 +1154,6 @@ void ICACHE_FLASH_ATTR processWsEvent(JsonObject& root, AsyncWebSocketClient * c
     evseQueryTimeOut = millis() + 10000; //Timeout for pushing data in loop
     evseSessionTimeOut = false;
     if (debug) Serial.println("[ WebSocket ] Data sent to UI");
-    toQueryEVSE = true;
   }
   else if (strcmp(command, "setcurrent") == 0) {
     currentToSet = root["current"];
@@ -1797,11 +1795,11 @@ void ICACHE_RAM_ATTR loop() {
   if (currentMillis >= cooldown && useRFID == true) {
     rfidloop();
   }
-  if ((currentMillis > (lastModbusAnswer + 3000)) && //Update Modbus data every 3000ms and send data to WebUI
-      toQueryEVSE == true &&
-      evseSessionTimeOut == false) {
+  if (currentMillis > (lastModbusAnswer + 3000)) { //Update Modbus data every 3000ms and send data to WebUI
     queryEVSE();
-    sendEVSEdata();
+    if (evseSessionTimeOut == false) {
+      sendEVSEdata();
+    }
   }
   else if (currentMillis > evseQueryTimeOut &&    //Setting timeout for Evse poll / push to ws
       evseSessionTimeOut == false) {

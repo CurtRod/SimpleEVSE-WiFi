@@ -1,6 +1,7 @@
 //Globals
 var websock = null;
 var wsUri;
+var fw_version = "0.2.8"
 
 //EVSE Control
 var firstEVSEData = true;
@@ -28,6 +29,10 @@ var file = {};
 var completed = false;
 var wsUri;
 
+window.onload = function() {
+	const fw = document.getElementsByClassName("fw_version")
+	for(let i of fw){i.innerHTML = fw_version;}
+}
 
 //Script data for EVSE Control
 function loadEVSEControl() {

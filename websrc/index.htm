@@ -19,7 +19,7 @@
   <a href="#" onclick="loadUsers()"><nobr><span class="glyphicon glyphicon-user"></span>&nbsp;&nbsp;Users</nobr></a>
   <a href="#" onclick="loadSettings()"><nobr><span class="glyphicon glyphicon-cog"></span>&nbsp;&nbsp;Settings</nobr></a>
   <a href="#" onclick="loadLog()"><nobr><span class="glyphicon glyphicon-list-alt"></span>&nbsp;&nbsp;Log</nobr></a>
-  <div style="position: fixed; bottom: 0px; padding: 10px 10px 10px 10px">v0.2.7</div>
+  <div style="position: fixed; bottom: 0px; padding: 10px 10px 10px 10px"><object class="fw_version"></object></div>
 </div>
 <!-- Current Modal -->
 <div class="modal fade" id="currentModal" tabindex="-1" role="dialog" aria-labelledby="currentModalLabel" aria-hidden="true">
@@ -132,7 +132,6 @@
 		<p id="evse_vehicle_state" class="text-center"></p>
 		<br>
 	</div>
-    
 		<div class="panel panel-default table-responsive">
           <table class="table table-hover" >
             <tbody style="transition:0.5s">
@@ -165,6 +164,9 @@
 		<div class="hidden" id="evseActive" align=center>
 			<button id="buttonDeactivate" type="button" class="btn btn-danger" onclick="deactivateEVSE()">Deactivate EVSE</button>
 		</div>
+		<footer class="footer">
+            <h6 class="text-muted"><a href="https://www.evse-wifi.de" target="_blank">SimpleEVSE WiFi</a></h6>
+        </footer>
   </div>
   <div class="container" id="mainContent">
   </div>
@@ -247,7 +249,7 @@
             </div>
          <hr>
          <footer class="footer">
-            <h6 class="text-muted"><a href="https://github.com/CurtRod/SimpleEVSE-WiFi" target="_blank">SimpleEVSE WiFi</a></h6>
+            <h6 class="text-muted"><a href="https://www.evse-wifi.de" target="_blank">SimpleEVSE WiFi</a></h6>
          </footer>
       </div>
 	  
@@ -265,6 +267,9 @@
                  <table id="latestlogtable" class="table" data-paging="false" data-filtering="true" data-sorting="true" data-editing="false" data-state="true" data-show-footer="true"></table>
             </div>
          <hr>
+		 <footer class="footer">
+            <h6 class="text-muted"><a href="https://www.evse-wifi.de" target="_blank">SimpleEVSE WiFi</a></h6>
+         </footer>
       </div>
 <!-- Settings Container -->
       <div class="container" id="settingsContent" style="display: none">
@@ -852,7 +857,7 @@
 		   </div>
 		   <div>
             <legend>Update Firmware</legend>
-			<h6 class="text-muted">Current Firmware Version:&nbsp;0.2.7</h6>
+			<h6 class="text-muted">Current Firmware Version:&nbsp;<object class="fw_version"></object></h6>
             <h6 class="text-muted">Download <a href="https://github.com/CurtRod/SimpleEVSE-WiFi/releases" target="_blank">latest version</a> from GitHub.</h6>
             <form class="form-inline" method="POST" action="/update" enctype="multipart/form-data">
               <div class="form-group">
@@ -867,7 +872,7 @@
       </div>
       <hr>
       <footer class="footer">
-        <h6 class="text-muted"><a href="https://github.com/CurtRod/SimpleEVSE-WiFi" target="_blank">SimpleEVSE WiFi</a></h6>
+        <h6 class="text-muted"><a href="https://www.evse-wifi.de" target="_blank">SimpleEVSE WiFi</a></h6>
       </footer>
     </div>
   <script src="script.js" type="text/javascript"></script>
