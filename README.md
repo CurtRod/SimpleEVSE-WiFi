@@ -50,7 +50,7 @@ At the users page you can define valid RFID tags that can unlock the EVSE.
 * A complete Wallbox based on [EVSE Wallbox](https://www.evse-wifi.de/produkt/evse-wallbox-steuereinheit/) or [EVSE DIN](https://www.evse-wifi.de/produkt/evse-din-ladecontroller/) (min. Software revision 8 (2017-10-31) is needed - read the manual there for updating your EVSE software)
 **Attention: revision 9 does not work, because there is a bug in the firmware (sold for a short time in 2018)**
 * An ESP8266 module or a development board like **WeMos D1 mini** or **NodeMcu 1.0**
-* (optional) An electricity meter with S0 interface
+* (optional) An electricity meter with S0 or RS485/Modbus interface. (At this time only SDM120 and SDM630 are supported for use with Modbus)
 * (optional) A [RFID Module](https://www.evse-wifi.de/produkt/evse-wifi-rfid-reader-modul/) (PN532 and Wiegand based RFID reader modules are not supported at this time)
 * (optional) n quantity of [Mifare Classic 1KB](https://www.evse-wifi.de/produkt/evse-wifi-rfid-karte/) (recommended due to available code base) PICCs (RFID Tags) equivalent to User Number
 
