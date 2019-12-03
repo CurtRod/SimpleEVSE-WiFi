@@ -1,12 +1,15 @@
 //Globals
 var websock = null;
 var wsUri;
-var fw_version = "0.2.8"
+var fw_version = "0.3.0"
 
 //EVSE Control
-var firstEVSEData = true;
 var chargingTime;
 var evseActive;
+var vehicleCharging;
+var prevCurrent;
+var prevMaxCurrent;
+var currentModalOpen = false;
 
 //Users
 var timezone;
@@ -57,44 +60,60 @@ function listEVSEData(obj) {
 		$("#evseNotActive").removeClass('hidden');
 	}
 	else {	//EVSE active
+		if (obj.evse_always_active) {
+			$("#evseNotActive").addClass('hidden');
+			$("#evseActive").addClass('hidden');
+		}
+		else {
 		$("#evseNotActive").addClass('hidden');
 		$("#evseActive").removeClass('hidden');
+		}
 	}
 	
 	if (obj.evse_vehicle_state === 0){	//modbus error
+		vehicleCharging = false;
 		$("#carStatusDetected").addClass('hidden');
 		$("#carStatusCharging").addClass('hidden');
 		$("#carStatusReady").removeClass('hidden');
 		document.getElementById("evse_vehicle_state").innerHTML = "Modbus Error";
 	}
 	if (obj.evse_vehicle_state === 1){	//Ready
+		vehicleCharging = false;
 		$("#carStatusDetected").addClass('hidden');
 		$("#carStatusCharging").addClass('hidden');
 		$("#carStatusReady").removeClass('hidden');
 		document.getElementById("evse_vehicle_state").innerHTML = "Ready";
 	}
 	if (obj.evse_vehicle_state === 2){	//Vehicle Detected
+		vehicleCharging = false;
 		$("#carStatusReady").addClass('hidden');
 		$("#carStatusCharging").addClass('hidden');
 		$("#carStatusDetected").removeClass('hidden');
 		document.getElementById("evse_vehicle_state").innerHTML = "Vehicle Detected";
 	}
 	if (obj.evse_vehicle_state === 3){	//Vehicle charging
+		vehicleCharging = true;
 		$("#carStatusReady").addClass('hidden');
 		$("#carStatusDetected").addClass('hidden');
 		$("#carStatusCharging").removeClass('hidden');
 		document.getElementById("evse_vehicle_state").innerHTML = "Charging...";
 	}
 	document.getElementById("evse_charging_time").innerHTML = getTimeFormat(obj.evse_charging_time);
-	if (firstEVSEData === true){
-		document.getElementById("myRange").max = obj.evse_maximum_current;
-		document.getElementById("myRange").value = obj.evse_current_limit;
-		document.getElementById("slider_current").innerHTML = obj.evse_current_limit;
-		firstEVSEData = false;
-	}
 	if (obj.ap_mode === true){
 		syncBrowserTime(false);
 	}
+	if (currentModalOpen === false) {
+		if (document.getElementById("myRange").value != prevCurrent) {
+			document.getElementById("myRange").value = obj.evse_current_limit;
+			document.getElementById("slider_current").innerHTML = obj.evse_current_limit;
+		}
+		prevCurrent = obj.evse_current_limit;
+		if (document.getElementById("myRange").max != prevMaxCurrent) {
+			document.getElementById("myRange").max = obj.evse_maximum_current;
+		}
+		prevMaxCurrent = obj.evse_maximum_current;
+	}
+	
 }
 function handleSlider(value){
 	document.getElementById("slider_current").innerHTML = value;
@@ -103,6 +122,10 @@ function setEVSECurrent() {
 	var currentToSet = document.getElementById("myRange").value;
 	websock.send("{\"command\":\"setcurrent\", \"current\":" + currentToSet + "}");
 	$("#currentModal").modal("hide");
+	currentModalOpen = false;
+}
+function abortCurrentModal() {
+	currentModalOpen = false;
 }
 function activateEVSE(){
 	websock.send("{\"command\":\"activateevse\"}");
@@ -137,7 +160,6 @@ function sessionTimeOut() {
 	websock.send("{\"command\":\"getevsedata\"}");
     return;
 }
-
 
 //Script data for Users
 function loadUsers(){
@@ -535,6 +557,7 @@ function listCONF(obj) {
 	document.getElementById("price").value = obj.price;
   }
   document.getElementById("adminpwd").value = obj.adminpwd;
+  document.getElementById("cadminpwd").value = obj.adminpwd;
   document.getElementById("DropDownTimezone").value = obj.timezone;
   document.getElementById("hostname").value = obj.hostnm;
   if (obj.wmode === "1") {
@@ -555,7 +578,12 @@ function listCONF(obj) {
   dlAnchorElem.setAttribute("download", "esp-rfid-settings.json");
   document.getElementById("maxinstall").value = obj.maxinstall;
   document.getElementById("checkboxButtonActive").checked = obj.buttonactive;
-  
+  if (typeof obj.alwaysactive !== "undefined") {
+	  document.getElementById("checkboxAlwaysActive").checked = obj.alwaysactive;
+  }
+  if (typeof obj.resetcurrentaftercharge !== "undefined") {
+	  document.getElementById("checkboxResetCurrentAfterCharge").checked = obj.resetaftercharge;
+  }
   if (typeof obj.avgconsumption !== "undefined"){
 	  document.getElementById("avgconsumption").value = obj.avgconsumption;
   }
@@ -592,7 +620,7 @@ function deviceTime() {
 }
 
 function chargingTime(){
-	if (evseActive === true){
+	if (evseActive === true && vehicleCharging === true){
 		chargingTime = chargingTime + 1000;
 		document.getElementById("evse_charging_time").innerHTML = getTimeFormat(chargingTime);
 	}
@@ -764,6 +792,10 @@ function saveConf() {
 	alert("Administrator Password must be at least 8 characters");
 	return;
   }
+  else if (a !== document.getElementById("cadminpwd").value){
+	alert("Administrator Password did not match. Please confirm admin Password!");
+	return;  
+  }
   
   var ssid;
   if (document.getElementById("inputtohide").style.display === "none") {
@@ -826,6 +858,8 @@ function saveConf() {
   datatosend.adminpwd = a;
   datatosend.maxinstall = document.getElementById("maxinstall").value;
   datatosend.buttonactive = document.getElementById("checkboxButtonActive").checked;
+  datatosend.alwaysactive = document.getElementById("checkboxAlwaysActive").checked;
+  datatosend.resetcurrentaftercharge = document.getElementById("checkboxResetCurrentAfterCharge").checked;
   datatosend.avgconsumption = document.getElementById("avgconsumption").value;
 
   datatosend.ntpIP = document.getElementById("ntpIP").value;
@@ -1041,6 +1075,7 @@ function closeNav() {
 
 function showCurrentModal() {
 	$("#currentModal").modal();
+	currentModalOpen = true;
 }
 
 function showEvseRegModal() {

@@ -1,6 +1,6 @@
 # SimpleEVSE-WiFi
 
-SimpleEVSE-WiFi brings WiFi functionality to your SimpleEVSE WB to control your Charging Station very easy. It uses an ESP8266 to communicate with SimpleEVSE WB via ModBus (UART) and offers a web interface to control it. Optional there is a possibility to connect an impulse meter via S0 and an RC522 RFID reader to detect valid RFID tags.
+EVSE-WiFi brings WiFi functionality to your EVSE WB/DIN to control your Charging Station very easy. It uses an ESP8266 to communicate with the EVSE WB charging controller via ModBus (UART) and offers a web interface to control nearly everything. Optional there is a possibility to connect an impulse meter via S0 or a Modbus meter ([RS485-TTL Adapter](https://www.evse-wifi.de/produkt/evse-wifi-ttl-rs485-converter/) is required) and an RFID reader to detect valid RFID tags.
 
 If you want to support this project, I would be very happy about a donation.
 
@@ -9,13 +9,16 @@ If you want to support this project, I would be very happy about a donation.
 ## Main Features
 
 * WiFi functionality (as an access point or as a WiFi client)
-* Activate and deactivate the Simple EVSE WB via a web interface, RFID tags or a button
-* [HTTP-API](#http-api) to let other devices control SimpleEVSE-WiFi
+* Activate and deactivate the Simple EVSE WB via a web interface, RFID tags, API or a button
+* 'Always Active' mode - no manual activation necessary
+* [HTTP-API](#http-api) to let other devices control EVSE-WiFi
 * Setting the charging current via the web interface
-* Displays the current charging power in kW (by impulses of the S0 counter, optional)
+* Displays the current charging power in kW (by impulses of a S0 or ModBus meter, optional)
+* Displays the charged energy (kWh and km) and the cost of the charge (€)
 * User management (RFID tags, optional)
-* Log of the last charging processes with output of the charged energy quantity, charging time and costs of the charging process (optionally which RFID tag the EVSE was enabled by and the user assigned to it)
+* Log of the last charging processes with output of the charged energy quantity, charging time and costs of the charge (optionally which RFID tag the EVSE was enabled by and the user assigned to it)
 * Rudimentary settings (WiFi settings, password for web interface, maximum charging current, etc.)
+* Control over all EVSE WB/DIN modbus registers via web interface
 * Output of all important parameters of the SimpleEVSE WB (Modbus)
 
 ## Buy the EVSE-WiFi-Module
@@ -44,12 +47,12 @@ At the users page you can define valid RFID tags that can unlock the EVSE.
 ## What You Will Need
 
 ### Hardware
-* A complete Wallbox based on EVSE Wallbox [link](https://www.evse-wifi.de/produkt/evse-wallbox-steuereinheit/) (min. Software revision 8 (2017-10-31) is needed - read the manual there for updating your EVSE software)
-**Attention: revision 9 does not work, because there is a bug in the firmware.**
+* A complete Wallbox based on [EVSE Wallbox](https://www.evse-wifi.de/produkt/evse-wallbox-steuereinheit/) or [EVSE DIN](https://www.evse-wifi.de/produkt/evse-din-ladecontroller/) (min. Software revision 8 (2017-10-31) is needed - read the manual there for updating your EVSE software)
+**Attention: revision 9 does not work, because there is a bug in the firmware (sold for a short time in 2018)**
 * An ESP8266 module or a development board like **WeMos D1 mini** or **NodeMcu 1.0**
 * (optional) An electricity meter with S0 interface
-* (optional) A MFRC522 RFID Module (PN532 and Wiegand based RFID reader modules are not supported at this time)
-* (optional) n quantity of Mifare Classic 1KB (recommended due to available code base) PICCs (RFID Tags) equivalent to User Number
+* (optional) A [RFID Module](https://www.evse-wifi.de/produkt/evse-wifi-rfid-reader-modul/) (PN532 and Wiegand based RFID reader modules are not supported at this time)
+* (optional) n quantity of [Mifare Classic 1KB](https://www.evse-wifi.de/produkt/evse-wifi-rfid-karte/) (recommended due to available code base) PICCs (RFID Tags) equivalent to User Number
 
 #### Wiring (WeMos D1 mini/ NodeMcu)
 SimpleEVSE-WiFi supports not only the control of the EVSE WB but also the use of a simple button or an RC522 RFID card reader to activate the charging process. With an optional electricity meter, the power requirements of the individual charging processes can be output.
@@ -75,7 +78,7 @@ ESP8266-Pin | ESP8266-GPIO | electricity meter
 D3 | GPIO0 | S0+
 GND | | S0-
 
-##### Modbus Electicity Meter (optional - experimental!)**
+##### Modbus Electicity Meter (optional)**
 TTL->RS485 | ESP8266-Pin
 ----------- | -----------
 RX | RX 
@@ -104,14 +107,14 @@ Be sure to use a suitable power supply for ESP. At least 500mA is recommended!
 
 \*When you use an electricity meter with S0 interface be sure the S0 interface switches to GND, don't use 3.3V or 5V!
 
-\*\*To use a Modbus electricity meter via RS485, you need a extra piece of hardware to translate UART to RS485. In this project a PCB like [this](https://www.amazon.de/WINGONEER-RS485-Adapter-Serieller-Converter/dp/B06XHH6B6R/ref=sr_1_1?ie=UTF8&qid=1530052971&sr=8-1&keywords=rs485+uart) is required. Set your meter to baud rate 9600 and slave ID to "002". Until now only SDM120 and SDM630 Modbus meters are supported! If you have another one you can use it with the S0 interface.
+\*\*To use a Modbus electricity meter via RS485, you need a extra piece of hardware to translate UART to RS485. In this project a PCB like [this](https://www.evse-wifi.de/produkt/evse-wifi-ttl-rs485-converter/) is required. Set your meter to baud rate 9600 and slave ID to "002". Until now only SDM120 and SDM630 Modbus meters are supported! If you have another one you can use it with the S0 interface.
 
 #### Preparation of EVSE Wallbox
-To use SimpleEVSE-WiFi, the Modbus functionallity of EVSE Wallbox is needed! By default, Modbus functionality is disabled. To activate it, pull AN input of the EVSE Wallbox board to GND while booting for at least 5 times within 3 seconds. Modbus register 2001 will be set to 1 (Modbus is active). Attention: That change will not be saved! To save the settings, you have to give a R/W operation at a register >=2000. The easiest way to do this is to activate and deactivate EVSE through the WebUI in the "EVSE Control" page.
+To use EVSE-WiFi, the modbus functionallity of EVSE WB/DIN is needed! By default, modbus functionality is disabled. To activate it, pull AN input of the EVSE board to GND while booting for at least 5 times within 3 seconds. Modbus register 2001 will be set to 1 (Modbus is active). Attention: That change will not be saved! To save the settings, you have to give a R/W operation at a register >=2000. The easiest way to do this is to activate and deactivate EVSE through the WebUI in the "EVSE Control" page.
 
 ### Software
 
-**Attention:** make sure that the EVSE WB is not connected to the ESP during the flash process via USB. It could cause overheating of the ESP.
+**Attention:** make sure that the EVSE WB/DIN is not connected to the ESP during the flash process via USB. It could cause overheating of the ESP.
 
 #### Use Compiled Binaries
 Compiled firmware binary and flasher tool for Windows PCs are available in directory **/bin**. On Windows you can use **"flash.bat"**, it will ask you which COM port that ESP is connected and then flashes it. You can use any flashing tool and do the flashing manually if you don't want to use the flash.bat.
@@ -125,7 +128,7 @@ Please install Arduino IDE if you didn't already, then add ESP8266 Core on top o
 * [ESPAsyncTCP](https://github.com/me-no-dev/ESPAsyncTCP) - Mandatory for ESPAsyncWebServer
 * [ESPAsyncUDP](https://github.com/me-no-dev/ESPAsyncUDP) - Mandatory for ESPAsyncWebServer
 * [ModbusMaster](https://github.com/CurtRod/ModbusMaster) - ModbusMaster Library for communicating with EVSE (**NOTE: Use my Fork of ModbusMaster! Otherwise the wdt reset will be triggered in case of timeout error**)
-* [SoftwareSerial](https://github.com/plerup/espsoftwareserial) SoftwareSerial to communicate with EVSE (**NOTE: Use the github version! There is a buxfix for esp8266 v2.4.0 and later**)
+* [SoftwareSerial](https://github.com/plerup/espsoftwareserial) SoftwareSerial to communicate with EVSE
 * [MFRC522](https://github.com/miguelbalboa/rfid) - MFRC522 RFID Hardware Library for Arduino IDE
 * [ArduinoJson](https://github.com/bblanchon/ArduinoJson) - JSON Library for Arduino IDE
 * [NTPClientLib](https://github.com/gmag11/NtpClient/) - NTP Client Library for Arduino IDE
@@ -145,7 +148,7 @@ When SimpleEVSE-WiFi starts for the first time it sets up a WiFi access point ca
 The development of SimpleEVSE-WiFi is very time consuming. If you want to support this project, I would be very happy about a [donation](https://www.paypal.com/pools/c/85c7xRbeay).
 
 ## HTTP API
-Since version 0.2.0 there is an HTTP API implemented to let other devices control your EVSE WiFi. The API gives you the following possibilities of setting and fetching information.
+Since version 0.2.0 there is an HTTP API implemented to let other devices control your EVSE-WiFi. The API gives you the following possibilities of setting and fetching information.
 
 ### getParameters()
 gives you the following information of the EVSE WB in json:
@@ -154,6 +157,7 @@ Parameter | Description
 --------- | -----------
 vehicleState | Vehicle state (ready / detected / charging)
 evseState | EVSE State (active/not active)
+maxCurrent | Maximum Current depending on PP-limit and 
 actualCurrent | Actual configured current in A (e.g. 20A)
 actualPower | actual power consumption (when S0 meter is used)
 duration | charging duration in milliseconds
@@ -176,6 +180,7 @@ currentP3 | actual current in A (phase 3)
   "list": [{
     "vehicleState": 2,
     "evseState": false,
+	"maxCurrent": 32,
     "actualCurrent": 32,
     "actualPower": 5.79,
     "duration": 1821561,
@@ -278,5 +283,27 @@ E2_could not process - wrong parameter | Wrong parameter was given
 E3_could not activate EVSE - EVSE already activated! | EVSE is already in state "active"
 E3_could not deactivate EVSE - EVSE already deactivated! | EVSE is already in state "deactive"
 
+### doReboot()
+reboots EVSE-WiFi via ESP.restart()
+
+Parameter | Description
+--------- | -----------
+reboot | must be true to reboot EVSE-WiFi
+
+#### Example
+
+`GET http://192.168.4.1/doReboot?reboot=true`
+
+> Returns 
+
+```text
+S0_EVSE-WiFi is going to reboot now...
+```
+In cases of Error, the answer would be
+
+Answer | Description
+--------- | -----------
+E1_could not do reboot - wrong value | Wrong value was given
+E2_could not do reboot - wrong parameter | Wrong parameter was given
 
 

@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="">
   <meta name="author" content="">
-  <title>SimpleEVSE-WiFi</title>
+  <title>EVSE-WiFi</title>
   <script src="/required/required.js" type="text/javascript"></script>
   <link href="/required/required.css" rel="stylesheet">
   <style>
@@ -35,7 +35,7 @@
 		</div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-dismiss="modal">Abort</button>
+        <button type="button" class="btn btn-secondary" onclick="abortCurrentModal()" data-dismiss="modal">Abort</button>
         <button type="submit" class="btn btn-primary" onclick="setEVSECurrent()">Save</button>
       </div>
     </div>
@@ -91,7 +91,7 @@
 <!-- Login Container -->
       <div class="container text-center" id="loginContent" style="display: block">
          <div class="header clearfix">
-            <h3 class="text-muted">SimpleEVSE-WiFi</h3>
+            <h3 class="text-muted">EVSE-WiFi</h3>
          </div>
          <div>
             <div class="row">
@@ -165,7 +165,7 @@
 			<button id="buttonDeactivate" type="button" class="btn btn-danger" onclick="deactivateEVSE()">Deactivate EVSE</button>
 		</div>
 		<footer class="footer">
-            <h6 class="text-muted"><a href="https://www.evse-wifi.de" target="_blank">SimpleEVSE WiFi</a></h6>
+            <h6 class="text-muted"><a href="https://www.evse-wifi.de" target="_blank">EVSE WiFi</a></h6>
         </footer>
   </div>
   <div class="container" id="mainContent">
@@ -249,7 +249,7 @@
             </div>
          <hr>
          <footer class="footer">
-            <h6 class="text-muted"><a href="https://www.evse-wifi.de" target="_blank">SimpleEVSE WiFi</a></h6>
+            <h6 class="text-muted"><a href="https://www.evse-wifi.de" target="_blank">EVSE WiFi</a></h6>
          </footer>
       </div>
 	  
@@ -268,7 +268,7 @@
             </div>
          <hr>
 		 <footer class="footer">
-            <h6 class="text-muted"><a href="https://www.evse-wifi.de" target="_blank">SimpleEVSE WiFi</a></h6>
+            <h6 class="text-muted"><a href="https://www.evse-wifi.de" target="_blank">EVSE WiFi</a></h6>
          </footer>
       </div>
 <!-- Settings Container -->
@@ -635,7 +635,7 @@
  						</span>
 			</div>
 			<div class="row form-group">
-              <label data-toggle="tooltip" title="If you want to activate your EVSE via button, please activate this option." class="col-xs-3">Button to activate</label>
+              <label data-toggle="tooltip" title="If you want to activate your EVSE via button, please activate this option." class="col-xs-3">Button</label>
               <div class="col-xs-9">
                 <form>
                   <label class="checkbox-inline"><input type="checkbox" id="checkboxButtonActive" value="" name="buttonsactive" onclick="handleButtonActive();">Active</label>
@@ -653,6 +653,22 @@
                   <option value="15">GPIO-15</option>
                 </select>
               </span>
+            </div>
+			<div class="row form-group">
+              <label data-toggle="tooltip" title="If you want to keep your EVSE always active, please activate this option." class="col-xs-3">EVSE always active</label>
+              <div class="col-xs-9">
+                <form>
+                  <label class="checkbox-inline"><input type="checkbox" id="checkboxAlwaysActive" value="" name="checkboxalwaysactive">Active</label>
+                </form>
+              </div>
+            </div>
+			<div class="row form-group">
+              <label data-toggle="tooltip" title="Sets the configured current to 'Default amps value after boot' (EVSE Reg 2000), when charging stops." class="col-xs-3">Reset current after charge</label>
+              <div class="col-xs-9">
+                <form>
+                  <label class="checkbox-inline"><input type="checkbox" id="checkboxResetCurrentAfterCharge" value="" name="checkboxResetCurrentAfterCharge">Active</label>
+                </form>
+              </div>
             </div>
 			<br>
           </div>
@@ -693,6 +709,14 @@
               </span>
               <br>
             </div>
+			<div class="row form-group">
+              <label data-toggle="tooltip" title="Log On password for the Administrator" class="col-xs-3">Confirm Admin Password</label> 
+              <span class="col-xs-6 col-md-5">
+              <input class="form-control input-sm" placeholder="Administrator Password" id="cadminpwd" type="password">
+              </span>
+              <br>
+            </div>
+			
             <div class="row form-group">
               <label data-toggle="tooltip" title="Hostname for your ESP, When Bonjour is installed on your computer you can access your ESP via http://hostname.local" class="col-xs-3">Host Name</label> 
               <span class="col-xs-9 col-md-5">
@@ -851,7 +875,7 @@
           <div class="col-sm-6">
 		   <div>
 			<legend>Support this Project</legend>
-			<h6 class="text-muted"><b>The development of SimpleEVSE-WiFi is very time consuming. If you want to support this project, I would be very happy about a donation.</b></h6>
+			<h6 class="text-muted"><b>The development of EVSE-WiFi is very time consuming. If you want to support this project, I would be very happy about a donation.</b></h6>
 			<h4><a href="https://www.paypal.com/pools/c/85c7xRbeay">Donate now!</a></h4>
 			<br>
 		   </div>
@@ -872,7 +896,7 @@
       </div>
       <hr>
       <footer class="footer">
-        <h6 class="text-muted"><a href="https://www.evse-wifi.de" target="_blank">SimpleEVSE WiFi</a></h6>
+        <h6 class="text-muted"><a href="https://www.evse-wifi.de" target="_blank">EVSE WiFi</a></h6>
       </footer>
     </div>
   <script src="script.js" type="text/javascript"></script>
