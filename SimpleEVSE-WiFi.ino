@@ -1266,6 +1266,8 @@ void ICACHE_FLASH_ATTR processWsEvent(JsonObject& root, AsyncWebSocketClient * c
   else if (strcmp(command, "deactivateevse") == 0) {
     toDeactivateEVSE = true;
     if (debug) Serial.println("[ WebSocket ] Deactivate EVSE via WebSocket");
+    lastUID = "GUI";
+    lastUsername = "GUI";
   }
   else if (strcmp(command, "setevsereg") == 0) {
     uint16_t reg = atoi(root["register"]);
