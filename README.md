@@ -20,6 +20,7 @@ If you want to support this project, I would be very happy about a donation.
 * Rudimentary settings (WiFi settings, password for web interface, maximum charging current, etc.)
 * Control over all EVSE WB/DIN modbus registers via web interface
 * Output of all important parameters of the SimpleEVSE WB (Modbus)
+* LED-Support (Pin D0)
 
 ## Buy the EVSE-WiFi-Module
 
@@ -77,6 +78,12 @@ ESP8266-Pin | ESP8266-GPIO | electricity meter
 ----------- | ----------- | -----------
 D3 | GPIO0 | S0+
 GND | | S0-
+
+##### LED (optional)
+ESP8266-Pin | ESP8266-GPIO | LED
+----------- | ----------- | -----------
+D0 | GPIO16 | Anode (+)
+GND | | Kathode (-)
 
 ##### Modbus Electicity Meter (optional)**
 TTL->RS485 | ESP8266-Pin
@@ -161,6 +168,9 @@ maxCurrent | Maximum Current depending on PP-limit and
 actualCurrent | Actual configured current in A (e.g. 20A)
 actualPower | actual power consumption (when S0 meter is used)
 duration | charging duration in milliseconds
+alwaysActive | Always Active Mode enabled (true/false)
+lastActionUser | The user name of the user who performed the last action (activate/deactivate)
+lastActionUID | The UID of the user who performed the last action (activate/deactivate)
 energy | charged energy of the current charging process in kWh
 mileage | charged energy in km
 meterReading | actual meter reading in kWh
@@ -180,10 +190,13 @@ currentP3 | actual current in A (phase 3)
   "list": [{
     "vehicleState": 2,
     "evseState": false,
-	"maxCurrent": 32,
+    "maxCurrent": 32,
     "actualCurrent": 32,
     "actualPower": 5.79,
     "duration": 1821561,
+	"alwaysActive": false,
+	"lastActionUser": "GUI",
+    "lastActionUID": "GUI",
     "energy": 9.52,
     "mileage": 82.3,
     "meterReading": 54.35,

@@ -1,7 +1,7 @@
 //Globals
 var websock = null;
 var wsUri;
-var fw_version = "0.3.0"
+var fw_version = "0.3.1"
 
 //EVSE Control
 var chargingTime;
@@ -536,6 +536,9 @@ function listCONF(obj) {
   if (typeof obj.wsauth !== "undefined"){
 	document.getElementById("checkboxSafari").checked = obj.wsauth;
   }
+  if (typeof obj.disableled !== "undefined"){
+	document.getElementById("checkboxDisableLED").checked = obj.disableled;
+  }
   if (typeof obj.debug !== "undefined"){
 	document.getElementById("checkboxDebug").checked = obj.debug;
   }
@@ -833,6 +836,7 @@ function saveConf() {
   }
   
   datatosend.wsauth = document.getElementById("checkboxSafari").checked;
+  datatosend.disableled = document.getElementById("checkboxDisableLED").checked;
   datatosend.debug = document.getElementById("checkboxDebug").checked;
 
   datatosend.rfid = document.getElementById("checkboxRfid").checked;

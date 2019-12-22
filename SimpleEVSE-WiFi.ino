@@ -42,6 +42,7 @@ extern "C" {
 //EVSE Variables
 unsigned long millisStartCharging = 0;
 unsigned long millisStopCharging = 0;
+bool manualStop = false;
 int16_t iPrice = 0;
 int currentToSet = 6;
 int8_t evseStatus = 0;
@@ -99,6 +100,12 @@ unsigned long buttonTimer = 0;
 unsigned long previousMillis = 0;
 unsigned long previousLoopMillis = 0;
 unsigned long cooldown = 0;
+unsigned long previousLedAction = 0;
+uint16_t toChangeLedOnTime = 0;
+uint16_t toChangeLedOffTime = 0;
+uint16_t ledOnTime = 1000;
+uint16_t ledOffTime = 2000;
+bool ledStatus = false;
 bool toSetEVSEcurrent = false;
 bool toActivateEVSE = false;
 bool toDeactivateEVSE = false;
@@ -130,6 +137,7 @@ bool useSMeter = false;
 bool useMMeter = false;
 bool useButton = false;
 bool dontUseWsAuthentication = false;
+bool dontUseLED = false;
 bool alwaysActive = false;
 bool resetCurrentAfterCharge = false;
 bool inAPMode = false;
@@ -139,6 +147,7 @@ String lastUsername = "";
 String lastUID = "";
 char * deviceHostname = NULL;
 uint8_t buttonPin;
+uint8_t ledPin = D0;
 uint8_t maxinstall = 0;
 uint8_t maxCurrent = 0;
 uint8_t iFactor = 0;
@@ -153,6 +162,24 @@ String msg = ""; //WS communication
 //////////////////////////////////////////////////////////////////////////////////////////
 ///////       Auxiliary Functions
 //////////////////////////////////////////////////////////////////////////////////////////
+
+void ICACHE_FLASH_ATTR doChangeLedTimes() {
+  if (ledOnTime != toChangeLedOnTime) {
+    ledOnTime = toChangeLedOnTime;
+  }
+  if (ledOffTime != toChangeLedOffTime) {
+    ledOffTime = toChangeLedOffTime;
+  }
+}
+
+void ICACHE_FLASH_ATTR changeLedTimes(uint16_t onTime, uint16_t offTime) {
+  if (ledOnTime != onTime) {
+    toChangeLedOnTime = onTime;
+  }
+  if (ledOffTime != offTime) {
+    toChangeLedOffTime = offTime;
+  }
+}
 
 String ICACHE_FLASH_ATTR printIP(IPAddress adress) {
   return (String)adress[0] + "." + (String)adress[1] + "." + (String)adress[2] + "." + (String)adress[3];
@@ -222,6 +249,7 @@ void ICACHE_FLASH_ATTR updateSDMMeterCurrent() {
     Serial.print("[ ModBus ] Error ");
     Serial.print(result, HEX);
     Serial.println(" occured while getting current Meter Data");
+    changeLedTimes(300, 300);
     return;
   }
 
@@ -237,8 +265,8 @@ void ICACHE_FLASH_ATTR updateSDMMeterCurrent() {
   ((uint16_t*)&currentP3)[0]= iaRes[5];
 }
 
-int ICACHE_FLASH_ATTR getChargingTime() {
-  uint32_t iTime;
+unsigned long ICACHE_FLASH_ATTR getChargingTime() {
+  unsigned long iTime;
   if (vehicleCharging == true) {
     iTime = millis() - millisStartCharging;
   }
@@ -299,12 +327,22 @@ void ICACHE_FLASH_ATTR rfidloop() {
         if (debug) Serial.print(username);
       }
       if (AccType == 1) {
-        toActivateEVSE = true;
+        if(evseActive) {
+          toDeactivateEVSE = true;
+        }
+        else {
+          toActivateEVSE = true;
+        }
         previousMillis = millis();
         if (debug) Serial.println(" have access");
       }
       else if (AccType == 99) {
-        toActivateEVSE = true;
+        if(evseActive) {
+          toDeactivateEVSE = true;
+        }
+        else {
+          toActivateEVSE = true;
+        }
         previousMillis = millis();
         if (debug) Serial.println(" have admin access, enable wifi");
       }
@@ -372,6 +410,7 @@ void ICACHE_FLASH_ATTR getAdditionalEVSEData() {
     Serial.print("[ ModBus ] Error ");
     Serial.print(result, HEX);
     Serial.println(" occured while getting additional EVSE data");
+    changeLedTimes(300, 300);
   }
   else {
     // register successfully read
@@ -661,6 +700,7 @@ float ICACHE_FLASH_ATTR readMeter(uint16_t reg) {
     Serial.print("[ ModBus ] Error ");
     Serial.print(result, HEX);
     Serial.println(" occured while getting Meter Data");
+    changeLedTimes(300, 300);
   }
   else {
     iaRes[0] = meterNode.getResponseBuffer(0);
@@ -685,12 +725,14 @@ bool ICACHE_FLASH_ATTR queryEVSE() {
 
   if (result != 0) {
     evseVehicleStatus = 0;
+    evseStatus = 0;
     Serial.print("[ ModBus ] Error ");
     Serial.print(result, HEX);
     Serial.println(" occured while getting EVSE data - trying again...");
     evseNode.clearTransmitBuffer();
     evseNode.clearResponseBuffer();
     delay(500);
+    changeLedTimes(300, 300);
     return false;
   }
 
@@ -732,20 +774,24 @@ bool ICACHE_FLASH_ATTR queryEVSE() {
     maxCurrent = evseAmpsPP;
   }
   
-  if (!alwaysActive) {
+  // Normal Mode
+  if (!alwaysActive) { 
     if (evseVehicleStatus == 0) {
       evseStatus = 0; //modbus communication failed
+      changeLedTimes(300, 300);
     }
     if (evseState == 3) {     //EVSE not Ready
       if (evseVehicleStatus == 2 ||
           evseVehicleStatus == 3 ||
           evseVehicleStatus == 4) {
         evseStatus = 2; //vehicle detected
+        changeLedTimes(300, 1000);
       }
       else {
         evseStatus = 1; // EVSE deactivated
+        changeLedTimes(1000, 3000);
       }
-      if (vehicleCharging == true) {   //vehicle interrupted charging
+      if (vehicleCharging == true && manualStop == false) {   //vehicle interrupted charging
         vehicleCharging = false;
         millisStopCharging = millis();
         if (debug) Serial.println("Vehicle interrupted charging");
@@ -757,42 +803,55 @@ bool ICACHE_FLASH_ATTR queryEVSE() {
 
     if (evseVehicleStatus == 1) {
       evseStatus = 1;  // ready
+      changeLedTimes(1000, 1000);
     }
     else if (evseVehicleStatus == 2) {
       evseStatus = 2; //vehicle detected
+      changeLedTimes(300, 1000);
     }
-    else if (evseVehicleStatus == 3) {
+    else if (evseVehicleStatus == 3 || evseVehicleStatus == 4) {
       evseStatus = 3; //charging
-     if (vehicleCharging == false && toDeactivateEVSE == false) {
-       vehicleCharging = true;
-     }
+      changeLedTimes(2000, 1000);
     }
     return true;
-  }
+  } 
+  
+  // Always Active Mode
   else {
     if (evseState == 1) { // Steady 12V
-      if (vehicleCharging) {
+      if (vehicleCharging) { // EV interrupted charging
         vehicleCharging = false;
         toDeactivateEVSE = true;
+        millisStopCharging = millis();
+        if (debug) Serial.println("Vehicle interrupted charging");
       }
       evseStatus = 1; // ready
+      changeLedTimes(1000, 1000);
     }
     else if (evseState == 2) { // PWM is being generated
       if (evseVehicleStatus == 2) { // EV is present
         if (vehicleCharging) {  // EV interrupted charging
           vehicleCharging = false;
           toDeactivateEVSE = true;
+          millisStopCharging = millis();
+          if (debug) Serial.println("Vehicle interrupted charging");
         }
         evseStatus = 2; //vehicle detected
+        changeLedTimes(300, 1000);
       }
       else if (evseVehicleStatus == 3 || evseVehicleStatus == 4) {  // EV is charging
         if (!vehicleCharging) { // EV starts charging
           vehicleCharging = true;
           toActivateEVSE = true;
+          millisStartCharging = millis();
         }
-        evseStatus = 3;
+        evseStatus = 3; //charging
+        changeLedTimes(2000, 1000);
       }
     }
+  }
+  if (evseVehicleStatus == 5) {
+    evseStatus = 5;
   }
 }
 
@@ -816,9 +875,13 @@ bool ICACHE_FLASH_ATTR activateEVSE() {
         Serial.print("[ ModBus ] Error ");
         Serial.print(result, HEX);
         Serial.println(" occured while activating EVSE - trying again...");
+        changeLedTimes(300, 300);
+        delay(500);
         return false;
       }
 
+      millisStartCharging = millis();
+      manualStop = false;
       // register successfully written
       if (debug) Serial.println("[ ModBus ] EVSE successfully activated");
     }
@@ -842,7 +905,6 @@ bool ICACHE_FLASH_ATTR activateEVSE() {
     meteredKWh = 0.0;
   }
   numberOfMeterImps = 0;
-  millisStartCharging = millis();
   sendEVSEdata();
   return true;
 }
@@ -862,12 +924,16 @@ bool ICACHE_FLASH_ATTR deactivateEVSE(bool logUpdate) {
       Serial.print("[ ModBus ] Error ");
       Serial.print(result, HEX);
       Serial.println(" occured while deactivating EVSE - trying again...");
+      changeLedTimes(300, 300);
+      delay(500);
       return false;
     }
 
     // register successfully written
     if (debug) Serial.println("[ ModBus ] EVSE successfully deactivated");
     evseActive = false;
+    manualStop = true;
+    millisStopCharging = millis();
   }
   if (useMMeter) {
     if (mMeterTypeSDM120) {
@@ -879,20 +945,20 @@ bool ICACHE_FLASH_ATTR deactivateEVSE(bool logUpdate) {
   }
   else {
     startTotal += meteredKWh;
-  }
+  }  
   if (logUpdate) {
     updateLog(false);
   }
-  queryEVSE();
-  sendEVSEdata();
-
+  vehicleCharging = false;
+  toDeactivateEVSE = false;
+  
   if (resetCurrentAfterCharge == true) {
     currentToSet = evseAmpsAfterboot;
     toSetEVSEcurrent = true;
   }
-
-  vehicleCharging = false;
-  toDeactivateEVSE = false;
+  delay(500);
+  queryEVSE();
+  sendEVSEdata();
   return true;
 }
 
@@ -909,6 +975,8 @@ bool ICACHE_FLASH_ATTR setEVSEcurrent() {  // telegram 1: write EVSE current
     Serial.print("[ ModBus ] Error ");
     Serial.print(result, HEX);
     Serial.println(" occured while setting current in EVSE - trying again...");
+    changeLedTimes(300, 300);
+    delay(500);
     return false;
   }
 
@@ -931,6 +999,7 @@ bool ICACHE_FLASH_ATTR setEVSERegister(uint16_t reg, uint16_t val) {
     Serial.print("[ ModBus ] Error ");
     Serial.print(result, HEX);
     Serial.println(" occured while setting EVSE Register " + (String)reg + " to " + (String)val);
+    changeLedTimes(300, 300);
     return false;
   }
 
@@ -1191,7 +1260,7 @@ void ICACHE_FLASH_ATTR processWsEvent(JsonObject& root, AsyncWebSocketClient * c
   else if (strcmp(command, "activateevse") == 0) {
     toActivateEVSE = true;
     if (debug) Serial.println("[ WebSocket ] Activate EVSE via WebSocket");
-    lastUID = "-";
+    lastUID = "GUI";
     lastUsername = "GUI";
   }
   else if (strcmp(command, "deactivateevse") == 0) {
@@ -1317,19 +1386,6 @@ bool ICACHE_FLASH_ATTR loadConfiguration() {
     Serial.println("[ DEBUGGER ] Debug Mode: OFF!");
   }
 
-  useRFID = false;
-  if (json.containsKey("rfid") &&
-       json.containsKey("sspin") &&
-       json.containsKey("rfidgain")) {
-    if (json["rfid"] == true) {
-      int rfidss = json["sspin"];
-      int rfidgain = json["rfidgain"];
-      useRFID = true;
-      if (debug) Serial.println(F("[ INFO ] Trying to setup RFID hardware"));
-      setupRFID(rfidss, rfidgain);
-    }
-  }
-
   useMMeter = false;
   useSMeter = false;
   if (json.containsKey("meter") &&
@@ -1415,7 +1471,14 @@ bool ICACHE_FLASH_ATTR loadConfiguration() {
   if (json.containsKey("wsauth")) {
     dontUseWsAuthentication = json["wsauth"];
   }
-
+  if (json.containsKey("disableled")) {
+    if (json["disableled"] == false) {
+      pinMode(ledPin, OUTPUT);
+    }
+  }
+  else {
+    pinMode(ledPin, OUTPUT);
+  }
   if (!dontUseWsAuthentication) {
     ws.setAuthentication("admin", adminpass);
     if (debug)Serial.println("[ Websocket ] Use Basic Authentication for Websocket");
@@ -1436,6 +1499,20 @@ bool ICACHE_FLASH_ATTR loadConfiguration() {
         delay(50);
         setEVSERegister(2005, 0);
       }
+      if (debug) Serial.println(F("[ INFO ] EVSE-WiFi runs in always active mode"));
+    }
+  }
+
+  useRFID = false;
+  if (json.containsKey("rfid") &&
+       json.containsKey("sspin") &&
+       json.containsKey("rfidgain")) {
+    if (json["rfid"] == true && alwaysActive == false) {
+      int rfidss = json["sspin"];
+      int rfidgain = json["rfidgain"];
+      useRFID = true;
+      if (debug) Serial.println(F("[ INFO ] Trying to setup RFID hardware"));
+      setupRFID(rfidss, rfidgain);
     }
   }
 
@@ -1446,6 +1523,7 @@ bool ICACHE_FLASH_ATTR loadConfiguration() {
   }
 
   deactivateEVSE(false);  //initial deactivation
+  millisStopCharging = 0;
   vehicleCharging = false;
   
   if (wmode == 1) {
@@ -1495,6 +1573,8 @@ bool ICACHE_FLASH_ATTR loadConfiguration() {
   String ip = printIP(timeserverip);
   if (debug) Serial.println(" IP: " + ip);
   NTP.Ntp(ntpIP, timeZone, 3600);   //use NTP Server, timeZone, update every x sec
+
+  
 }
 
 void ICACHE_FLASH_ATTR restoreDefaultConfig() {
@@ -1575,6 +1655,9 @@ void ICACHE_FLASH_ATTR setWebEvents() {
     item["actualCurrent"] = evseAmpsConfig;
     item["actualPower"] =  float(int((currentKW + 0.005) * 100.0)) / 100.0;
     item["duration"] = getChargingTime();
+    item["alwaysActive"] = alwaysActive;
+    item["lastActionUser"] = lastUsername;
+    item["lastActionUID"] = lastUID;
     item["energy"] = float(int((meteredKWh + 0.005) * 100.0)) / 100.0;
     item["mileage"] = float(int(((meteredKWh * 100.0 / consumption) + 0.05) * 10.0)) / 10.0;
     if (useMMeter) {
@@ -1625,17 +1708,17 @@ void ICACHE_FLASH_ATTR setWebEvents() {
   server.on("/setCurrent", HTTP_GET, [](AsyncWebServerRequest * request) {
       awp = request->getParam(0);
       if (awp->name() == "current") {
-        if (atoi(awp->value().c_str()) <= maxinstall && atoi(awp->value().c_str()) >= 5) {
+        if (atoi(awp->value().c_str()) <= maxinstall && (atoi(awp->value().c_str()) >= 6 || atoi(awp->value().c_str()) == 0)) {
           currentToSet = atoi(awp->value().c_str());
           if (setEVSEcurrent()) {
-            request->send(200, "text/plain", "S0_set current to A");
+            request->send(200, "text/plain", "S0_set current to given value");
           }
           else {
             request->send(200, "text/plain", "E0_could not set current - internal error");
           }
         }
         else {
-          request->send(200, "text/plain", ("E1_could not set current - give a value between 5 and " + (String)maxinstall));
+          request->send(200, "text/plain", ("E1_could not set current - give a value between 6 and " + (String)maxinstall));
         }
       }
       else {
@@ -1646,10 +1729,10 @@ void ICACHE_FLASH_ATTR setWebEvents() {
   //setStatus
   server.on("/setStatus", HTTP_GET, [](AsyncWebServerRequest * request) {
     awp = request->getParam(0);
-    if (awp->name() == "active") {
+    if (awp->name() == "active" && alwaysActive == false) {
       if (debug) Serial.println(awp->value().c_str());
       if (strcmp(awp->value().c_str(), "true") == 0) {
-        lastUID = "-";
+        lastUID = "API";
         lastUsername = "API";
         if (!evseActive) {
           if (activateEVSE()) {
@@ -1664,13 +1747,11 @@ void ICACHE_FLASH_ATTR setWebEvents() {
         }
       }
       else if (strcmp(awp->value().c_str(), "false") == 0) {
+        lastUID = "API";
+        lastUsername = "API";
         if (evseActive) {
-          if (deactivateEVSE(true)) {
-            request->send(200, "text/plain", "S0_EVSE successfully deactivated");
-          }
-          else {
-            request->send(200, "text/plain", "E0_could not deactivate EVSE - internal error!");
-          }
+          toDeactivateEVSE = true;
+          request->send(200, "text/plain", "S0_EVSE successfully deactivated");
         }
         else {
           request->send(200, "text/plain", "E3_could not deactivate EVSE - EVSE already deactivated!");
@@ -1681,7 +1762,7 @@ void ICACHE_FLASH_ATTR setWebEvents() {
       }
     }
     else {
-      request->send(200, "text/plain", "E2_could not process - wrong parameter");
+      request->send(200, "text/plain", "E2_could not process - wrong parameter or EVSE-WiFi runs in always active mode");
     }
   });
 
@@ -1719,6 +1800,7 @@ void ICACHE_FLASH_ATTR setWebEvents() {
     item["ip"] = printIP(ipaddr);
     item["gateway"] = printIP(gwaddr);
     item["netmask"] = printIP(nmaddr);
+    item["uptime"] = NTP.getUptimeSec();
 
     list.add(item);
     root.printTo(*response);
@@ -1815,8 +1897,7 @@ void ICACHE_FLASH_ATTR setup() {
   if (debug) Serial.println();
   if (debug) Serial.println("[ INFO ] SimpleEVSE WiFi");
   delay(1000);
-  pinMode(D0, INPUT_PULLDOWN_16);
-
+  
   SPIFFS.begin();
   sSerial.begin(9600);
   evseNode.begin(1, sSerial);
@@ -1851,8 +1932,26 @@ void ICACHE_RAM_ATTR loop() {
   unsigned long deltaTime = currentMillis - previousLoopMillis;
   unsigned long uptime = NTP.getUptimeSec();
   previousLoopMillis = currentMillis;
+  doChangeLedTimes();
 
-  if (uptime > 604800000) {   // auto restart after 7 days
+  if (currentMillis >= previousLedAction) {
+    if (ledStatus == false) {
+      if (currentMillis >= previousLedAction + ledOffTime) {
+        digitalWrite(ledPin, HIGH);
+        ledStatus = true;
+        previousLedAction = currentMillis;
+      }
+    }
+    else {
+      if (currentMillis >= previousLedAction + ledOnTime) {
+        digitalWrite(ledPin, LOW);
+        ledStatus = false;
+        previousLedAction = currentMillis;
+      }
+    }
+  }
+
+  if (uptime > 3888000) {   // auto restart after 45 days uptime
     if (vehicleCharging == false) {
       if (debug) Serial.println(F("[ UPDT ] Auto restarting..."));
       delay(1000);
@@ -1892,7 +1991,7 @@ void ICACHE_RAM_ATTR loop() {
   //if (currentMillis > lastModbusAnswer + (queryTimer * 1000) && evseActive == true && evseSessionTimeOut == true) { //Query modbus every x seconds, when webinterface is not shown
   //  queryEVSE();
   //}
-  if (useMMeter && evseActive && millisUpdateMMeter < millis()) {
+  if (useMMeter && millisUpdateMMeter < millis()) {
     updateMMeterData();
   }
   if (meterInterrupt != 0) {
@@ -1909,11 +2008,15 @@ void ICACHE_RAM_ATTR loop() {
   if (useButton && digitalRead(buttonPin) == HIGH && buttonState == LOW) {
     if (debug) Serial.println("Button released");
     buttonState = HIGH;
-    if (evseActive) {
-      toDeactivateEVSE = true;
-    }
-    else {
-      toActivateEVSE = true;
+    if (!alwaysActive) {
+      if (evseActive) {
+        toDeactivateEVSE = true;
+      }
+      else {
+        toActivateEVSE = true;
+      }
+      lastUsername = "Button";
+      lastUID = "Button";
     }
   }
   if (useButton && digitalRead(buttonPin) != buttonState) {
