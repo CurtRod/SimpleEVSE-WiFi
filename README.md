@@ -1,5 +1,9 @@
 # SimpleEVSE-WiFi
 
+💬 [German version](https://www.evse-wifi.de/dokumentation/)
+
+💾 [Latest Downloads, News and Changelogs (german)](https://www.evse-wifi.de/)
+
 EVSE-WiFi brings WiFi functionality to your EVSE WB/DIN to control your Charging Station very easy. It uses an ESP8266 to communicate with the EVSE WB charging controller via ModBus (UART) and offers a web interface to control nearly everything. Optional there is a possibility to connect an impulse meter via S0 or a Modbus meter ([RS485-TTL Adapter](https://www.evse-wifi.de/produkt/evse-wifi-ttl-rs485-converter/) is required) and an RFID reader to detect valid RFID tags.
 
 If you want to support this project, I would be very happy about a donation.
