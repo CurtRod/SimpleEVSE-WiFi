@@ -11,6 +11,8 @@
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
   THE SOFTWARE.
 */
+
+#include <Arduino.h>
 #include <ESP8266WiFi.h>              // Whole thing is about using Wi-Fi networks
 #include <ESP8266mDNS.h>              // Zero-config Library (Bonjour, Avahi)
 #include <ESPAsyncTCP.h>              // Async TCP Library is mandatory for Async Web Server
@@ -26,9 +28,11 @@
 #include <ModbusMaster.h>
 
 #include <string.h>
-#include "src/proto.h"
-#include "src/Ntp.h"
-#include "src/websrc.h"
+#include "proto.h"
+#include "ntp.h"
+#include "websrc.h"
+#include "config.h"
+#include "rfid.h"
 
 #ifdef ESP8266
 extern "C" {
@@ -43,9 +47,8 @@ extern "C" {
 unsigned long millisStartCharging = 0;
 unsigned long millisStopCharging = 0;
 bool manualStop = false;
-int16_t iPrice = 0;
-int currentToSet = 6;
-int8_t evseStatus = 0;
+uint8_t currentToSet = 6;
+uint8_t evseStatus = 0;
 bool evseSessionTimeOut = false;
 bool evseActive = false;
 bool vehicleCharging = false;
@@ -53,20 +56,13 @@ int buttonState = HIGH;
 AsyncWebParameter* awp;
 const char * initLog = "{\"type\":\"latestlog\",\"list\":[]}";
 
-//Debug
-bool debug = true;
-
 //Metering
 float meterReading = 0.0;
 float meteredKWh = 0.0;
 float currentKW = 0.0;
-uint8_t intLength = 0;
 
 //Metering S0
-uint8_t meterPin;
-uint16_t meterTimeout = 10; //sec
-uint16_t kwhimp;
-uint8_t meterphase;
+uint8_t meterTimeout = 10; //sec
 volatile unsigned long numberOfMeterImps = 0;
 unsigned long meterImpMillis = 0;
 unsigned long previousMeterMillis = 0;
@@ -86,20 +82,21 @@ float currentP3 = 0.0;
 SoftwareSerial sSerial(D1, D2); //SoftwareSerial object (RX, TX)
 ModbusMaster evseNode;
 ModbusMaster meterNode;
-MFRC522 mfrc522 = MFRC522();  // Create MFRC522 RFID instance
 AsyncWebServer server(80);    // Create AsyncWebServer instance on port "80"
 AsyncWebSocket ws("/ws");     // Create WebSocket instance on URL "/ws"
-NtpClient NTP;
+NtpClient ntp;
+EvseWiFiConfig config = EvseWiFiConfig();
+//MFRC522 mfrc522 = MFRC522();  // Create MFRC522 RFID instance
+EvseWiFiRfid rfid;
 
-uint8_t queryTimer = 5; // seconds
-unsigned long lastModbusAnswer = 0;
+unsigned long lastModbusAction = 0;
 unsigned long evseQueryTimeOut = 0;
 unsigned long buttonTimer = 0;
 
 //Loop
 unsigned long previousMillis = 0;
 unsigned long previousLoopMillis = 0;
-unsigned long cooldown = 0;
+//unsigned long cooldown = 0;
 unsigned long previousLedAction = 0;
 uint16_t toChangeLedOnTime = 0;
 uint16_t toChangeLedOffTime = 0;
@@ -121,24 +118,12 @@ uint16_t evseTurnOff;        //Register 1004
 uint16_t evseFirmware;       //Register 1005
 uint16_t evseState;          //Register 1006
 
-uint16_t evseAmpsAfterboot;  //Register 2000
-uint16_t evseModbusEnabled;  //Register 2001
-uint16_t evseAmpsMin;        //Register 2002
-uint16_t evseAnIn;           //Register 2003
-uint16_t evseAmpsPowerOn;    //Register 2004
-uint16_t evseReg2005;        //Register 2005
-uint16_t evseShareMode;      //Register 2006
-uint16_t evsePpDetection;    //Register 2007
-uint16_t evseBootFirmware;   //Register 2009
+uint16_t evseAmpsAfterboot; 
 
 //Settings
 bool useRFID = false;
-bool useSMeter = false;
-bool useMMeter = false;
-bool useButton = false;
 bool dontUseWsAuthentication = false;
 bool dontUseLED = false;
-bool alwaysActive = false;
 bool resetCurrentAfterCharge = false;
 bool inAPMode = false;
 bool inFallbackMode = false;
@@ -146,15 +131,8 @@ bool isWifiConnected = false;
 String lastUsername = "";
 String lastUID = "";
 char * deviceHostname = NULL;
-uint8_t buttonPin;
 uint8_t ledPin = D0;
-uint8_t maxinstall = 0;
 uint8_t maxCurrent = 0;
-uint8_t iFactor = 0;
-float consumption = 0.0;
-char * adminpass = NULL;
-int timeZone;
-const char * ntpIP = "pool.ntp.org";
 
 //Others
 String msg = ""; //WS communication
@@ -206,20 +184,20 @@ void ICACHE_RAM_ATTR handleMeterInt() {  //interrupt routine for metering
 
 void ICACHE_RAM_ATTR updateS0MeterData() {
   if (vehicleCharging) {
-    currentKW = 3600.0 / float(meterImpMillis - previousMeterMillis) / float(kwhimp / 1000.0) * (float)iFactor ;  //Calculating kW
+    currentKW = 3600.0 / float(meterImpMillis - previousMeterMillis) / float(config.getMeterImpKwh(0) / 1000.0) * (float)config.getMeterFactor(0) ;  //Calculating kW
     previousMeterMillis = meterImpMillis;
-    meterImpMillis = meterImpMillis + intLength;
+    meterImpMillis = meterImpMillis + (config.getMeterImpLen(0) + 3);
     meterInterrupt = 0;
-    meteredKWh = float(numberOfMeterImps) / float(kwhimp / 1000.0) / 1000.0 * float(iFactor);
+    meteredKWh = float(numberOfMeterImps) / float(config.getMeterImpKwh(0) / 1000.0) / 1000.0 * float(config.getMeterFactor(0));
   }
 }
 
 void ICACHE_FLASH_ATTR updateMMeterData() {
-  if (mMeterTypeSDM120 == true) {
+  if (config.mMeterTypeSDM120 == true) {
     currentKW = readMeter(0x000C) / 1000.0;
     meterReading = readMeter(0x0156);
   }
-  else if (mMeterTypeSDM630 == true) {
+  else if (config.mMeterTypeSDM630 == true) {
     currentKW = readMeter(0x0034) / 1000.0;
     meterReading = readMeter(0x0156);
   }
@@ -238,13 +216,12 @@ void ICACHE_FLASH_ATTR updateSDMMeterCurrent() {
   const int regsToRead = 6;
   uint8_t result;
   uint16_t iaRes[regsToRead];
-
   meterNode.clearTransmitBuffer();
   meterNode.clearResponseBuffer();
   delay(50);
   result = meterNode.readInputRegisters(0x0006, regsToRead); // read 6 registers starting at 0x0000
-  if (debug) Serial.println("");
 
+  if (config.getSystemDebug()) Serial.println("");
   if (result != 0) {
     Serial.print("[ ModBus ] Error ");
     Serial.print(result, HEX);
@@ -276,134 +253,87 @@ unsigned long ICACHE_FLASH_ATTR getChargingTime() {
   return iTime;
 }
 
+bool ICACHE_FLASH_ATTR resetUserData() {
+  Dir userdir = SPIFFS.openDir("/P/");
+  while(userdir.next()){
+    Serial.println(userdir.fileName());
+    SPIFFS.remove(userdir.fileName());
+  }
+  return true;
+}
+
+bool ICACHE_FLASH_ATTR factoryReset() {
+  if (config.getSystemDebug()) Serial.println("[ SYSTEM ] Factory Reset...");
+  SPIFFS.remove("/config.json");
+  SPIFFS.remove("/latestlog.json");
+  if (resetUserData()) {
+    if (config.getSystemDebug()) Serial.println("[ SYSTEM ] ...successfully done - going to reboot");
+  }
+  toReboot = true;
+  return true;
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////
 ///////       RFID Functions
 //////////////////////////////////////////////////////////////////////////////////////////
 void ICACHE_FLASH_ATTR rfidloop() {
-  //If a new PICC placed to RFID reader continue
-  //debugMillis = millis();
-  if (! mfrc522.PICC_IsNewCardPresent()) {
-    delay(50);
-    return;
-  }
-  //Since a PICC placed get Serial (UID) and continue
-  if (! mfrc522.PICC_ReadCardSerial()) {
-    delay(50);
-    return;
-  }
-  // We got UID tell PICC to stop responding
-  mfrc522.PICC_HaltA();
-  cooldown = millis() + 2000;
-  if (debug) Serial.print(F("[ INFO ] PICC's UID: "));
-  String uid = "";
-  for (int i = 0; i < mfrc522.uid.size; ++i) {
-    uid += String(mfrc522.uid.uidByte[i], HEX);
-  }
-  if (debug) Serial.print(uid);
-  MFRC522::PICC_Type piccType = mfrc522.PICC_GetType(mfrc522.uid.sak);
-  String type = mfrc522.PICC_GetTypeName(piccType);
+  
+  scanResult scan = rfid.readPicc();
+  
+  if (scan.read) {
+    Serial.print("UID: ");
+    Serial.println(scan.uid);
+    Serial.print("User: ");
+    Serial.println(scan.user);
+    Serial.print("Type: ");
+    Serial.println(scan.type);
+    Serial.print("Known: ");
+    Serial.println(scan.known);
+    Serial.print("Valid: ");
+    Serial.println(scan.valid);
 
-  int AccType = 0;
-  String filename = "/P/";
-  filename += uid;
-
-  File f = SPIFFS.open(filename, "r");
-  if (f) {
-    size_t size = f.size();
-    std::unique_ptr<char[]> buf(new char[size]);
-    f.readBytes(buf.get(), size);
-    DynamicJsonBuffer jsonBuffer;
-    JsonObject& json = jsonBuffer.parseObject(buf.get());
-
-    if (json.success()) {
-      String username = json["user"];
-      AccType = json["acctype"];
-      if (debug) Serial.println(" = known PICC");
-      if (debug) Serial.print("[ INFO ] User Name: ");
-      if (username == "undefined") {
-        if (debug) Serial.print(uid);
-      }
-      else {
-        if (debug) Serial.print(username);
-      }
-      if (AccType == 1) {
-        if(evseActive) {
+    StaticJsonDocument<230> jsonDoc;
+    jsonDoc["command"] = "piccscan";
+    jsonDoc["uid"] = scan.uid;
+    jsonDoc["type"] = scan.type;
+    
+    lastUID = scan.uid;
+    if (scan.known) { // PICC known
+      Serial.println("PICC known");
+      lastUsername = scan.user;
+      if (scan.valid) { // PICC valid
+        Serial.println("PICC valid");
+        if (evseActive) {
           toDeactivateEVSE = true;
         }
         else {
           toActivateEVSE = true;
         }
-        previousMillis = millis();
-        if (debug) Serial.println(" have access");
       }
-      else if (AccType == 99) {
-        if(evseActive) {
-          toDeactivateEVSE = true;
-        }
-        else {
-          toActivateEVSE = true;
-        }
-        previousMillis = millis();
-        if (debug) Serial.println(" have admin access, enable wifi");
-      }
-      else {
-        if (debug) Serial.println(" does not have access");
-      }
-      lastUsername = username;
-      lastUID = uid;
-
-      //inform administrator portal
-      DynamicJsonBuffer jsonBuffer2;
-      JsonObject& root = jsonBuffer2.createObject();
-      root["command"] = "piccscan";
-      // UID of Scanned RFID Tag
-      root["uid"] = uid;
-      // Type of PICC
-      root["type"] = type;
-      root["known"] = 1;
-      root["acctype"] = AccType;
-      // Username
-      root["user"] = username;
-      size_t len = root.measureLength();
-      AsyncWebSocketMessageBuffer * buffer = ws.makeBuffer(len);
-      if (buffer) {
-        root.printTo((char *)buffer->get(), len + 1);
-        ws.textAll(buffer);
-      }
+      jsonDoc["known"] = 1;
+      jsonDoc["user"] = scan.user;
     }
-    else {
-      if (debug) Serial.println("");
-      if (debug) Serial.println(F("[ WARN ] Failed to parse User Data"));
+    else { // Unknown PICC
+      lastUsername = "Unknown";
+      jsonDoc["known"] = 0;
     }
-    f.close();
-  }
-  else { // Unknown PICC
-    lastUsername = "Unknown";
-    lastUID = uid;
 
-    if (debug) Serial.println(" = unknown PICC");
-    DynamicJsonBuffer jsonBuffer;
-    JsonObject& root = jsonBuffer.createObject();
-    root["command"] = "piccscan";
-    root["uid"] = uid;
-    root["type"] = type;
-    root["known"] = 0;
-    size_t len = root.measureLength();
+    size_t len = measureJson(jsonDoc);
     AsyncWebSocketMessageBuffer * buffer = ws.makeBuffer(len);
     if (buffer) {
-      root.printTo((char *)buffer->get(), len + 1);
+      serializeJson(jsonDoc, (char *)buffer->get(), len + 1);
       ws.textAll(buffer);
     }
   }
 }
 
-void ICACHE_FLASH_ATTR getAdditionalEVSEData() {
+s_addEvseData ICACHE_FLASH_ATTR getAdditionalEVSEData() {
   // Getting additional Modbus data
-  queryEVSE();
+  s_addEvseData addEvseData;
   evseNode.clearTransmitBuffer();
   evseNode.clearResponseBuffer();
   uint8_t result = evseNode.readHoldingRegisters(0x07D0, 10);  // read 10 registers starting at 0x07D0 (2000)
-
+  
   if (result != 0) {
     // error occured
     evseVehicleStatus = 0;
@@ -411,45 +341,48 @@ void ICACHE_FLASH_ATTR getAdditionalEVSEData() {
     Serial.print(result, HEX);
     Serial.println(" occured while getting additional EVSE data");
     changeLedTimes(300, 300);
+    lastModbusAction = millis();
+    return addEvseData;
   }
   else {
     // register successfully read
-    if (debug) Serial.println("[ ModBus ] got additional EVSE data successfully ");
-    lastModbusAnswer = millis();
+    if (config.getSystemDebug()) Serial.println("[ ModBus ] got additional EVSE data successfully ");
 
     //process answer
     for (int i = 0; i < 10; i++) {
       switch(i) {
       case 0:
-        evseAmpsAfterboot  = evseNode.getResponseBuffer(i);    //Register 2000
+        addEvseData.evseAmpsAfterboot  = evseNode.getResponseBuffer(i);    //Register 2000
+        evseAmpsAfterboot = addEvseData.evseAmpsAfterboot;
         break;
       case 1:
-        evseModbusEnabled = evseNode.getResponseBuffer(i);     //Register 2001
+        addEvseData.evseModbusEnabled = evseNode.getResponseBuffer(i);     //Register 2001
         break;
       case 2:
-        evseAmpsMin = evseNode.getResponseBuffer(i);           //Register 2002
+        addEvseData.evseAmpsMin = evseNode.getResponseBuffer(i);           //Register 2002
         break;
       case 3:
-        evseAnIn = evseNode.getResponseBuffer(i);             //Reg 2003
+        addEvseData.evseAnIn = evseNode.getResponseBuffer(i);             //Reg 2003
         break;
       case 4:
-        evseAmpsPowerOn = evseNode.getResponseBuffer(i);      //Reg 2004
+        addEvseData.evseAmpsPowerOn = evseNode.getResponseBuffer(i);      //Reg 2004
         break;
       case 5:
-        evseReg2005 = evseNode.getResponseBuffer(i);          //Reg 2005
+        addEvseData.evseReg2005 = evseNode.getResponseBuffer(i);          //Reg 2005
         break;
       case 6:
-        evseShareMode = evseNode.getResponseBuffer(i);        //Reg 2006
+        addEvseData.evseShareMode = evseNode.getResponseBuffer(i);        //Reg 2006
         break;
       case 7:
-        evsePpDetection = evseNode.getResponseBuffer(i);       //Register 2007
+        addEvseData.evsePpDetection = evseNode.getResponseBuffer(i);       //Register 2007
         break;
       case 9:
-        evseBootFirmware = evseNode.getResponseBuffer(i);       //Register 2009
+        addEvseData.evseBootFirmware = evseNode.getResponseBuffer(i);       //Register 2009
         break;
       }
     }
   }
+  return addEvseData;
 }
 
 void ICACHE_FLASH_ATTR sendStatus() {
@@ -459,77 +392,76 @@ void ICACHE_FLASH_ATTR sendStatus() {
   if (!SPIFFS.info(fsinfo)) {
     Serial.print(F("[ WARN ] Error getting info on SPIFFS"));
   }
-  DynamicJsonBuffer jsonBuffer12;
-  JsonObject& root = jsonBuffer12.createObject();
-  root["command"] = "status";
-  root["heap"] = ESP.getFreeHeap();
-  root["chipid"] = String(ESP.getChipId(), HEX);
-  root["cpu"] = ESP.getCpuFreqMHz();
-  root["availsize"] = ESP.getFreeSketchSpace();
-  root["availspiffs"] = fsinfo.totalBytes - fsinfo.usedBytes;
-  root["spiffssize"] = fsinfo.totalBytes;
-  root["uptime"] = NTP.getDeviceUptimeString();
+  StaticJsonDocument<1000> jsonDoc;
+  jsonDoc["command"] = "status";
+  jsonDoc["heap"] = ESP.getFreeHeap();
+  jsonDoc["chipid"] = String(ESP.getChipId(), HEX);
+  jsonDoc["cpu"] = ESP.getCpuFreqMHz();
+  jsonDoc["availsize"] = ESP.getFreeSketchSpace();
+  jsonDoc["availspiffs"] = fsinfo.totalBytes - fsinfo.usedBytes;
+  jsonDoc["spiffssize"] = fsinfo.totalBytes;
+  jsonDoc["uptime"] = ntp.getDeviceUptimeString();
 
   if (inAPMode) {
     wifi_get_ip_info(SOFTAP_IF, &info);
     struct softap_config conf;
     wifi_softap_get_config(&conf);
-    root["ssid"] = String(reinterpret_cast<char*>(conf.ssid));
-    root["dns"] = printIP(WiFi.softAPIP());
-    root["mac"] = WiFi.softAPmacAddress();
+    jsonDoc["ssid"] = String(reinterpret_cast<char*>(conf.ssid));
+    jsonDoc["dns"] = printIP(WiFi.softAPIP());
+    jsonDoc["mac"] = WiFi.softAPmacAddress();
   }
   else {
     wifi_get_ip_info(STATION_IF, &info);
     struct station_config conf;
     wifi_station_get_config(&conf);
-    root["ssid"] = String(reinterpret_cast<char*>(conf.ssid));
-    root["dns"] = printIP(WiFi.dnsIP());
-    root["mac"] = WiFi.macAddress();
+    jsonDoc["ssid"] = String(reinterpret_cast<char*>(conf.ssid));
+    jsonDoc["rssi"] = String(WiFi.RSSI());
+    jsonDoc["dns"] = printIP(WiFi.dnsIP());
+    jsonDoc["mac"] = WiFi.macAddress();
   }
 
-  getAdditionalEVSEData();
-
+  s_addEvseData addEvseData = getAdditionalEVSEData();
   IPAddress ipaddr = IPAddress(info.ip.addr);
   IPAddress gwaddr = IPAddress(info.gw.addr);
   IPAddress nmaddr = IPAddress(info.netmask.addr);
-  root["ip"] = printIP(ipaddr);
-  root["gateway"] = printIP(gwaddr);
-  root["netmask"] = printIP(nmaddr);
-  root["evse_amps_conf"] = evseAmpsConfig;          //Reg 1000
-  root["evse_amps_out"] = evseAmpsOutput;           //Reg 1001
-  root["evse_vehicle_state"] = evseVehicleStatus;   //Reg 1002
-  root["evse_pp_limit"] = evseAmpsPP;               //Reg 1003
-  root["evse_turn_off"] = evseTurnOff;              //Reg 1004
-  root["evse_firmware"] = evseFirmware;             //Reg 1005
-  root["evse_state"] = evseState;                   //Reg 1006
-  root["evse_amps_afterboot"] = evseAmpsAfterboot;  //Reg 2000
-  root["evse_modbus_enabled"] = evseModbusEnabled;  //Reg 2001
-  root["evse_amps_min"] = evseAmpsMin;              //Reg 2002
-  root["evse_analog_input"] = evseAnIn;             //Reg 2003
-  root["evse_amps_poweron"] = evseAmpsPowerOn;      //Reg 2004
-  root["evse_2005"] = evseReg2005;                  //Reg 2005
-  root["evse_sharing_mode"] = evseShareMode;        //Reg 2006
-  root["evse_pp_detection"] = evsePpDetection;      //Reg 2007
-  if (useMMeter) {
+  jsonDoc["ip"] = printIP(ipaddr);
+  jsonDoc["gateway"] = printIP(gwaddr);
+  jsonDoc["netmask"] = printIP(nmaddr);
+  jsonDoc["evse_amps_conf"] = evseAmpsConfig;          //Reg 1000
+  jsonDoc["evse_amps_out"] = evseAmpsOutput;           //Reg 1001
+  jsonDoc["evse_vehicle_state"] = evseVehicleStatus;   //Reg 1002
+  jsonDoc["evse_pp_limit"] = evseAmpsPP;               //Reg 1003
+  jsonDoc["evse_turn_off"] = evseTurnOff;              //Reg 1004
+  jsonDoc["evse_firmware"] = evseFirmware;             //Reg 1005
+  jsonDoc["evse_state"] = evseState;                   //Reg 1006
+  jsonDoc["evse_amps_afterboot"] = addEvseData.evseAmpsAfterboot;  //Reg 2000
+  jsonDoc["evse_modbus_enabled"] = addEvseData.evseModbusEnabled;  //Reg 2001
+  jsonDoc["evse_amps_min"] = addEvseData.evseAmpsMin;              //Reg 2002
+  jsonDoc["evse_analog_input"] = addEvseData.evseAnIn;             //Reg 2003
+  jsonDoc["evse_amps_poweron"] = addEvseData.evseAmpsPowerOn;      //Reg 2004
+  jsonDoc["evse_2005"] = addEvseData.evseReg2005;                  //Reg 2005
+  jsonDoc["evse_sharing_mode"] = addEvseData.evseShareMode;        //Reg 2006
+  jsonDoc["evse_pp_detection"] = addEvseData.evsePpDetection;      //Reg 2007
+  if (config.useMMeter) {
+      delay(10);
       updateMMeterData();
-      root["meter_total"] = meterReading;
+      jsonDoc["meter_total"] = meterReading;
   }
-  size_t len = root.measureLength();
+  size_t len = measureJson(jsonDoc);
   AsyncWebSocketMessageBuffer * buffer = ws.makeBuffer(len); //  creates a buffer (len + 1) for you.
   if (buffer) {
-    root.printTo((char *)buffer->get(), len + 1);
+    serializeJson(jsonDoc, (char *)buffer->get(), len + 1);
     ws.textAll(buffer);
   }
 }
 
 // Send Scanned SSIDs to websocket clients as JSON object
 void ICACHE_FLASH_ATTR printScanResult(int networksFound) {
-  DynamicJsonBuffer jsonBuffer13;
-  JsonObject& root = jsonBuffer13.createObject();
-  root["command"] = "ssidlist";
-  JsonArray& scan = root.createNestedArray("list");
+  DynamicJsonDocument jsonDoc(3500);
+  jsonDoc["command"] = "ssidlist";
+  JsonArray jsonScanArray = jsonDoc.createNestedArray("list");
   for (int i = 0; i < networksFound; ++i) {
-    JsonObject& item = scan.createNestedObject();
+    JsonObject item = jsonScanArray.createNestedObject();
     // Print SSID for each network found
     item["ssid"] = WiFi.SSID(i);
     item["bssid"] = WiFi.BSSIDstr(i);
@@ -538,10 +470,14 @@ void ICACHE_FLASH_ATTR printScanResult(int networksFound) {
     item["enctype"] = WiFi.encryptionType(i);
     item["hidden"] = WiFi.isHidden(i) ? true : false;
   }
-  size_t len = root.measureLength();
-  AsyncWebSocketMessageBuffer * buffer = ws.makeBuffer(len); //  creates a buffer (len + 1) for you.
+  size_t len = measureJson(jsonDoc);
+  serializeJson(jsonDoc, Serial);
+  //Serial.print("Länge: ");
+  //Serial.println(len);
+  //delay(100);
+  AsyncWebSocketMessageBuffer * buffer = ws.makeBuffer(len);
   if (buffer) {
-    root.printTo((char *)buffer->get(), len + 1);
+    serializeJson(jsonDoc, (char *)buffer->get(), len + 1);
     ws.textAll(buffer);
   }
   WiFi.scanDelete();
@@ -555,59 +491,62 @@ void ICACHE_FLASH_ATTR logLatest(String uid, String username) {
   if (!logFile) {
     // Can not open file create it.
     File logFile = SPIFFS.open("/latestlog.json", "w");
-    DynamicJsonBuffer jsonBuffer3;
-    JsonObject& root = jsonBuffer3.createObject();
-    root["type"] = "latestlog";
-    JsonArray& list = root.createNestedArray("list");
-    root.printTo(logFile);
+    StaticJsonDocument<35> jsonDoc;
+    jsonDoc["type"] = "latestlog";
+    jsonDoc.createNestedArray("list");
+    deserializeJson(jsonDoc, logFile);
     logFile.close();
-
-    logFile = SPIFFS.open("/latestlog.json", "r");
+    logFile = SPIFFS.open("/latestlog.json", "w+");
   }
   if (logFile) {
     size_t size = logFile.size();
+    Serial.print("Logfile Size: ");
+    Serial.println(size);
+
     std::unique_ptr<char[]> buf (new char[size]);
     logFile.readBytes(buf.get(), size);
-    DynamicJsonBuffer jsonBuffer4;
-    JsonObject& root = jsonBuffer4.parseObject(buf.get());
-    JsonArray& list = root["list"];
-    if (!root.success()) {
-      if (debug) Serial.println("Impossible to read JSON file");
+    
+    DynamicJsonDocument jsonDoc2(12000);
+    DeserializationError error = deserializeJson(jsonDoc2, buf.get());
+    JsonArray list = jsonDoc2["list"];
+    if (error) {
+      if (config.getSystemDebug()) Serial.println("Impossible to read JSON file");
     }
     else {
       logFile.close();
-      if (list.size() >= 1000) {
+      if (list.size() >= 100) {
         list.remove(0);
       }
       File logFile = SPIFFS.open("/latestlog.json", "w");
-      DynamicJsonBuffer jsonBuffer5;
-      JsonObject& item = jsonBuffer5.createObject();
-      item["uid"] = uid;
-      item["username"] = username;
-      item["timestamp"] = NTP.getUtcTimeNow();
-      item["duration"] = 0;
-      item["energy"] = 0;
-      item["price"] = iPrice;
-      list.add(item);
-      root.printTo(logFile);
+      StaticJsonDocument<200> jsonDoc3;
+      jsonDoc3["uid"] = uid;
+      jsonDoc3["username"] = username;
+      jsonDoc3["timestamp"] = ntp.getUtcTimeNow();
+      jsonDoc3["duration"] = 0;
+      jsonDoc3["energy"] = 0;
+      jsonDoc3["price"] = config.getMeterEnergyPrice(0);
+      list.add(jsonDoc3);
+      serializeJson(jsonDoc2, logFile);
     }
     logFile.close();
   }
   else {
-    if (debug) Serial.println("Cannot create Logfile");
+    if (config.getSystemDebug()) Serial.println("Cannot create Logfile");
   }
 }
 
 void ICACHE_FLASH_ATTR updateLog(bool e) {
-File logFile = SPIFFS.open("/latestlog.json", "r");
+  File logFile = SPIFFS.open("/latestlog.json", "r");
   size_t size = logFile.size();
   std::unique_ptr<char[]> buf (new char[size]);
   logFile.readBytes(buf.get(), size);
-  DynamicJsonBuffer jsonBuffer6;
-  JsonObject& root = jsonBuffer6.parseObject(buf.get());
-  JsonArray& list = root["list"];
-  if (!root.success()) {
-    if (debug) Serial.println("Impossible to read JSON file");
+  DynamicJsonDocument jsonDoc(12000);
+  DeserializationError error = deserializeJson(jsonDoc, buf.get());
+  JsonArray list = jsonDoc["list"];
+  if (error) {
+    if (config.getSystemDebug()) Serial.println("Impossible to read JSON file");
+      Serial.print("Impossible to read Log file: ");
+      Serial.println(error.c_str());
   }
   else {
     logFile.close();
@@ -616,24 +555,26 @@ File logFile = SPIFFS.open("/latestlog.json", "r");
     long timestamp = (long)list[(list.size()-1)]["timestamp"];
 
     list.remove(list.size() - 1); // delete newest log
-    File logFile = SPIFFS.open("/latestlog.json", "w");
-    DynamicJsonBuffer jsonBuffer7;
-    JsonObject& item = jsonBuffer7.createObject();
-    item["uid"] = uid;
-    item["username"] = username;
-    item["timestamp"] = timestamp;
+
+    StaticJsonDocument<270> jsonDoc2;
+    jsonDoc2["uid"] = uid;
+    jsonDoc2["username"] = username;
+    jsonDoc2["timestamp"] = timestamp;
     if (!e) {
-      item["duration"] = getChargingTime();
-      item["energy"] = float(int((meteredKWh + 0.005) * 100.0)) / 100.0;
-      item["price"] = iPrice;
+      jsonDoc2["duration"] = getChargingTime();
+      jsonDoc2["energy"] = float(int((meteredKWh + 0.005) * 100.0)) / 100.0;
+      jsonDoc2["price"] = config.getMeterEnergyPrice(0);
     }
     else {
-      item["duration"] = String("e");
-      item["energy"] = String("e");
-      item["price"] = String("e");
+      jsonDoc2["duration"] = String("e");
+      jsonDoc2["energy"] = String("e");
+      jsonDoc2["price"] = String("e");
     }
-    list.add(item);
-    root.printTo(logFile);
+    list.add(jsonDoc2);
+    logFile = SPIFFS.open("/latestlog.json", "w");
+    if (logFile) {
+      serializeJson(jsonDoc, logFile);
+    }
   }
   logFile.close();
   millisStartCharging = 0;
@@ -643,23 +584,23 @@ File logFile = SPIFFS.open("/latestlog.json", "r");
 }
 
 float ICACHE_FLASH_ATTR getS0MeterReading() {
-  float fMeterReading;
+  float fMeterReading = 0.0;
   File logFile = SPIFFS.open("/latestlog.json", "r");
 
   if (logFile) {
     size_t size = logFile.size();
     std::unique_ptr<char[]> buf (new char[size]);
     logFile.readBytes(buf.get(), size);
-    DynamicJsonBuffer jsonBuffer4;
-    JsonObject& root = jsonBuffer4.parseObject(buf.get());
-    JsonArray& list = root["list"];
-    if (!root.success()) {
-      if (debug) Serial.println("Impossible to read Log file");
+    DynamicJsonDocument jsonDoc(3000);
+    DeserializationError error = deserializeJson(jsonDoc, buf.get());
+    JsonArray list = jsonDoc["list"];
+    if (error) {
+      if (config.getSystemDebug()) Serial.println("Impossible to read Log file");
     }
     else {
       logFile.close();
-      for (int i = 0; i < list.size(); i++) {
-        JsonObject& line = list.get<JsonVariant>(i);
+      for (size_t i = 0; i < list.size(); i++) {
+        JsonObject line = list.getElement(i);
         if (line["energy"] != "e") {
           fMeterReading += (float)line["energy"];
         }
@@ -670,15 +611,21 @@ float ICACHE_FLASH_ATTR getS0MeterReading() {
 }
 
 bool ICACHE_FLASH_ATTR initLogFile() {
-  if (debug)Serial.println("[ SYSTEM ] Going to delete Log File...");
+  if (config.getSystemDebug())Serial.println("[ SYSTEM ] Going to delete Log File...");
   File logFile = SPIFFS.open("/latestlog.json", "w");
-  DynamicJsonBuffer jsonBuffer3;
-  JsonObject& root = jsonBuffer3.createObject();
-  root["type"] = "latestlog";
-  JsonArray& list = root.createNestedArray("list");
-  root.printTo(logFile);
-  logFile.close();
-  if (debug)Serial.println("[ SYSTEM ] ... Success!");
+  if (logFile) {
+    StaticJsonDocument<35> jsonDoc;
+    jsonDoc["type"] = "latestlog";
+    jsonDoc.createNestedArray("list");
+    serializeJson(jsonDoc, logFile);
+    logFile.close();
+    if (config.getSystemDebug())Serial.println("[ SYSTEM ] ... Success!");
+  }
+  else {
+    if (config.getSystemDebug())Serial.println("[ SYSTEM ] ... Failure!");
+    return false;
+  }
+  return true;
 }
 
 
@@ -688,14 +635,13 @@ bool ICACHE_FLASH_ATTR initLogFile() {
 float ICACHE_FLASH_ATTR readMeter(uint16_t reg) {
   uint8_t result;
   uint16_t iaRes[2];
-  float fResponse;
-
+  float fResponse = 0.0;
   meterNode.clearTransmitBuffer();
   meterNode.clearResponseBuffer();
   delay(50);
   result = meterNode.readInputRegisters(reg, 2);  // read 7 registers starting at 0x0000
-  if (debug) Serial.println("");
-
+  
+  if (config.getSystemDebug()) Serial.println("");
   if (result != 0) {
     Serial.print("[ ModBus ] Error ");
     Serial.print(result, HEX);
@@ -705,12 +651,10 @@ float ICACHE_FLASH_ATTR readMeter(uint16_t reg) {
   else {
     iaRes[0] = meterNode.getResponseBuffer(0);
     iaRes[1] = meterNode.getResponseBuffer(1);
-
     ((uint16_t*)&fResponse)[1]= iaRes[0];
     ((uint16_t*)&fResponse)[0]= iaRes[1];
-
-    return (fResponse);
   }
+  return (fResponse);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -718,7 +662,6 @@ float ICACHE_FLASH_ATTR readMeter(uint16_t reg) {
 //////////////////////////////////////////////////////////////////////////////////////////
 bool ICACHE_FLASH_ATTR queryEVSE() {
   uint8_t result;
-
   evseNode.clearTransmitBuffer();
   evseNode.clearResponseBuffer();
   result = evseNode.readHoldingRegisters(0x03E8, 7);  // read 7 registers starting at 0x03E8 (1000)
@@ -733,14 +676,13 @@ bool ICACHE_FLASH_ATTR queryEVSE() {
     evseNode.clearResponseBuffer();
     delay(500);
     changeLedTimes(300, 300);
+    lastModbusAction = millis();
     return false;
   }
 
+  lastModbusAction = millis();
   // register successfully read
-  //if (debug) Serial.println("[ ModBus ] got EVSE data successfully ");
-  lastModbusAnswer = millis();
-
-  //process answer
+  // process answer
   for (int i = 0; i < 7; i++) {
     switch(i) {
     case 0:
@@ -767,15 +709,16 @@ bool ICACHE_FLASH_ATTR queryEVSE() {
     }
   }
 
-  if (evseAmpsPP > maxinstall) {
-    maxCurrent = maxinstall;
-  }
-  else {
-    maxCurrent = evseAmpsPP;
-  }
+  // Maximum slider value is independant of PP Limit - to activate PP-Limit for slider's max value uncomment here:
+  //if (evseAmpsPP > config.getSystemMaxInstall()) {
+    maxCurrent = config.getSystemMaxInstall();
+  //}
+  //else {
+  //  maxCurrent = evseAmpsPP;
+  //}
   
   // Normal Mode
-  if (!alwaysActive) { 
+  if (!config.getEvseAlwaysActive(0)) {
     if (evseVehicleStatus == 0) {
       evseStatus = 0; //modbus communication failed
       changeLedTimes(300, 300);
@@ -792,9 +735,9 @@ bool ICACHE_FLASH_ATTR queryEVSE() {
         changeLedTimes(1000, 3000);
       }
       if (vehicleCharging == true && manualStop == false) {   //vehicle interrupted charging
-        vehicleCharging = false;
         millisStopCharging = millis();
-        if (debug) Serial.println("Vehicle interrupted charging");
+        vehicleCharging = false;
+        if (config.getSystemDebug()) Serial.println("Vehicle interrupted charging");
         updateLog(false);
       }
       evseActive = false;
@@ -813,53 +756,84 @@ bool ICACHE_FLASH_ATTR queryEVSE() {
       evseStatus = 3; //charging
       changeLedTimes(2000, 1000);
     }
-    return true;
-  } 
+  }
   
   // Always Active Mode
   else {
+    if (evseVehicleStatus == 5) {
+      evseStatus = 5;
+    }
     if (evseState == 1) { // Steady 12V
       if (vehicleCharging) { // EV interrupted charging
+        millisStopCharging = millis();
         vehicleCharging = false;
         toDeactivateEVSE = true;
-        millisStopCharging = millis();
-        if (debug) Serial.println("Vehicle interrupted charging");
+        lastUID = "vehicle";
+        lastUsername = "vehicle";
+        if (config.getSystemDebug()) Serial.println("Vehicle interrupted charging");
       }
       evseStatus = 1; // ready
+      evseActive = true;
       changeLedTimes(1000, 1000);
     }
     else if (evseState == 2) { // PWM is being generated
       if (evseVehicleStatus == 2) { // EV is present
         if (vehicleCharging) {  // EV interrupted charging
+          millisStopCharging = millis();
           vehicleCharging = false;
           toDeactivateEVSE = true;
-          millisStopCharging = millis();
-          if (debug) Serial.println("Vehicle interrupted charging");
+          lastUID = "vehicle";
+          lastUsername = "vehicle";
+          if (config.getSystemDebug()) Serial.println("Vehicle interrupted charging");
         }
         evseStatus = 2; //vehicle detected
+        evseActive = true;
         changeLedTimes(300, 1000);
       }
       else if (evseVehicleStatus == 3 || evseVehicleStatus == 4) {  // EV is charging
         if (!vehicleCharging) { // EV starts charging
+          millisStartCharging = millis();
           vehicleCharging = true;
           toActivateEVSE = true;
-          millisStartCharging = millis();
+          lastUID = "vehicle";
+          lastUsername = "vehicle";
         }
         evseStatus = 3; //charging
+        evseActive = true;
         changeLedTimes(2000, 1000);
       }
     }
+    else if (evseState == 3) {     //EVSE not Ready
+      if (evseVehicleStatus == 2 ||
+          evseVehicleStatus == 3 ||
+          evseVehicleStatus == 4) {
+        evseStatus = 2; //vehicle detected
+        changeLedTimes(300, 1000);
+      }
+      else {
+        evseStatus = 1; // EVSE deactivated
+        changeLedTimes(1000, 3000);
+      }
+      if (vehicleCharging == true && manualStop == false) {   //vehicle interrupted charging
+        millisStopCharging = millis();
+        vehicleCharging = false;
+        lastUID = "vehicle";
+        lastUsername = "vehicle";
+        if (config.getSystemDebug()) Serial.println("Vehicle interrupted charging");
+        updateLog(false);
+      }
+      evseActive = false;
+      return true;
+    }
   }
-  if (evseVehicleStatus == 5) {
-    evseStatus = 5;
-  }
+  return true;
 }
 
 bool ICACHE_FLASH_ATTR activateEVSE() {
-  if (!alwaysActive) {
+  if (!config.getEvseAlwaysActive(0)) {
     static uint16_t iTransmit;
-    if (debug) Serial.println("[ ModBus ] Query EVSE before activating");
-    queryEVSE();
+    //if (config.getSystemDebug()) Serial.println("[ ModBus ] Query EVSE before activating");
+    //queryEVSE();
 
     if (evseState == 3 &&
       evseVehicleStatus != 0) {    //no modbus error occured
@@ -883,19 +857,19 @@ bool ICACHE_FLASH_ATTR activateEVSE() {
       millisStartCharging = millis();
       manualStop = false;
       // register successfully written
-      if (debug) Serial.println("[ ModBus ] EVSE successfully activated");
+      if (config.getSystemDebug()) Serial.println("[ ModBus ] EVSE successfully activated");
     }
   }
   toActivateEVSE = false;
   evseActive = true;
   logLatest(lastUID, lastUsername);
   vehicleCharging = true;
-  if (useMMeter) {
+  if (config.useMMeter) {
     delay(20);
-    if (mMeterTypeSDM120) {
+    if (config.mMeterTypeSDM120) {
       startTotal = readMeter(0x0156);
     }
-    else if (mMeterTypeSDM630) {
+    else if (config.mMeterTypeSDM630) {
       startTotal = readMeter(0x0156);
     }
     meteredKWh = 0.0;
@@ -910,7 +884,7 @@ bool ICACHE_FLASH_ATTR activateEVSE() {
 }
 
 bool ICACHE_FLASH_ATTR deactivateEVSE(bool logUpdate) {
-  if (!alwaysActive) {
+  if (!config.getEvseAlwaysActive(0)) {
     //New ModBus Master Library
     static uint16_t iTransmit = 16384;  // deactivate evse
     uint8_t result;
@@ -930,16 +904,16 @@ bool ICACHE_FLASH_ATTR deactivateEVSE(bool logUpdate) {
     }
 
     // register successfully written
-    if (debug) Serial.println("[ ModBus ] EVSE successfully deactivated");
+    if (config.getSystemDebug()) Serial.println("[ ModBus ] EVSE successfully deactivated");
     evseActive = false;
-    manualStop = true;
     millisStopCharging = millis();
   }
-  if (useMMeter) {
-    if (mMeterTypeSDM120) {
+  manualStop = true;
+  if (config.useMMeter) {
+    if (config.mMeterTypeSDM120) {
       meteredKWh = readMeter(0x0156) - startTotal;
     }
-    else if (mMeterTypeSDM630) {
+    else if (config.mMeterTypeSDM630) {
       meteredKWh = readMeter(0x0156) - startTotal;
     }
   }
@@ -952,12 +926,12 @@ bool ICACHE_FLASH_ATTR deactivateEVSE(bool logUpdate) {
   vehicleCharging = false;
   toDeactivateEVSE = false;
   
-  if (resetCurrentAfterCharge == true) {
+  if (config.getEvseResetCurrentAfterCharge(0) == true) {
     currentToSet = evseAmpsAfterboot;
     toSetEVSEcurrent = true;
   }
-  delay(500);
-  queryEVSE();
+  //delay(500);
+  //queryEVSE();
   sendEVSEdata();
   return true;
 }
@@ -981,7 +955,7 @@ bool ICACHE_FLASH_ATTR setEVSEcurrent() {  // telegram 1: write EVSE current
   }
 
   // register successfully written
-  if (debug) Serial.println("[ ModBus ] Current successfully set");
+  if (config.getSystemDebug()) Serial.println("[ ModBus ] Current successfully set");
   evseAmpsConfig = currentToSet;  //foce update in WebUI
   sendEVSEdata();               //foce update in WebUI
   toSetEVSEcurrent = false;
@@ -1004,7 +978,7 @@ bool ICACHE_FLASH_ATTR setEVSERegister(uint16_t reg, uint16_t val) {
   }
 
   // register successfully written
-  if (debug) Serial.println("[ ModBus ] Register " + (String)reg + " successfully set to " + (String)val);
+  if (config.getSystemDebug()) Serial.println("[ ModBus ] Register " + (String)reg + " successfully set to " + (String)val);
   return true;
 }
 
@@ -1014,75 +988,71 @@ bool ICACHE_FLASH_ATTR setEVSERegister(uint16_t reg, uint16_t val) {
 void ICACHE_FLASH_ATTR pushSessionTimeOut() {
   // push "TimeOut" to evse.htm!
   // Encode a JSON Object and send it to All WebSocket Clients
-  DynamicJsonBuffer jsonBuffer15;
-  JsonObject& root = jsonBuffer15.createObject();
-  root["command"] = "sessiontimeout";
-  size_t len = root.measureLength();
+  StaticJsonDocument<40> jsonDoc;
+  jsonDoc["command"] = "sessiontimeout";
+  size_t len = measureJson(jsonDoc);
   AsyncWebSocketMessageBuffer * buffer = ws.makeBuffer(len); //  creates a buffer (len + 1) for you.
   if (buffer) {
-    root.printTo((char *)buffer->get(), len + 1);
+    serializeJson(jsonDoc, (char *)buffer->get(), len + 1);
     ws.textAll(buffer);
   }
-  if (debug) Serial.println("[ WebSocket ] TimeOut sent to browser!");
+  if (config.getSystemDebug()) Serial.println("[ WebSocket ] TimeOut sent to browser!");
 }
 
 void ICACHE_FLASH_ATTR sendEVSEdata() {
   if (evseSessionTimeOut == false) {
-    DynamicJsonBuffer jsonBuffer9;
-    JsonObject& root = jsonBuffer9.createObject();
-    root["command"] = "getevsedata";
-    root["evse_vehicle_state"] = evseStatus;
-    root["evse_active"] = evseActive;
-    root["evse_current_limit"] = evseAmpsConfig;
-    root["evse_current"] = String(currentKW, 2);
-    root["evse_charging_time"] = getChargingTime();
-    root["evse_always_active"] = alwaysActive;
-    root["evse_charged_kwh"] = String(meteredKWh, 2);
-    root["evse_charged_amount"] = String((meteredKWh * float(iPrice) / 100.0), 2);
-    root["evse_maximum_current"] = maxCurrent;
+    StaticJsonDocument<420> jsonDoc;
+    jsonDoc["command"] = "getevsedata";
+    jsonDoc["evse_vehicle_state"] = evseStatus;
+    jsonDoc["evse_active"] = evseActive;
+    jsonDoc["evse_current_limit"] = evseAmpsConfig;
+    jsonDoc["evse_current"] = String(currentKW, 2);
+    jsonDoc["evse_charging_time"] = getChargingTime();
+    jsonDoc["evse_always_active"] = config.getEvseAlwaysActive(0);
+    jsonDoc["evse_charged_kwh"] = String(meteredKWh, 2);
+    jsonDoc["evse_charged_amount"] = String((meteredKWh * float(config.getMeterEnergyPrice(0)) / 100.0), 2);
+    jsonDoc["evse_maximum_current"] = maxCurrent;
     if (meteredKWh == 0.0) {
-      root["evse_charged_mileage"] = "0.0";
+      jsonDoc["evse_charged_mileage"] = "0.0";
     }
     else {
-      root["evse_charged_mileage"] = String((meteredKWh * 100.0 / consumption), 1);
+      jsonDoc["evse_charged_mileage"] = String((meteredKWh * 100.0 / config.getEvseAvgConsumption(0)), 1);
     }
-    root["ap_mode"] = inAPMode;
-    size_t len = root.measureLength();
+    jsonDoc["ap_mode"] = inAPMode;
+    size_t len = measureJson(jsonDoc);
     AsyncWebSocketMessageBuffer * buffer = ws.makeBuffer(len);
     if (buffer) {
-      root.printTo((char *)buffer->get(), len + 1);
+      serializeJson(jsonDoc, (char *)buffer->get(), len + 1);
       ws.textAll(buffer);
     }
   }
 }
 
 void ICACHE_FLASH_ATTR sendTime() {
-  DynamicJsonBuffer jsonBuffer10;
-  JsonObject& root = jsonBuffer10.createObject();
-  root["command"] = "gettime";
-  root["epoch"] = now();
-  root["timezone"] = timeZone;
-  size_t len = root.measureLength();
+  StaticJsonDocument<100> jsonDoc;
+  jsonDoc["command"] = "gettime";
+  jsonDoc["epoch"] = now();
+  jsonDoc["timezone"] = config.getNtpTimezone();
+  size_t len = measureJson(jsonDoc);
   AsyncWebSocketMessageBuffer * buffer = ws.makeBuffer(len);
   if (buffer) {
-    root.printTo((char *)buffer->get(), len + 1);
+    serializeJson(jsonDoc, (char *)buffer->get(), len + 1);
     ws.textAll(buffer);
   }
 }
 
 void ICACHE_FLASH_ATTR sendUserList(int page, AsyncWebSocketClient * client) {
-  DynamicJsonBuffer jsonBuffer11;
-  JsonObject& root = jsonBuffer11.createObject();
-  root["command"] = "userlist";
-  root["page"] = page;
-  JsonArray& users = root.createNestedArray("list");
+  DynamicJsonDocument jsonDoc(3000);
+  jsonDoc["command"] = "userlist";
+  jsonDoc["page"] = page;
+  JsonArray users = jsonDoc.createNestedArray("list");
   Dir dir = SPIFFS.openDir("/P/");
   int first = (page - 1) * 15;
   int last = page * 15;
   int i = 0;
   while (dir.next()) {
     if (i >= first && i < last) {
-      JsonObject& item = users.createNestedObject();
+      JsonObject item = users.createNestedObject();
       String uid = dir.fileName();
       uid.remove(0, 3);
       item["uid"] = uid;
@@ -1091,12 +1061,12 @@ void ICACHE_FLASH_ATTR sendUserList(int page, AsyncWebSocketClient * client) {
       // Allocate a buffer to store contents of the file.
       std::unique_ptr<char[]> buf(new char[size]);
       f.readBytes(buf.get(), size);
-      DynamicJsonBuffer jsonBuffer16;
-      JsonObject& json = jsonBuffer16.parseObject(buf.get());
-      if (json.success()) {
-        String username = json["user"];
-        int AccType = json["acctype"];
-        unsigned long validuntil = json["validuntil"];
+      StaticJsonDocument<200> jsonDoc2;
+      DeserializationError error = deserializeJson(jsonDoc2, buf.get());
+      if (!error) {
+        String username = jsonDoc2["user"];
+        int AccType = jsonDoc2["acctype"];
+        unsigned long validuntil = jsonDoc2["validuntil"];
         item["username"] = username;
         item["acctype"] = AccType;
         item["validuntil"] = validuntil;
@@ -1105,11 +1075,11 @@ void ICACHE_FLASH_ATTR sendUserList(int page, AsyncWebSocketClient * client) {
     i++;
   }
   float pages = i / 15.0;
-  root["haspages"] = ceil(pages);
-  size_t len = root.measureLength();
+  jsonDoc["haspages"] = ceil(pages);
+  size_t len = measureJson(jsonDoc);
   AsyncWebSocketMessageBuffer * buffer = ws.makeBuffer(len); //  creates a buffer (len + 1) for you.
   if (buffer) {
-    root.printTo((char *)buffer->get(), len + 1);
+    serializeJson(jsonDoc, (char *)buffer->get(), len + 1);
     if (client) {
       client->text(buffer);
       client->text("{\"command\":\"result\",\"resultof\":\"userlist\",\"result\": true}");
@@ -1121,48 +1091,49 @@ void ICACHE_FLASH_ATTR sendUserList(int page, AsyncWebSocketClient * client) {
 
 void ICACHE_FLASH_ATTR onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len) {
   if (type == WS_EVT_ERROR) {
-    if (debug) Serial.printf("[ WARN ] WebSocket[%s][%u] error(%u): %s\r\n", server->url(), client->id(), *((uint16_t*)arg), (char*)data);
+    if (config.getSystemDebug()) Serial.printf("[ WARN ] WebSocket[%s][%u] error(%u): %s\r\n", server->url(), client->id(), *((uint16_t*)arg), (char*)data);
   }
   else if (type == WS_EVT_DATA) {
     AwsFrameInfo * info = (AwsFrameInfo*)arg;
     if (info->final && info->index == 0 && info->len == len) {
       //the whole message is in a single frame and we got all of it's data
-      if (debug)Serial.println("[ Websocket ] single Frame - all data is here!");
+      if (config.getSystemDebug())Serial.println("[ Websocket ] single Frame - all data is here!");
       for (size_t i = 0; i < info->len; i++) {
         msg += (char) data[i];
       }
-      DynamicJsonBuffer jsonBuffer8;
-      JsonObject& root = jsonBuffer8.parseObject(msg);
-      if (!root.success()) {
-        if (debug) Serial.println(F("[ WARN ] Couldn't parse WebSocket message"));
+      StaticJsonDocument<1800> jsonDoc;
+      DeserializationError error = deserializeJson(jsonDoc, msg);
+      if (error) {
+        if (config.getSystemDebug()) Serial.println(F("[ WARN ] Couldn't parse WebSocket message"));
         msg = "";
         return;
       }
-      processWsEvent(root, client);
+      processWsEvent(jsonDoc, client);
     }
     else {
       //message is comprised of multiple frames or the frame is split into multiple packets
-      if (debug)Serial.println("[ Websocket ] more than one Frame!");
+      if (config.getSystemDebug())Serial.println("[ Websocket ] more than one Frame!");
       for (size_t i = 0; i < len; i++) {
         msg += (char) data[i];
       }
       if (info->final && (info->index + len) == info->len) {
-        DynamicJsonBuffer jsonBuffer8;
-        JsonObject& root = jsonBuffer8.parseObject(msg);
-        if (!root.success()) {
-          if (debug) Serial.println(F("[ WARN ] Couldn't parse WebSocket message"));
+        StaticJsonDocument<1800> jsonDoc;
+        DeserializationError error = deserializeJson(jsonDoc, msg);
+        if (error) {
+          if (config.getSystemDebug()) Serial.println(F("[ WARN ] Couldn't parse WebSocket message"));
           msg = "";
           return;
         }
-        root.prettyPrintTo(Serial);
-        processWsEvent(root, client);
+        //root.prettyPrintTo(Serial);
+        processWsEvent(jsonDoc, client);
       }
     }
   }
 }
 
-void ICACHE_FLASH_ATTR processWsEvent(JsonObject& root, AsyncWebSocketClient * client) {
+void ICACHE_FLASH_ATTR processWsEvent(JsonDocument& root, AsyncWebSocketClient * client) {
   const char * command = root["command"];
+  File configFile;
   if (strcmp(command, "remove") == 0) {
     const char* uid = root["uid"];
     String filename = "/P/";
@@ -1170,21 +1141,20 @@ void ICACHE_FLASH_ATTR processWsEvent(JsonObject& root, AsyncWebSocketClient * c
     SPIFFS.remove(filename);
   }
   else if (strcmp(command, "configfile") == 0) {
-    if (debug) Serial.println("[ SYSTEM ] Try to update config.json...");
-    File f = SPIFFS.open("/config.json", "w+");
-    if (f) {
-      root.prettyPrintTo(f);
-      //f.print(msg);
-      f.close();
+    if (config.getSystemDebug()) Serial.println("[ SYSTEM ] Try to update config.json...");
+    String configString;
+    serializeJson(root, configString);
+    //Serial.println(configString);
+    if (config.updateConfig(configString)) {
+      if (config.getSystemDebug()) Serial.println("[ SYSTEM ] Success - going to reboot now");
       if (vehicleCharging) {
         deactivateEVSE(true);
         delay(100);
       }
-      if (debug) Serial.println("[ SYSTEM ] Success - going to reboot now");
       ESP.reset();
     }
     else {
-      if (debug) Serial.println("[ SYSTEM ] Could not save config.json");
+      if (config.getSystemDebug()) Serial.println("[ SYSTEM ] Could not save config.json");
     }
   }
   else if (strcmp(command, "userlist") == 0) {
@@ -1198,13 +1168,13 @@ void ICACHE_FLASH_ATTR processWsEvent(JsonObject& root, AsyncWebSocketClient * c
     const char* uid = root["uid"];
     String filename = "/P/";
     filename += uid;
-    File f = SPIFFS.open(filename, "w+");
+    File userFile = SPIFFS.open(filename, "w+");
     // Check if we created the file
-    if (f) {
-      f.print(msg);
-      if (debug) Serial.println("[ DEBUG ] Userfile written!");
+    if (userFile) {
+      userFile.print(msg);
+      if (config.getSystemDebug()) Serial.println("[ DEBUG ] Userfile written!");
     }
-    f.close();
+    userFile.close();
     ws.textAll("{\"command\":\"result\",\"resultof\":\"userfile\",\"result\": true}");
   }
   else if (strcmp(command, "latestlog") == 0) {
@@ -1234,38 +1204,31 @@ void ICACHE_FLASH_ATTR processWsEvent(JsonObject& root, AsyncWebSocketClient * c
     sendTime();
   }
   else if (strcmp(command, "getconf") == 0) {
-    File configFile = SPIFFS.open("/config.json", "r");
-    if (configFile) {
-      size_t len = configFile.size();
-      AsyncWebSocketMessageBuffer * buffer = ws.makeBuffer(len); //  creates a buffer (len + 1) for you.
-      if (buffer) {
-        configFile.readBytes((char *)buffer->get(), len + 1);
-        ws.textAll(buffer);
-      }
-      configFile.close();
-    }
+    Serial.println("Call getConfigJson..");
+    ws.textAll(config.getConfigJson());
+    Serial.println("Call getConfigJson success");
   }
   else if (strcmp(command, "getevsedata") == 0) {
     sendEVSEdata();
     evseQueryTimeOut = millis() + 10000; //Timeout for pushing data in loop
     evseSessionTimeOut = false;
-    if (debug) Serial.println("[ WebSocket ] Data sent to UI");
+    if (config.getSystemDebug()) Serial.println("[ WebSocket ] Data sent to UI");
   }
   else if (strcmp(command, "setcurrent") == 0) {
     currentToSet = root["current"];
-    if (debug) Serial.print("[ WebSocket ] Call setEVSECurrent() ");
-    if (debug) Serial.println(currentToSet);
+    if (config.getSystemDebug()) Serial.print("[ WebSocket ] Call setEVSECurrent() ");
+    if (config.getSystemDebug()) Serial.println(currentToSet);
     toSetEVSEcurrent = true;
   }
   else if (strcmp(command, "activateevse") == 0) {
     toActivateEVSE = true;
-    if (debug) Serial.println("[ WebSocket ] Activate EVSE via WebSocket");
+    if (config.getSystemDebug()) Serial.println("[ WebSocket ] Activate EVSE via WebSocket");
     lastUID = "GUI";
     lastUsername = "GUI";
   }
   else if (strcmp(command, "deactivateevse") == 0) {
     toDeactivateEVSE = true;
-    if (debug) Serial.println("[ WebSocket ] Deactivate EVSE via WebSocket");
+    if (config.getSystemDebug()) Serial.println("[ WebSocket ] Deactivate EVSE via WebSocket");
     lastUID = "GUI";
     lastUsername = "GUI";
   }
@@ -1273,13 +1236,19 @@ void ICACHE_FLASH_ATTR processWsEvent(JsonObject& root, AsyncWebSocketClient * c
     uint16_t reg = atoi(root["register"]);
     uint16_t val = atoi(root["value"]);
     setEVSERegister(reg, val);
+    delay(10);
+    getAdditionalEVSEData();
   }
   else if (strcmp(command, "factoryreset") == 0) {
-    SPIFFS.remove("/config.json");
-    SPIFFS.remove("/latestlog.json");
+    factoryReset();
+  }
+  else if (strcmp(command, "resetuserdata") == 0) {
+    if (resetUserData()) {
+      if (config.getSystemDebug()) Serial.println("[ WebSocket ] User Data Reset successfully done");
+    }
   }
   else if (strcmp(command, "initlog") == 0) {
-    if (debug)Serial.println("[ SYSTEM ] Websocket Command \"initlog\"...");
+    if (config.getSystemDebug())Serial.println("[ SYSTEM ] Websocket Command \"initlog\"...");
     initLogFile();
   }
   msg = "";
@@ -1288,35 +1257,6 @@ void ICACHE_FLASH_ATTR processWsEvent(JsonObject& root, AsyncWebSocketClient * c
 //////////////////////////////////////////////////////////////////////////////////////////
 ///////       Setup Functions
 //////////////////////////////////////////////////////////////////////////////////////////
-void ICACHE_FLASH_ATTR ShowReaderDetails() {
-  // Get the MFRC522 software version
-  byte v = mfrc522.PCD_ReadRegister(mfrc522.VersionReg);
-  if (debug) Serial.print(F("[ INFO ] MFRC522 Version: 0x"));
-  if (debug) Serial.print(v, HEX);
-  if (v == 0x91)
-    if (debug) Serial.print(F(" = v1.0"));
-  else if (v == 0x92)
-    if (debug) Serial.print(F(" = v2.0"));
-  else if (v == 0x88)
-    if (debug) Serial.print(F(" = clone"));
-  else
-    if (debug) Serial.print(F(" (unknown)"));
-  if (debug) Serial.println("");
-  // When 0x00 or 0xFF is returned, communication probably failed
-  if ((v == 0x00) || (v == 0xFF)) {
-    if (debug) Serial.println(F("[ WARN ] Communication failure, check if MFRC522 properly connected"));
-  }
-}
-
-void ICACHE_FLASH_ATTR setupRFID(int rfidss, int rfidgain) {
-  SPI.begin();           // MFRC522 Hardware uses SPI protocol
-  mfrc522.PCD_Init(rfidss, UINT8_MAX);    // Initialize MFRC522 Hardware
-  mfrc522.PCD_SetAntennaGain(rfidgain);
-  if (debug) Serial.printf("[ INFO ] RFID SS_PIN: %u and Gain Factor: %u", rfidss, rfidgain);
-  if (debug) Serial.println("");
-  ShowReaderDetails();
-}
-
 bool ICACHE_FLASH_ATTR connectSTA(const char* ssid, const char* password, byte bssid[6]) {
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password, 0, bssid);
@@ -1330,7 +1270,7 @@ bool ICACHE_FLASH_ATTR connectSTA(const char* ssid, const char* password, byte b
       break;
     }
     delay(500);
-    if (debug) Serial.print(F("."));
+    if (config.getSystemDebug()) Serial.print(F("."));
   }
   while (millis() - now < timeout * 1000);
   if (WiFi.status() == WL_CONNECTED) {
@@ -1338,8 +1278,8 @@ bool ICACHE_FLASH_ATTR connectSTA(const char* ssid, const char* password, byte b
     return true;
   }
 
-  if (debug) Serial.println();
-  if (debug) Serial.println(F("[ WARN ] Couldn't connect in time"));
+  if (config.getSystemDebug()) Serial.println();
+  if (config.getSystemDebug()) Serial.println(F("[ WARN ] Couldn't connect in time"));
   return false;
 }
 
@@ -1360,207 +1300,84 @@ bool ICACHE_FLASH_ATTR startAP(const char * ssid, const char * password = NULL) 
 }
 
 bool ICACHE_FLASH_ATTR loadConfiguration() {
-  File configFile = SPIFFS.open("/config.json", "r");
-  if (!configFile) {
-    if (debug) Serial.println(F("[ WARN ] Failed to open config file"));
-    return false;
-  }
-  size_t size = configFile.size();
-  std::unique_ptr<char[]> buf(new char[size]);
-  configFile.readBytes(buf.get(), size);
-  DynamicJsonBuffer jsonBuffer14;
-  JsonObject& json = jsonBuffer14.parseObject(buf.get());
-  if (!json.success()) {
-    Serial.println(F("[ WARN ] Failed to parse config file"));
-    return false;
-  }
-  Serial.println(F("[ INFO ] Config file found"));
-  json.prettyPrintTo(Serial);
-  Serial.println();
 
-  if (json.containsKey("debug")) {
-    debug = json["debug"];
-  }
-  if (debug) {
+  Serial.println("[ SYSTEM ] Loading Config File on Startup...");
+  if (!config.loadConfig()) return false;
+  config.loadConfiguration();
+
+  if (config.getSystemDebug()) Serial.println("[ SYSTEM ] Check for old config version and renew it");
+  config.renewConfigFile();
+
+  delay(300); // wait a few milliseconds to prevent voltage drop...
+
+  if (config.getSystemDebug()) {
     Serial.println("[ DEBUGGER ] Debug Mode: ON!");
   }
   else {
     Serial.println("[ DEBUGGER ] Debug Mode: OFF!");
   }
 
-  useMMeter = false;
-  useSMeter = false;
-  if (json.containsKey("meter") &&
-      json.containsKey("metertype")) {
-    iPrice = json["price"];
-    if (json["metertype"] == "S0") {    //S0 meter
-      if (json.containsKey("intpin") &&
-          json.containsKey("kwhimp") &&
-          json.containsKey("meterphase")) {
-        meterPin = json["intpin"];
-        kwhimp = json["kwhimp"];
-        meterphase = json["meterphase"];
-        useSMeter = true;
-        if (json.containsKey("implen")) {
-          intLength = json["implen"];
-          intLength += 3;
-        }
-        else {
-          intLength = 33;
-        }
-        if (debug) Serial.println(F("[ INFO ] S0 Meter is configured"));
-      }
-    }
-    else { //Modbus meter
-      if (json["metertype"] == "SDM120") {
-        mMeterTypeSDM120 = true;
-      }
-      else if (json["metertype"] == "SDM630") {
-        mMeterTypeSDM630 = true;
-      }
-      useMMeter = true;
-      if (debug) Serial.print(F("[ INFO ] Modbus Meter is configured: "));
-      if (debug) json["metertype"].printTo(Serial);
-      if (debug) Serial.println();
-    }
-  }
-
-  useButton = false;
-  if (json.containsKey("buttonactive")) {
-    if (json["buttonactive"] == true &&
-        json.containsKey("buttonpin")) {
-      useButton = true;
-      buttonPin = json["buttonpin"];
-      if (debug) Serial.println("[ INFO ] EVSE set to \"Button active\"");
-    }
-  }
-
-  if (json.containsKey("avgconsumption")) {
-    String sConsumption = json["avgconsumption"];
-    consumption = strtof((sConsumption).c_str(),0);
-  }
-
-  if (json.containsKey("ntpIP")) {
-    ntpIP = json["ntpIP"];
-  }
-
-  const char * l_hostname = json["hostnm"];
-  free(deviceHostname);
-  deviceHostname = strdup(l_hostname);
-
-  const char * bssidmac = json["bssid"];
   byte bssid[6];
-  parseBytes(bssidmac, ':', bssid, 6, 16);
-  WiFi.hostname(deviceHostname);
+  parseBytes(config.getWifiBssid(), ':', bssid, 6, 16);
+  WiFi.hostname(config.getSystemHostname());
   
-  if (!MDNS.begin(deviceHostname)) {
+  if (!MDNS.begin(config.getSystemHostname())) {
     Serial.println("Error setting up MDNS responder!");
   }
   MDNS.addService("http", "tcp", 80);
 
-  if (json.containsKey("timezone")) {
-    timeZone = json["timezone"];
+  if (!config.getSystemWsauth()) {
+    ws.setAuthentication("admin", config.getSystemPass());
+    if (config.getSystemDebug())Serial.println("[ Websocket ] Use Basic Authentication for Websocket");
   }
-
-  iFactor = json["factor"];
-  maxinstall = json["maxinstall"];
-
-  const char * ssid = json["ssid"];
-  const char * password = json["pswd"];
-  int wmode = json["wmode"];
-  adminpass = strdup(json["adminpwd"]);
-
-  if (json.containsKey("wsauth")) {
-    dontUseWsAuthentication = json["wsauth"];
-  }
-  if (json.containsKey("disableled")) {
-    if (json["disableled"] == false) {
-      pinMode(ledPin, OUTPUT);
-    }
-  }
-  else {
-    pinMode(ledPin, OUTPUT);
-  }
-  if (!dontUseWsAuthentication) {
-    ws.setAuthentication("admin", adminpass);
-    if (debug)Serial.println("[ Websocket ] Use Basic Authentication for Websocket");
-  }
-  server.addHandler(new SPIFFSEditor("admin", adminpass));
+  server.addHandler(new SPIFFSEditor("admin", config.getSystemPass()));
 
   queryEVSE();
-  getAdditionalEVSEData();
+  s_addEvseData addEvseData = getAdditionalEVSEData();
   if (vehicleCharging) {
     updateLog(true);
   }
 
-  if (json.containsKey("alwaysactive")) {
-    if (json["alwaysactive"] == true) {
-      alwaysActive = true;
-      evseActive = true;
-      if (evseReg2005 != 0) {
-        delay(50);
-        setEVSERegister(2005, 0);
-      }
-      if (debug) Serial.println(F("[ INFO ] EVSE-WiFi runs in always active mode"));
+  if (config.getEvseAlwaysActive(0)) {
+    evseActive = true;
+    if (addEvseData.evseReg2005 != 0) {
+      delay(50);
+      setEVSERegister(2005, 0);
     }
+    if (config.getSystemDebug()) Serial.println(F("[ INFO ] EVSE-WiFi runs in always active mode"));
   }
 
-  useRFID = false;
-  if (json.containsKey("rfid") &&
-       json.containsKey("sspin") &&
-       json.containsKey("rfidgain")) {
-    if (json["rfid"] == true && alwaysActive == false) {
-      int rfidss = json["sspin"];
-      int rfidgain = json["rfidgain"];
-      useRFID = true;
-      if (debug) Serial.println(F("[ INFO ] Trying to setup RFID hardware"));
-      setupRFID(rfidss, rfidgain);
-    }
-  }
-
-  if (json.containsKey("resetcurrentaftercharge")) {
-    if (json["resetcurrentaftercharge"] == true) {
-      resetCurrentAfterCharge = true;
-    }
+  if (config.getRfidActive() == true && config.getEvseAlwaysActive(0) == false) {
+    if (config.getSystemDebug()) Serial.println(F("[ INFO ] Trying to setup RFID hardware"));
+    rfid.begin(config.getRfidPin(), config.getRfidGain(), &ntp, config.getSystemDebug());
   }
 
   deactivateEVSE(false);  //initial deactivation
   millisStopCharging = 0;
   vehicleCharging = false;
   
-  if (wmode == 1) {
-    if (debug) Serial.println(F("[ INFO ] SimpleEVSE Wifi is running in AP Mode "));
+  if (config.getWifiWmode() == 1) {
+    if (config.getSystemDebug()) Serial.println(F("[ INFO ] SimpleEVSE Wifi is running in AP Mode "));
     WiFi.disconnect(true);
-    return startAP(ssid, password);
+    return startAP(config.getWifiSsid(), config.getWifiPass());
   }
-  if (!connectSTA(ssid, password, bssid)) {
+  if (!connectSTA(config.getWifiSsid(), config.getWifiPass(), bssid)) {
     return false;
   }
 
-  if (json.containsKey("staticip") &&
-      json.containsKey("ip") &&
-      json.containsKey("subnet") &&
-      json.containsKey("gateway") &&
-      json.containsKey("dns")) {
-    if (json["staticip"] == true) {
-      const char * clientipch = json["ip"];
-      const char * subnetch = json["subnet"];
-      const char * gatewaych = json["gateway"];
-      const char * dnsch = json["dns"];
-
+    if (config.getWifiStaticIp() == true) {
       IPAddress clientip;
       IPAddress subnet;
       IPAddress gateway;
       IPAddress dns;
 
-      clientip.fromString(clientipch);
-      subnet.fromString(subnetch);
-      gateway.fromString(gatewaych);
-      dns.fromString(dnsch);
+      clientip.fromString(config.getWifiIp());
+      subnet.fromString(config.getWiFiSubnet());
+      gateway.fromString(config.getWiFiGateway());
+      dns.fromString(config.getWiFiDns());
 
       WiFi.config(clientip, gateway, subnet, dns);
     }
-  }
 
   Serial.println();
   Serial.print(F("[ INFO ] Client IP address: "));
@@ -1568,15 +1385,15 @@ bool ICACHE_FLASH_ATTR loadConfiguration() {
 
   //Check internet connection
   delay(100);
-  if (debug) Serial.print("[ NTP ] NTP Server - set up NTP");
-  const char * ntpserver = ntpIP;
+  if (config.getSystemDebug()) Serial.print("[ NTP ] NTP Server - set up NTP");
+  const char * ntpserver = config.getNtpIp();
   IPAddress timeserverip;
   WiFi.hostByName(ntpserver, timeserverip);
   String ip = printIP(timeserverip);
-  if (debug) Serial.println(" IP: " + ip);
-  NTP.Ntp(ntpIP, timeZone, 3600);   //use NTP Server, timeZone, update every x sec
-
+  if (config.getSystemDebug()) Serial.println(" IP: " + ip);
+  ntp.Ntp(config.getNtpIp(), config.getNtpTimezone(), 3600);   //use NTP Server, timeZone, update every x sec
   
+  return true;
 }
 
 void ICACHE_FLASH_ATTR restoreDefaultConfig() {
@@ -1645,58 +1462,55 @@ void ICACHE_FLASH_ATTR setWebEvents() {
   //getParameters
   server.on("/getParameters", HTTP_GET, [](AsyncWebServerRequest * request) {
     AsyncResponseStream *response = request->beginResponseStream("application/json");
-    DynamicJsonBuffer jsonBuffer17;
-    JsonObject& root = jsonBuffer17.createObject();
-    root["type"] = "parameters";
-    JsonArray& list = root.createNestedArray("list");
-    DynamicJsonBuffer jsonBuffer18;
-    JsonObject& item = jsonBuffer18.createObject();
-    item["vehicleState"] = evseStatus;
-    item["evseState"] = evseActive;
-    item["maxCurrent"] = maxCurrent;
-    item["actualCurrent"] = evseAmpsConfig;
-    item["actualPower"] =  float(int((currentKW + 0.005) * 100.0)) / 100.0;
-    item["duration"] = getChargingTime();
-    item["alwaysActive"] = alwaysActive;
-    item["lastActionUser"] = lastUsername;
-    item["lastActionUID"] = lastUID;
-    item["energy"] = float(int((meteredKWh + 0.005) * 100.0)) / 100.0;
-    item["mileage"] = float(int(((meteredKWh * 100.0 / consumption) + 0.05) * 10.0)) / 10.0;
-    if (useMMeter) {
-      item["meterReading"] = float(int((meterReading + 0.005) * 100.0)) / 100.0;
-      item["currentP1"] = currentP1;
-      item["currentP2"] = currentP2;
-      item["currentP3"] = currentP3;
+    StaticJsonDocument<500> jsonDoc;
+    jsonDoc["type"] = "parameters";
+    JsonArray list = jsonDoc.createNestedArray("list");
+    JsonObject items = list.createNestedObject();
+    items["vehicleState"] = evseStatus;
+    items["evseState"] = evseActive;
+    items["maxCurrent"] = maxCurrent;
+    items["actualCurrent"] = evseAmpsConfig;
+    items["actualPower"] =  float(int((currentKW + 0.005) * 100.0)) / 100.0;
+    items["duration"] = getChargingTime();
+    items["alwaysActive"] = config.getEvseAlwaysActive(0);
+    items["lastActionUser"] = lastUsername;
+    items["lastActionUID"] = lastUID;
+    items["energy"] = float(int((meteredKWh + 0.005) * 100.0)) / 100.0;
+    items["mileage"] = float(int(((meteredKWh * 100.0 / config.getEvseAvgConsumption(0)) + 0.05) * 10.0)) / 10.0;
+    if (config.useMMeter) {
+      items["meterReading"] = float(int((meterReading + 0.005) * 100.0)) / 100.0;
+      items["currentP1"] = currentP1;
+      items["currentP2"] = currentP2;
+      items["currentP3"] = currentP3;
     }
     else {
-      item["meterReading"] = float(int((startTotal + meteredKWh + 0.005) * 100.0)) / 100.0;;
-      if (meterphase == 1) {
-        float fCurrent = float(int((currentKW / float(iFactor) / 0.227 + 0.005) * 100.0) / 100.0);
-        if (iFactor == 1) {
-          item["currentP1"] = fCurrent;
-          item["currentP2"] = 0.0;
-          item["currentP3"] = 0.0;
+      items["meterReading"] = float(int((startTotal + meteredKWh + 0.005) * 100.0)) / 100.0;;
+      if (config.getMeterPhaseCount(0) == 1) {
+        float fCurrent = float(int((currentKW / float(config.getMeterFactor(0)) / 0.227 + 0.005) * 100.0) / 100.0);
+        if (config.getMeterFactor(0) == 1) {
+          items["currentP1"] = fCurrent;
+          items["currentP2"] = 0.0;
+          items["currentP3"] = 0.0;
         }
-        else if (iFactor == 2) {
-          item["currentP1"] = fCurrent;
-          item["currentP2"] = fCurrent;
-          item["currentP3"] = 0.0;
+        else if (config.getMeterFactor(0) == 2) {
+          items["currentP1"] = fCurrent;
+          items["currentP2"] = fCurrent;
+          items["currentP3"] = 0.0;
         }
-        else if (iFactor == 3) {
-          item["currentP1"] = fCurrent;
-          item["currentP2"] = fCurrent;
-          item["currentP3"] = fCurrent;
+        else if (config.getMeterFactor(0) == 3) {
+          items["currentP1"] = fCurrent;
+          items["currentP2"] = fCurrent;
+          items["currentP3"] = fCurrent;
         }
       }
       else {
-        float fCurrent = float(int((currentKW / 0.227 / float(iFactor) / 3.0 + 0.005) * 100.0) / 100.0);
-        item["currentP1"] = fCurrent;
-        item["currentP2"] = fCurrent;
-        item["currentP3"] = fCurrent;
+        float fCurrent = float(int((currentKW / 0.227 / float(config.getMeterFactor(0)) / 3.0 + 0.005) * 100.0) / 100.0);
+        items["currentP1"] = fCurrent;
+        items["currentP2"] = fCurrent;
+        items["currentP3"] = fCurrent;
       }
     }
-    list.add(item);
-    root.printTo(*response);
+    serializeJson(jsonDoc, *response);
     request->send(response);
   });
 
@@ -1705,12 +1519,12 @@ void ICACHE_FLASH_ATTR setWebEvents() {
     AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/latestlog.json", "application/json");
     request->send(response);
   });
-
-  //setCurrent (0,233)
+  //setCurrent (0,233) 
   server.on("/setCurrent", HTTP_GET, [](AsyncWebServerRequest * request) {
       awp = request->getParam(0);
       if (awp->name() == "current") {
-        if (atoi(awp->value().c_str()) <= maxinstall && (atoi(awp->value().c_str()) >= 6 || atoi(awp->value().c_str()) == 0)) {
+        if ((atoi(awp->value().c_str()) <= config.getSystemMaxInstall() && atoi(awp->value().c_str()) >= 6) || 
+            atoi(awp->value().c_str()) == 0) {
           currentToSet = atoi(awp->value().c_str());
           if (setEVSEcurrent()) {
             request->send(200, "text/plain", "S0_set current to given value");
@@ -1720,7 +1534,7 @@ void ICACHE_FLASH_ATTR setWebEvents() {
           }
         }
         else {
-          request->send(200, "text/plain", ("E1_could not set current - give a value between 6 and " + (String)maxinstall));
+          request->send(200, "text/plain", ("E1_could not set current - give a value between 6 and " + (String)config.getSystemMaxInstall()));
         }
       }
       else {
@@ -1731,8 +1545,8 @@ void ICACHE_FLASH_ATTR setWebEvents() {
   //setStatus
   server.on("/setStatus", HTTP_GET, [](AsyncWebServerRequest * request) {
     awp = request->getParam(0);
-    if (awp->name() == "active" && alwaysActive == false) {
-      if (debug) Serial.println(awp->value().c_str());
+    if (awp->name() == "active" && config.getEvseAlwaysActive(0) == false) {
+      if (config.getSystemDebug()) Serial.println(awp->value().c_str());
       if (strcmp(awp->value().c_str(), "true") == 0) {
         lastUID = "API";
         lastUsername = "API";
@@ -1771,13 +1585,10 @@ void ICACHE_FLASH_ATTR setWebEvents() {
   //evseHost
   server.on("/evseHost", HTTP_GET, [](AsyncWebServerRequest * request) {
     AsyncResponseStream *response = request->beginResponseStream("application/json");
-    DynamicJsonBuffer jsonBuffer19;
-    JsonObject& root = jsonBuffer19.createObject();
-    root["type"] = "evseHost";
-    JsonArray& list = root.createNestedArray("list");
-    DynamicJsonBuffer jsonBuffer20;
-    JsonObject& item = jsonBuffer20.createObject();
-
+    StaticJsonDocument<340> jsonDoc;
+    jsonDoc["type"] = "evseHost";
+    JsonArray list = jsonDoc.createNestedArray("list");
+    JsonObject item = list.createNestedObject();
     struct ip_info info;
     if (inAPMode) {
       wifi_get_ip_info(SOFTAP_IF, &info);
@@ -1802,10 +1613,9 @@ void ICACHE_FLASH_ATTR setWebEvents() {
     item["ip"] = printIP(ipaddr);
     item["gateway"] = printIP(gwaddr);
     item["netmask"] = printIP(nmaddr);
-    item["uptime"] = NTP.getUptimeSec();
+    item["uptime"] = ntp.getUptimeSec();
 
-    list.add(item);
-    root.printTo(*response);
+    serializeJson(jsonDoc, *response);
     request->send(response);
   });
 
@@ -1829,14 +1639,13 @@ void ICACHE_FLASH_ATTR setWebEvents() {
 
 void ICACHE_FLASH_ATTR fallbacktoAPMode() {
   WiFi.disconnect(true);
-  if (debug) Serial.println(F("[ INFO ] SimpleEVSE Wifi is running in Fallback AP Mode"));
+  if (config.getSystemDebug()) Serial.println(F("[ INFO ] EVSE-WiFi is running in Fallback AP Mode"));
   uint8_t macAddr[6];
   WiFi.softAPmacAddress(macAddr);
   char ssid[16];
   sprintf(ssid, "EVSE-WiFi-%02x%02x%02x", macAddr[3], macAddr[4], macAddr[5]);
-  if (adminpass == NULL)adminpass = "admin";
   isWifiConnected = startAP(ssid);
-  void setWebEvents();
+  setWebEvents();
   inFallbackMode = true;
 }
 
@@ -1857,7 +1666,7 @@ void ICACHE_FLASH_ATTR startWebserver() {
     request->send(response);
   }, [](AsyncWebServerRequest * request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
     if (!index) {
-      if (debug) Serial.printf("[ UPDT ] Firmware update started: %s\n", filename.c_str());
+      if (config.getSystemDebug()) Serial.printf("[ UPDT ] Firmware update started: %s\n", filename.c_str());
       Update.runAsync(true);
       if (!Update.begin((ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000)) {
         Update.printError(Serial);
@@ -1870,7 +1679,7 @@ void ICACHE_FLASH_ATTR startWebserver() {
     }
     if (final) {
       if (Update.end(true)) {
-        if (debug) Serial.printf("[ UPDT ] Firmware update finished: %uB\n", index + len);
+        if (config.getSystemDebug()) Serial.printf("[ UPDT ] Firmware update finished: %uB\n", index + len);
       } else {
         Update.printError(Serial);
       }
@@ -1881,7 +1690,7 @@ void ICACHE_FLASH_ATTR startWebserver() {
 
   // HTTP basic authentication
   server.on("/login", HTTP_GET, [](AsyncWebServerRequest * request) {
-      if (!request->authenticate("admin", adminpass)) {
+      if (!request->authenticate("admin", config.getSystemPass())) {
         return request->requestAuthentication();
       }
       request->send(200, "text/plain", "Success");
@@ -1896,29 +1705,48 @@ void ICACHE_FLASH_ATTR startWebserver() {
 //////////////////////////////////////////////////////////////////////////////////////////
 void ICACHE_FLASH_ATTR setup() {
   Serial.begin(9600);
-  if (debug) Serial.println();
-  if (debug) Serial.println("[ INFO ] SimpleEVSE WiFi");
-  delay(1000);
-  
+  if (config.getSystemDebug()) Serial.println();
+  if (config.getSystemDebug()) Serial.println("[ INFO ] SimpleEVSE WiFi");
+  delay(500);
+
   SPIFFS.begin();
   sSerial.begin(9600);
   evseNode.begin(1, sSerial);
   meterNode.begin(2, Serial);
 
   if (!loadConfiguration()) {
+    Serial.println("[ WARNING ] Going to fallback mode!");
     fallbacktoAPMode();
   }
-  if (useButton) {
-    pinMode(buttonPin, INPUT_PULLUP);
+  if (config.getButtonActive(0)) {
+    pinMode(config.getButtonPin(0), INPUT_PULLUP);
   }
-  if (useSMeter) {
-    pinMode(meterPin, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(meterPin), handleMeterInt, FALLING);
-    if (debug) Serial.println("[ Meter ] Use GPIO 0-15 with Pull-Up");
+
+  //Factory Reset when button pressed for 20 sec after boot
+  if (digitalRead(config.getButtonPin(0)) == LOW) {
+    pinMode(ledPin, OUTPUT);
+    Serial.println("Button Pressed while boot!");
+    digitalWrite(ledPin, HIGH);
+    unsigned long millisBefore = millis();
+    int button = config.getButtonPin(0);
+    while (digitalRead(button) == LOW) {  
+      if (millis() > (millisBefore + 20000)) {
+        factoryReset();
+        Serial.println("[ SYSTEM ] System has been reset to factory settings!");
+        digitalWrite(ledPin, LOW);
+      }
+      delay(100);
+    }
+  }
+
+  if (config.useSMeter) {
+    pinMode(config.getMeterPin(0), INPUT_PULLUP);
+    attachInterrupt(digitalPinToInterrupt(config.getMeterPin(0)), handleMeterInt, FALLING);
+    if (config.getSystemDebug()) Serial.println("[ Meter ] Use GPIO 0-15 with Pull-Up");
   }
   now();
   startWebserver();
-  if (debug) Serial.println("End of setup routine");
+  if (config.getSystemDebug()) Serial.println("End of setup routine");
 
   if (1 == 2) {
     restoreDefaultConfig();
@@ -1931,8 +1759,7 @@ void ICACHE_FLASH_ATTR setup() {
 //////////////////////////////////////////////////////////////////////////////////////////
 void ICACHE_RAM_ATTR loop() {
   unsigned long currentMillis = millis();
-  unsigned long deltaTime = currentMillis - previousLoopMillis;
-  unsigned long uptime = NTP.getUptimeSec();
+  unsigned long uptime = ntp.getUptimeSec();
   previousLoopMillis = currentMillis;
   doChangeLedTimes();
 
@@ -1955,20 +1782,17 @@ void ICACHE_RAM_ATTR loop() {
 
   if (uptime > 3888000) {   // auto restart after 45 days uptime
     if (vehicleCharging == false) {
-      if (debug) Serial.println(F("[ UPDT ] Auto restarting..."));
+      if (config.getSystemDebug()) Serial.println(F("[ UPDT ] Auto restarting..."));
       delay(1000);
       toReboot = true;
     }
   }
-  if (inFallbackMode && uptime > 600) {
-    toReboot = true;
-  }
   if (toReboot) {
-    if (debug) Serial.println(F("[ UPDT ] Rebooting..."));
+    if (config.getSystemDebug()) Serial.println(F("[ UPDT ] Rebooting..."));
     delay(100);
     ESP.restart();
   }
-  if (currentMillis >= cooldown && useRFID == true) {
+  if (currentMillis >= rfid.cooldown && config.getRfidActive() == true) {
     rfidloop();
   }
   if (toActivateEVSE) {
@@ -1979,7 +1803,7 @@ void ICACHE_RAM_ATTR loop() {
     deactivateEVSE(true);
     delay(300);
   }
-  if (currentMillis > (lastModbusAnswer + 3000)) { //Update Modbus data every 3000ms and send data to WebUI
+  if (currentMillis > (lastModbusAction + 3000)) { //Update Modbus data every 3000ms and send data to WebUI
     queryEVSE();
     if (evseSessionTimeOut == false) {
       sendEVSEdata();
@@ -1990,16 +1814,13 @@ void ICACHE_RAM_ATTR loop() {
     evseSessionTimeOut = true;
     pushSessionTimeOut();
   }
-  //if (currentMillis > lastModbusAnswer + (queryTimer * 1000) && evseActive == true && evseSessionTimeOut == true) { //Query modbus every x seconds, when webinterface is not shown
-  //  queryEVSE();
-  //}
-  if (useMMeter && millisUpdateMMeter < millis()) {
+  if (config.useMMeter && millisUpdateMMeter < millis()) {
     updateMMeterData();
   }
   if (meterInterrupt != 0) {
     updateS0MeterData();
   }
-  if (useSMeter && previousMeterMillis < millis() - (meterTimeout * 1000)) {  //Timeout when there is less than ~300 watt power consuption -> 10 sec of no interrupt from meter
+  if (config.useSMeter && previousMeterMillis < millis() - (meterTimeout * 1000)) {  //Timeout when there is less than ~300 watt power consuption -> 10 sec of no interrupt from meter
     if (previousMeterMillis != 0) {
       currentKW = 0.0;
     }
@@ -2007,10 +1828,11 @@ void ICACHE_RAM_ATTR loop() {
   if (toSetEVSEcurrent) {
     setEVSEcurrent();
   }
-  if (useButton && digitalRead(buttonPin) == HIGH && buttonState == LOW) {
-    if (debug) Serial.println("Button released");
+
+  if (config.getButtonActive(0) && digitalRead(config.getButtonPin(0)) == HIGH && buttonState == LOW) {
+    if (config.getSystemDebug()) Serial.println("Button released");
     buttonState = HIGH;
-    if (!alwaysActive) {
+    if (!config.getEvseAlwaysActive(0)) {
       if (evseActive) {
         toDeactivateEVSE = true;
       }
@@ -2021,13 +1843,22 @@ void ICACHE_RAM_ATTR loop() {
       lastUID = "Button";
     }
   }
-  if (useButton && digitalRead(buttonPin) != buttonState) {
+
+  int buttonPin;
+  if (inFallbackMode) {
+    buttonPin = D4;
+  }
+  else {
+    config.getButtonPin(0);
+  }
+
+  if (digitalRead(buttonPin) != buttonState) {
     buttonState = digitalRead(buttonPin);
     buttonTimer = millis();
-    if (debug) Serial.println("Button pressed...");
+    if (config.getSystemDebug()) Serial.println("Button pressed...");
   }
-  if (useButton && digitalRead(buttonPin) == LOW && (millis() - buttonTimer) > 10000) { //Reboot
-    if (debug) Serial.println("Button Pressed > 10 sec -> Reboot");
+  if (digitalRead(buttonPin) == LOW && (millis() - buttonTimer) > 10000) { //Reboot
+    if (config.getSystemDebug()) Serial.println("Button Pressed > 10 sec -> Reboot");
     toReboot = true;
   }
   if (toSendStatus == true) {

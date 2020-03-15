@@ -5,7 +5,7 @@
  *      Author: joe
  */
 
-#include "Ntp.h"
+#include "ntp.h"
 
 char * NtpClient::TimeServerName;
 int8_t NtpClient::timezone;

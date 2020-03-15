@@ -1,7 +1,7 @@
 //Globals
 var websock = null;
 var wsUri;
-var fw_version = "0.3.1"
+var fw_version = "0.4.1"
 
 //EVSE Control
 var chargingTime;
@@ -32,20 +32,20 @@ var file = {};
 var completed = false;
 var wsUri;
 
-window.onload = function() {
-	const fw = document.getElementsByClassName("fw_version")
-	for(let i of fw){i.innerHTML = fw_version;}
+window.onload = function () {
+  const fw = document.getElementsByClassName("fw_version")
+  for (let i of fw) { i.innerHTML = fw_version; }
 }
 
-//Script data for EVSE Control
+// Script data for EVSE Control
 function loadEVSEControl() {
-    websock.send("{\"command\":\"getevsedata\"}");
-	document.getElementById("evseContent").style.display = "block";
-	document.getElementById("usersContent").style.display = "none";
-	document.getElementById("settingsContent").style.display = "none";
-	document.getElementById("logContent").style.display = "none";
-	document.getElementById("loginContent").style.display = "none";
-	closeNav();
+  websock.send("{\"command\":\"getevsedata\"}");
+  document.getElementById("evseContent").style.display = "block";
+  document.getElementById("usersContent").style.display = "none";
+  document.getElementById("settingsContent").style.display = "none";
+  document.getElementById("logContent").style.display = "none";
+  document.getElementById("loginContent").style.display = "none";
+  closeNav();
 }
 function listEVSEData(obj) {
   chargingTime = obj.evse_charging_time;
@@ -55,123 +55,121 @@ function listEVSEData(obj) {
   document.getElementById("evse_current").innerHTML = obj.evse_current + " kW";
   document.getElementById("evse_charged_kwh").innerHTML = obj.evse_charged_kwh + " kWh / " + obj.evse_charged_amount + " €";
   document.getElementById("evse_charged_mileage").innerHTML = obj.evse_charged_mileage + " km";
-	if (obj.evse_active === false){		//EVSE not active
-		$("#evseActive").addClass('hidden');
-		$("#evseNotActive").removeClass('hidden');
-	}
-	else {	//EVSE active
-		if (obj.evse_always_active) {
-			$("#evseNotActive").addClass('hidden');
-			$("#evseActive").addClass('hidden');
-		}
-		else {
-		$("#evseNotActive").addClass('hidden');
-		$("#evseActive").removeClass('hidden');
-		}
-	}
-	
-	if (obj.evse_vehicle_state === 0){	//modbus error
-		vehicleCharging = false;
-		$("#carStatusDetected").addClass('hidden');
-		$("#carStatusCharging").addClass('hidden');
-		$("#carStatusReady").removeClass('hidden');
-		document.getElementById("evse_vehicle_state").innerHTML = "Modbus Error";
-	}
-	if (obj.evse_vehicle_state === 1){	//Ready
-		vehicleCharging = false;
-		$("#carStatusDetected").addClass('hidden');
-		$("#carStatusCharging").addClass('hidden');
-		$("#carStatusReady").removeClass('hidden');
-		document.getElementById("evse_vehicle_state").innerHTML = "Ready";
-	}
-	if (obj.evse_vehicle_state === 2){	//Vehicle Detected
-		vehicleCharging = false;
-		$("#carStatusReady").addClass('hidden');
-		$("#carStatusCharging").addClass('hidden');
-		$("#carStatusDetected").removeClass('hidden');
-		document.getElementById("evse_vehicle_state").innerHTML = "Vehicle Detected";
-	}
-	if (obj.evse_vehicle_state === 3){	//Vehicle charging
-		vehicleCharging = true;
-		$("#carStatusReady").addClass('hidden');
-		$("#carStatusDetected").addClass('hidden');
-		$("#carStatusCharging").removeClass('hidden');
-		document.getElementById("evse_vehicle_state").innerHTML = "Charging...";
-	}
-	document.getElementById("evse_charging_time").innerHTML = getTimeFormat(obj.evse_charging_time);
-	if (obj.ap_mode === true){
-		syncBrowserTime(false);
-	}
-	if (currentModalOpen === false) {
-		if (document.getElementById("myRange").value != prevCurrent) {
-			document.getElementById("myRange").value = obj.evse_current_limit;
-			document.getElementById("slider_current").innerHTML = obj.evse_current_limit;
-		}
-		prevCurrent = obj.evse_current_limit;
-		if (document.getElementById("myRange").max != prevMaxCurrent) {
-			document.getElementById("myRange").max = obj.evse_maximum_current;
-		}
-		prevMaxCurrent = obj.evse_maximum_current;
-	}
-	
+  if (obj.evse_active === false) {		//EVSE not active
+    $("#evseActive").addClass('hidden');
+    $("#evseNotActive").removeClass('hidden');
+  }
+  else {	//EVSE active
+    $("#evseNotActive").addClass('hidden');
+    $("#evseActive").removeClass('hidden');
+  }
+  if (obj.evse_always_active) { //Always Active Mode
+    $("#evseNotActive").addClass('hidden');
+    $("#evseActive").addClass('hidden');
+  }
+
+  if (obj.evse_vehicle_state === 0) {	//modbus error
+    vehicleCharging = false;
+    $("#carStatusDetected").addClass('hidden');
+    $("#carStatusCharging").addClass('hidden');
+    $("#carStatusReady").removeClass('hidden');
+    document.getElementById("evse_vehicle_state").innerHTML = "Modbus Error";
+  }
+  if (obj.evse_vehicle_state === 1) {	//Ready
+    vehicleCharging = false;
+    $("#carStatusDetected").addClass('hidden');
+    $("#carStatusCharging").addClass('hidden');
+    $("#carStatusReady").removeClass('hidden');
+    document.getElementById("evse_vehicle_state").innerHTML = "Ready";
+  }
+  if (obj.evse_vehicle_state === 2) {	//Vehicle Detected
+    vehicleCharging = false;
+    $("#carStatusReady").addClass('hidden');
+    $("#carStatusCharging").addClass('hidden');
+    $("#carStatusDetected").removeClass('hidden');
+    document.getElementById("evse_vehicle_state").innerHTML = "Vehicle Detected";
+  }
+  if (obj.evse_vehicle_state === 3) {	//Vehicle charging
+    vehicleCharging = true;
+    $("#carStatusReady").addClass('hidden');
+    $("#carStatusDetected").addClass('hidden');
+    $("#carStatusCharging").removeClass('hidden');
+    document.getElementById("evse_vehicle_state").innerHTML = "Charging...";
+  }
+  document.getElementById("evse_charging_time").innerHTML = getTimeFormat(obj.evse_charging_time);
+  if (obj.ap_mode === true) {
+    syncBrowserTime(false);
+  }
+  if (currentModalOpen === false) {
+    if (document.getElementById("myRange").value != prevCurrent) {
+      document.getElementById("myRange").value = obj.evse_current_limit;
+      document.getElementById("slider_current").innerHTML = obj.evse_current_limit;
+    }
+    prevCurrent = obj.evse_current_limit;
+    if (document.getElementById("myRange").max != prevMaxCurrent) {
+      document.getElementById("myRange").max = obj.evse_maximum_current;
+    }
+    prevMaxCurrent = obj.evse_maximum_current;
+  }
+
 }
-function handleSlider(value){
-	document.getElementById("slider_current").innerHTML = value;
+function handleSlider(value) {
+  document.getElementById("slider_current").innerHTML = value;
 }
 function setEVSECurrent() {
-	var currentToSet = document.getElementById("myRange").value;
-	websock.send("{\"command\":\"setcurrent\", \"current\":" + currentToSet + "}");
-	$("#currentModal").modal("hide");
-	currentModalOpen = false;
+  var currentToSet = document.getElementById("myRange").value;
+  websock.send("{\"command\":\"setcurrent\", \"current\":" + currentToSet + "}");
+  $("#currentModal").modal("hide");
+  currentModalOpen = false;
 }
 function abortCurrentModal() {
-	currentModalOpen = false;
+  currentModalOpen = false;
 }
-function activateEVSE(){
-	websock.send("{\"command\":\"activateevse\"}");
-	$("#buttonActivate").addClass('disabled');
-	setTimeout(function(){$("#buttonActivate").removeClass('disabled');}, 4000);
+function activateEVSE() {
+  websock.send("{\"command\":\"activateevse\"}");
+  $("#buttonActivate").addClass('disabled');
+  setTimeout(function () { $("#buttonActivate").removeClass('disabled'); }, 4000);
 }
-function deactivateEVSE(){
-	websock.send("{\"command\":\"deactivateevse\"}");
-	$("#buttonDeactivate").addClass('disabled');
-	setTimeout(function(){$("#buttonDeactivate").removeClass('disabled');}, 4000);
+function deactivateEVSE() {
+  websock.send("{\"command\":\"deactivateevse\"}");
+  $("#buttonDeactivate").addClass('disabled');
+  setTimeout(function () { $("#buttonDeactivate").removeClass('disabled'); }, 4000);
 }
 function getTimeFormat(millisec) {
-    var seconds = (millisec / 1000).toFixed(0);
-    var minutes = Math.floor(seconds / 60);
-    var hours = "";
-    if (minutes > 59) {
-        hours = Math.floor(minutes / 60);
-        hours = (hours >= 10) ? hours : "0" + hours;
-        minutes = minutes - (hours * 60);
-        minutes = (minutes >= 10) ? minutes : "0" + minutes;
-    }
-	
-	seconds = Math.floor(seconds % 60);
-    seconds = (seconds >= 10) ? seconds : "0" + seconds;
-    if (hours != "") {
-        return hours + ":" + minutes + ":" + seconds;
-    }
-    return minutes + ":" + seconds;
+  var seconds = (millisec / 1000).toFixed(0);
+  var minutes = Math.floor(seconds / 60);
+  var hours = "";
+  if (minutes > 59) {
+    hours = Math.floor(minutes / 60);
+    hours = (hours >= 10) ? hours : "0" + hours;
+    minutes = minutes - (hours * 60);
+    minutes = (minutes >= 10) ? minutes : "0" + minutes;
+  }
+
+  seconds = Math.floor(seconds % 60);
+  seconds = (seconds >= 10) ? seconds : "0" + seconds;
+  if (hours != "") {
+    return hours + ":" + minutes + ":" + seconds;
+  }
+  return minutes + ":" + seconds;
 }
 
 function sessionTimeOut() {
-	websock.send("{\"command\":\"getevsedata\"}");
-    return;
+  websock.send("{\"command\":\"getevsedata\"}");
+  return;
 }
 
 //Script data for Users
-function loadUsers(){
-	document.getElementById("evseContent").style.display = "none";
-	document.getElementById("usersContent").style.display = "block";
-	document.getElementById("settingsContent").style.display = "none";
-	document.getElementById("logContent").style.display = "none";
-	closeNav();
-	
-	userdata = [];
-    var commandtosend = {};
-    websock.send("{\"command\":\"userlist\", \"page\":" + page + "}");
+function loadUsers() {
+  document.getElementById("evseContent").style.display = "none";
+  document.getElementById("usersContent").style.display = "block";
+  document.getElementById("settingsContent").style.display = "none";
+  document.getElementById("logContent").style.display = "none";
+  closeNav();
+
+  userdata = [];
+  var commandtosend = {};
+  websock.send("{\"command\":\"userlist\", \"page\":" + page + "}");
 }
 function listSCAN(obj) {
   if (obj.known === 1) {
@@ -203,66 +201,66 @@ function builduserdata(obj) {
 }
 
 function initUserTable() {
-  jQuery(function($) {
+  jQuery(function ($) {
     var $modal = $('#editor-modal'),
       $editor = $('#editor'),
       $editorTitle = $('#editor-title'),
       ft = FooTable.init('#usertable', {
         columns: [{
-            "name": "uid",
-            "title": "UID",
-            "type": "text",
+          "name": "uid",
+          "title": "UID",
+          "type": "text",
+        },
+        {
+          "name": "username",
+          "title": "User Name or Label"
+        },
+        {
+          "name": "acctype",
+          "title": "Access Type",
+          "breakpoints": "xs",
+          "parser": function (value) {
+            if (value === 1) {
+              return "Active";
+            } else if (value === 99) {
+              return "Admin";
+            } else {
+              return "Disabled";
+            }
           },
-          {
-            "name": "username",
-            "title": "User Name or Label"
+        },
+        {
+          "name": "validuntil",
+          "title": "Valid Until",
+          "breakpoints": "xs sm",
+          "parser": function (value) {
+            var vuepoch = new Date(value * 1000);
+            var formatted = vuepoch.getFullYear()
+              + '-' + twoDigits(vuepoch.getMonth() + 1)
+              + '-' + twoDigits(vuepoch.getDate());
+            return formatted;
           },
-          {
-            "name": "acctype",
-            "title": "Access Type",
-            "breakpoints": "xs",
-            "parser": function(value) {
-              if (value === 1) {
-                return "Active";
-              } else if (value===99) {
-                return "Admin";
-              } else {
-                return "Disabled";
-              }
-            },
-          },
-          {
-            "name": "validuntil",
-            "title": "Valid Until",
-            "breakpoints": "xs sm",
-              "parser": function(value) {
-                  var vuepoch = new Date(value * 1000);
-                  var formatted = vuepoch.getFullYear()
-                        + '-' + twoDigits(vuepoch.getMonth() + 1) 
-                        + '-' + twoDigits(vuepoch.getDate());
-                  return formatted;
-            },
-          }
+        }
         ],
         rows: userdata,
         editing: {
-          addRow: function() {
+          addRow: function () {
             $editor[0].reset();
             $editorTitle.text('Add a new User');
             $modal.modal('show');
           },
-          editRow: function(row) {
+          editRow: function (row) {
             var acctypefinder;
             var values = row.val();
             if (values.acctype === "Active") {
-    acctypefinder = 1;
-  }
-  else if (values.acctype === "Admin") {
-    acctypefinder = 99;
-  }
-  else if (values.acctype === "Disabled"){
-    acctypefinder = 0;
-  }
+              acctypefinder = 1;
+            }
+            else if (values.acctype === "Admin") {
+              acctypefinder = 99;
+            }
+            else if (values.acctype === "Disabled") {
+              acctypefinder = 0;
+            }
             $editor.find('#uid').val(values.uid);
             $editor.find('#username').val(values.username);
             $editor.find('#acctype').val(acctypefinder);
@@ -271,7 +269,7 @@ function initUserTable() {
             $editorTitle.text('Edit User # ' + values.username);
             $modal.modal('show');
           },
-          deleteRow: function(row) {
+          deleteRow: function (row) {
             var uid = row.value.uid;
             var username = row.value.username;
             if (confirm("This will remove " + uid + " : " + username + " from database. Are you sure?")) {
@@ -286,36 +284,36 @@ function initUserTable() {
         }
       }),
       uid = 10001;
-    $editor.on('submit', function(e) {
-            if (this.checkValidity && !this.checkValidity()) {
-                return;
-            }
-            e.preventDefault();
-			var row = null;
-            row = $modal.data("row"),
-                values = {
-                    uid: $editor.find("#uid").val(),
-                    username: $editor.find("#username").val(),
-                    acctype: parseInt($editor.find("#acctype").val()),
-                    validuntil: (new Date($editor.find("#validuntil").val()).getTime() / 1000)
-                };
-            if (row instanceof FooTable.Row) {
-				row.val(values);
-            } else {
-				var datatosend = {};
-				datatosend.command = "userfile";
-				datatosend.uid = $editor.find("#uid").val();
-				datatosend.user = $editor.find("#username").val();
-				datatosend.acctype = parseInt($editor.find("#acctype").val());
-				var validuntil = $editor.find("#validuntil").val();
-				var vuepoch = (new Date(validuntil).getTime() / 1000);
-				datatosend.validuntil = vuepoch;
-				websock.send(JSON.stringify(datatosend));
-				$modal.modal("hide");
-                values.id = uid++;
-                ft.rows.add(values);
-				return;
-            }
+    $editor.on('submit', function (e) {
+      if (this.checkValidity && !this.checkValidity()) {
+        return;
+      }
+      e.preventDefault();
+      var row = null;
+      row = $modal.data("row"),
+        values = {
+          uid: $editor.find("#uid").val(),
+          username: $editor.find("#username").val(),
+          acctype: parseInt($editor.find("#acctype").val()),
+          validuntil: (new Date($editor.find("#validuntil").val()).getTime() / 1000)
+        };
+      if (row instanceof FooTable.Row) {
+        row.val(values);
+      } else {
+        var datatosend = {};
+        datatosend.command = "userfile";
+        datatosend.uid = $editor.find("#uid").val();
+        datatosend.user = $editor.find("#username").val();
+        datatosend.acctype = parseInt($editor.find("#acctype").val());
+        var validuntil = $editor.find("#validuntil").val();
+        var vuepoch = (new Date(validuntil).getTime() / 1000);
+        datatosend.validuntil = vuepoch;
+        websock.send(JSON.stringify(datatosend));
+        $modal.modal("hide");
+        values.id = uid++;
+        ft.rows.add(values);
+        return;
+      }
 
     });
   });
@@ -326,7 +324,7 @@ function acctypefinder() {
   if (values.acctype === "Active") {
     return 1;
   }
-  else if (values.acctype === "Admin"){
+  else if (values.acctype === "Admin") {
     return 99;
   }
   else {
@@ -334,9 +332,9 @@ function acctypefinder() {
   }
 }
 
-function acctypeparser(){
+function acctypeparser() {
   var $editor = $('#editor');
-  if($editor.find('#acctype option:selected').val() == 1){
+  if ($editor.find('#acctype option:selected').val() == 1) {
     return "Active";
   } else if ($editor.find('#acctype option:selected').val() == 99) {
     return "Admin";
@@ -346,28 +344,28 @@ function acctypeparser(){
 }
 
 FooTable.MyFiltering = FooTable.Filtering.extend({
-  construct: function(instance) {
+  construct: function (instance) {
     this._super(instance);
     this.acctypes = ['1', '99', '0'];
     this.acctypesstr = ['Active', 'Admin', 'Disabled'];
     this.def = 'Access Type';
     this.$acctype = null;
   },
-  $create: function() {
+  $create: function () {
     this._super();
     var self = this,
       $form_grp = $('<div/>', {
         'class': 'form-group'
       })
-      .append($('<label/>', {
-        'class': 'sr-only',
-        text: 'Status'
-      }))
-      .prependTo(self.$form);
+        .append($('<label/>', {
+          'class': 'sr-only',
+          text: 'Status'
+        }))
+        .prependTo(self.$form);
 
     self.$acctype = $('<select/>', {
-        'class': 'form-control'
-      })
+      'class': 'form-control'
+    })
       .on('change', {
         self: self
       }, self._onStatusDropdownChanged)
@@ -376,11 +374,11 @@ FooTable.MyFiltering = FooTable.Filtering.extend({
       }))
       .appendTo($form_grp);
 
-    $.each(self.acctypes, function(i, acctype) {
+    $.each(self.acctypes, function (i, acctype) {
       self.$acctype.append($('<option/>').text(self.acctypesstr[i]).val(self.acctypes[i]));
     });
   },
-  _onStatusDropdownChanged: function(e) {
+  _onStatusDropdownChanged: function (e) {
     var self = e.data.self,
       selected = $(this).val();
     if (selected !== self.def) {
@@ -390,7 +388,7 @@ FooTable.MyFiltering = FooTable.Filtering.extend({
     }
     self.filter();
   },
-  draw: function() {
+  draw: function () {
     this._super();
     var acctype = this.find('acctype');
     if (acctype instanceof FooTable.Filter) {
@@ -403,99 +401,99 @@ FooTable.MyFiltering = FooTable.Filtering.extend({
 
 //Functions for Log
 function loadLog() {
-	document.getElementById("evseContent").style.display = "none";
-	document.getElementById("usersContent").style.display = "none";
-	document.getElementById("settingsContent").style.display = "none";
-	document.getElementById("logContent").style.display = "block";
-	closeNav();
-	
-    var commandtosend = {};
-    commandtosend.command = "latestlog";
-    websock.send(JSON.stringify(commandtosend));
-    commandtosend = {};
-    commandtosend.command = "gettime";
-    websock.send(JSON.stringify(commandtosend));
+  document.getElementById("evseContent").style.display = "none";
+  document.getElementById("usersContent").style.display = "none";
+  document.getElementById("settingsContent").style.display = "none";
+  document.getElementById("logContent").style.display = "block";
+  closeNav();
+
+  var commandtosend = {};
+  commandtosend.command = "latestlog";
+  websock.send(JSON.stringify(commandtosend));
+  commandtosend = {};
+  commandtosend.command = "gettime";
+  websock.send(JSON.stringify(commandtosend));
 
 }
 
 function initLogTable() {
-  jQuery(function($) {
+  jQuery(function ($) {
     window.FooTable.init("#latestlogtable", {
-        columns: [
-            {
-            "name": "timestamp",
-            "title": "Date",
-            "parser": function(value) {
-              var vuepoch = new Date(value * 1000);
-              var formatted = twoDigits(vuepoch.getUTCDate())
-                  + "." + twoDigits(vuepoch.getUTCMonth() + 1) 
-                  + "." + twoDigits(vuepoch.getUTCFullYear())
-                  + " " + twoDigits(vuepoch.getUTCHours())
-                  + ":" + twoDigits(vuepoch.getUTCMinutes())
-                  + ":" + twoDigits(vuepoch.getUTCSeconds());
-                return formatted;
-            },
-            "sorted": true,
-            "direction": "DESC"
-            },
-		  {
-			"name": "duration",
-			"title": "Duration",
-			"parser": function(value) {
-				if(value === 0) {
-					return "<span class=\"glyphicon glyphicon-repeat\"></span>";
-				}
-					else if(value === "e"){
-						return "<span class=\"glyphicon glyphicon-remove\"></span>";
-					}
-				var seconds = (value / 1000).toFixed(0);
-				var minutes = Math.floor(seconds / 60);
-				var hours = "";
-				if (minutes > 59) {
-					hours = Math.floor(minutes / 60);
-					hours = (hours >= 10) ? hours : "0" + hours;
-					minutes = minutes - (hours * 60);
-					minutes = (minutes >= 10) ? minutes : "0" + minutes;
-				}
-				seconds = Math.floor(seconds % 60);
-				seconds = (seconds >= 10) ? seconds : "0" + seconds;
-				if (hours != "") {
-					return hours + ":" + minutes + ":" + seconds;
-				}
-				return minutes + ":" + seconds;
-			}
-		  },
-		  {
-		  	"name": "energy",
-			"title": "Energy",
-			"parser": function (value) {
-					if(value === 0){
-						return "<span class=\"glyphicon glyphicon-repeat\"></span>";
-					}
-					else if(value === "e"){
-						return "<span class=\"glyphicon glyphicon-remove\"></span>";
-					}
-					return value + " kWh";
-				}
-		  },
-		  {
-		  	"name": "costs",
-			"title": "Costs"
-		  },
-		  {
-            "name": "uid",
-            "title": "UID",
-			"breakpoints": "xs",
-            "type": "text",
+      columns: [
+        {
+          "name": "timestamp",
+          "title": "Date",
+          "parser": function (value) {
+            var vuepoch = new Date(value * 1000);
+            var formatted = twoDigits(vuepoch.getUTCDate())
+              + "." + twoDigits(vuepoch.getUTCMonth() + 1)
+              + "." + twoDigits(vuepoch.getUTCFullYear())
+              + " " + twoDigits(vuepoch.getUTCHours())
+              + ":" + twoDigits(vuepoch.getUTCMinutes())
+              + ":" + twoDigits(vuepoch.getUTCSeconds());
+            return formatted;
           },
-          {
-            "name": "username",
-            "title": "User",
-			"breakpoints": "xs sm",
+          "sorted": true,
+          "direction": "DESC"
+        },
+        {
+          "name": "duration",
+          "title": "Duration",
+          "parser": function (value) {
+            if (value === 0) {
+              return "<span class=\"glyphicon glyphicon-repeat\"></span>";
+            }
+            else if (value === "e") {
+              return "<span class=\"glyphicon glyphicon-remove\"></span>";
+            }
+            var seconds = (value / 1000).toFixed(0);
+            var minutes = Math.floor(seconds / 60);
+            var hours = "";
+            if (minutes > 59) {
+              hours = Math.floor(minutes / 60);
+              hours = (hours >= 10) ? hours : "0" + hours;
+              minutes = minutes - (hours * 60);
+              minutes = (minutes >= 10) ? minutes : "0" + minutes;
+            }
+            seconds = Math.floor(seconds % 60);
+            seconds = (seconds >= 10) ? seconds : "0" + seconds;
+            if (hours != "") {
+              return hours + ":" + minutes + ":" + seconds;
+            }
+            return minutes + ":" + seconds;
           }
-        ],
-        rows: logdata
-      });
+        },
+        {
+          "name": "energy",
+          "title": "Energy",
+          "parser": function (value) {
+            if (value === 0) {
+              return "<span class=\"glyphicon glyphicon-repeat\"></span>";
+            }
+            else if (value === "e") {
+              return "<span class=\"glyphicon glyphicon-remove\"></span>";
+            }
+            return value + " kWh";
+          }
+        },
+        {
+          "name": "costs",
+          "title": "Costs"
+        },
+        {
+          "name": "uid",
+          "title": "UID",
+          "breakpoints": "xs",
+          "type": "text",
+        },
+        {
+          "name": "username",
+          "title": "User",
+          "breakpoints": "xs sm",
+        }
+      ],
+      rows: logdata
+    });
   });
   logtable = true;
 }
@@ -503,130 +501,113 @@ function initLogTable() {
 
 //Script for Settings
 function loadSettings() {
-	document.getElementById("evseContent").style.display = "none";
-	document.getElementById("usersContent").style.display = "none";
-	document.getElementById("settingsContent").style.display = "block";
-	document.getElementById("logContent").style.display = "none";
-	closeNav();
-	
-	websock.send("{\"command\":\"getconf\"}");
-	handleRFID();
-	handleMeter();
-	handleMeterType();
-	handleButtonActive();
-	handleStaticIP();
+  document.getElementById("evseContent").style.display = "none";
+  document.getElementById("usersContent").style.display = "none";
+  document.getElementById("settingsContent").style.display = "block";
+  document.getElementById("logContent").style.display = "none";
+  closeNav();
+
+  websock.send("{\"command\":\"getconf\"}");
+  handleRFID();
+  handleMeter();
+  handleMeterType();
+  handleButtonActive();
+  handleStaticIP();
 }
 function listCONF(obj) {
-  document.getElementById("inputtohide").value = obj.ssid;
-  document.getElementById("wifipass").value = obj.pswd;
-  document.getElementById("wifibssid").value = obj.bssid;
-  if (typeof obj.staticip !== "undefined"){
-	document.getElementById("checkboxStaticIP").checked = obj.staticip;
-	document.getElementById("ipch").value = obj.ip;
-	document.getElementById("subnetch").value = obj.subnet;
-	document.getElementById("gatewaych").value = obj.gateway;
-	document.getElementById("dnsch").value = obj.dns;
-  }
+  document.getElementById("configversion").innerHTML = obj.configversion;
+
+  //Load WiFi settings
+  document.getElementById("inputtohide").value = obj.wifi.ssid;
+  document.getElementById("wifipass").value = obj.wifi.pswd;
+  document.getElementById("wifibssid").value = obj.wifi.bssid;
+  document.getElementById("checkboxStaticIP").checked = obj.wifi.staticip;
+  document.getElementById("ipch").value = obj.wifi.ip;
+  document.getElementById("subnetch").value = obj.wifi.subnet;
+  document.getElementById("gatewaych").value = obj.wifi.gateway;
+  document.getElementById("dnsch").value = obj.wifi.dns;
   handleStaticIP();
-  
-  document.getElementById("gpioss").value = obj.sspin;
-  document.getElementById("gain").value = obj.rfidgain;
-  document.getElementById("gpiobutton").value = obj.buttonpin;
-  
-  if (typeof obj.wsauth !== "undefined"){
-	document.getElementById("checkboxSafari").checked = obj.wsauth;
+
+  if (obj.wifi.wmode === true) {
+    document.getElementById("wmodeap").checked = true;
+    handleAP();
+    syncBrowserTime(false);
   }
-  if (typeof obj.disableled !== "undefined"){
-	document.getElementById("checkboxDisableLED").checked = obj.disableled;
+  else {
+    document.getElementById("wmodesta").checked = true;
+    handleSTA();
   }
-  if (typeof obj.debug !== "undefined"){
-	document.getElementById("checkboxDebug").checked = obj.debug;
-  }
-  if (typeof obj.intpin !== "undefined"){
-	document.getElementById("gpioint").value = obj.intpin;
-  }
-  if (typeof obj.kwhimp !== "undefined"){
-	document.getElementById("impkwh").value = obj.kwhimp;
-  }
-  if (typeof obj.implen !== "undefined"){
-	document.getElementById("implen").value = obj.implen;
-  }
-  if (typeof obj.meterphase !== "undefined"){
-	document.getElementById("meterphase").value = obj.meterphase;
-  }
-  document.getElementById("smetertype").value = obj.metertype;
+
+  //Load meter settings
+  document.getElementById("checkboxMeter").checked = obj.meter[0].usemeter;
+  document.getElementById("gpioint").value = obj.meter[0].intpin;
+  document.getElementById("impkwh").value = obj.meter[0].kwhimp;
+  document.getElementById("implen").value = obj.meter[0].implen;
+  document.getElementById("meterphase").value = obj.meter[0].meterphase;
+  document.getElementById("smetertype").value = obj.meter[0].metertype;
+  document.getElementById("factor").value = obj.meter[0].factor;
+  document.getElementById("price").value = obj.meter[0].price;
   handleMeterType();
-  if (typeof obj.price !== "undefined"){
-	document.getElementById("price").value = obj.price;
-  }
-  document.getElementById("adminpwd").value = obj.adminpwd;
-  document.getElementById("cadminpwd").value = obj.adminpwd;
-  document.getElementById("DropDownTimezone").value = obj.timezone;
-  document.getElementById("hostname").value = obj.hostnm;
-  if (obj.wmode === "1") {
-	document.getElementById("wmodeap").checked = true;
-	handleAP();
-	syncBrowserTime(false);
-  } else {
-	document.getElementById("wmodesta").checked = true;
-	handleSTA();
-  }
-  document.getElementById("checkboxRfid").checked = obj.rfid;
-  handleRFID();
-  document.getElementById("checkboxMeter").checked = obj.meter;
   handleMeter();
+
+  //Load RFID settings
+  document.getElementById("gpioss").value = obj.rfid.sspin;
+  document.getElementById("gain").value = obj.rfid.rfidgain;
+  document.getElementById("checkboxRfid").checked = obj.rfid.userfid;
+  handleRFID();
+
+  //Load NTP settings
+  document.getElementById("DropDownTimezone").value = obj.ntp.timezone;
+  document.getElementById("ntpIP").value = obj.ntp.ntpip;
+
+  //Load button settings
+  document.getElementById("checkboxButtonActive").checked = obj.button[0].usebutton;
+  document.getElementById("gpiobutton").value = obj.button[0].buttonpin;
+  handleButtonActive();
+
+  //Load system settings
+  document.getElementById("hostname").value = obj.system.hostnm;
+  document.getElementById("adminpwd").value = obj.system.adminpwd;
+  document.getElementById("cadminpwd").value = obj.system.adminpwd;
+  document.getElementById("checkboxSafari").checked = obj.system.wsauth;
+  document.getElementById("checkboxDebug").checked = obj.system.debug;
+  document.getElementById("maxinstall").value = obj.system.maxinstall;
+  //document.getElementById("evsecount").value = obj.system.evsecount;  -> prep for dual evse
+
+  //Load evse settings
+  //document.getElementById("mbid").value = obj.evse[0].mbid; -> prep for dual evse
+  document.getElementById("checkboxAlwaysActive").checked = obj.evse[0].alwaysactive;
+  document.getElementById("checkboxDisableLED").checked = obj.evse[0].disableled;
+  document.getElementById("checkboxResetCurrentAfterCharge").checked = obj.evse[0].resetaftercharge;
+  //document.getElementById("lp1_install").value = obj.evse[0].maxcurrent; -> prep for dual evse
+  document.getElementById("avgconsumption").value = obj.evse[0].avgconsumption;
+
   var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2));
   var dlAnchorElem = document.getElementById("downloadSet");
   dlAnchorElem.setAttribute("href", dataStr);
   dlAnchorElem.setAttribute("download", "esp-rfid-settings.json");
-  document.getElementById("maxinstall").value = obj.maxinstall;
-  document.getElementById("checkboxButtonActive").checked = obj.buttonactive;
-  if (typeof obj.alwaysactive !== "undefined") {
-	  document.getElementById("checkboxAlwaysActive").checked = obj.alwaysactive;
-  }
-  if (typeof obj.resetcurrentaftercharge !== "undefined") {
-	  document.getElementById("checkboxResetCurrentAfterCharge").checked = obj.resetaftercharge;
-  }
-  if (typeof obj.avgconsumption !== "undefined"){
-	  document.getElementById("avgconsumption").value = obj.avgconsumption;
-  }
-  else{
-	  document.getElementById("avgconsumption").value = "15.5";
-  }
-  
-  
-  if (typeof obj.factor !== "undefined"){
-	  document.getElementById("factor").value = obj.factor;
-  }
-  else {
-	  document.getElementById("factor").value = "1";
-  }
-  if (typeof obj.ntpIP !== "undefined"){
-	  document.getElementById("ntpIP").value = obj.ntpIP;
-  }
-  handleButtonActive();
 }
 
 function browserTime() {
-    var d = new Date(0);
-    var c = new Date();
-    var timestamp = Math.floor((c.getTime() / 1000) + ((c.getTimezoneOffset() * 60) * -1));
-    d.setUTCSeconds(timestamp);
-    document.getElementById("rtc").innerHTML = d.toUTCString().slice(0, -3);
+  var d = new Date(0);
+  var c = new Date();
+  var timestamp = Math.floor((c.getTime() / 1000) + ((c.getTimezoneOffset() * 60) * -1));
+  d.setUTCSeconds(timestamp);
+  document.getElementById("rtc").innerHTML = d.toUTCString().slice(0, -3);
 }
 
 function deviceTime() {
-    var t = new Date(0); // The 0 there is the key, which sets the date to the epoch,
-    t.setUTCSeconds(Math.floor(utcSeconds + (timezone * 3600)));
-    document.getElementById("utc").innerHTML = t.toUTCString().slice(0, -3);
-	utcSeconds = utcSeconds + 1;
+  var t = new Date(0); // The 0 there is the key, which sets the date to the epoch,
+  t.setUTCSeconds(Math.floor(utcSeconds + (timezone * 3600)));
+  document.getElementById("utc").innerHTML = t.toUTCString().slice(0, -3);
+  utcSeconds = utcSeconds + 1;
 }
 
-function chargingTime(){
-	if (evseActive === true && vehicleCharging === true){
-		chargingTime = chargingTime + 1000;
-		document.getElementById("evse_charging_time").innerHTML = getTimeFormat(chargingTime);
-	}
+function chargingTime() {
+  if (evseActive === true && vehicleCharging === true) {
+    chargingTime = chargingTime + 1000;
+    document.getElementById("evse_charging_time").innerHTML = getTimeFormat(chargingTime);
+  }
 }
 
 var t = setInterval(browserTime, 1000);
@@ -634,13 +615,13 @@ var tt = setInterval(deviceTime, 1000);
 var ttt = setInterval(chargingTime, 1000);
 
 function setEVSERegister() {
-	var datatosend = {};
-	datatosend.command = "setevsereg";
-	datatosend.register = document.getElementById("evseRegToSet").value;
-	datatosend.value = document.getElementById("evseRegValue").value;
-	websock.send(JSON.stringify(datatosend));
-	$("#evseRegModal").modal("hide");
-	refreshStats();
+  var datatosend = {};
+  datatosend.command = "setevsereg";
+  datatosend.register = document.getElementById("evseRegToSet").value;
+  datatosend.value = document.getElementById("evseRegValue").value;
+  websock.send(JSON.stringify(datatosend));
+  $("#evseRegModal").modal("hide");
+  refreshStats();
 }
 
 function syncBrowserTime(reload) {
@@ -650,112 +631,113 @@ function syncBrowserTime(reload) {
   datatosend.command = "settime";
   datatosend.epoch = timestamp;
   websock.send(JSON.stringify(datatosend));
-  if(reload === true)
-  {
-	location.reload();
+  if (reload === true) {
+    location.reload();
   }
 }
 
 function handleAP() {
   document.getElementById("hideBSSID").style.display = "none";
+  document.getElementById("scanb").style.display = "none";
 }
 
 function handleSTA() {
   document.getElementById("hideBSSID").style.display = "block";
+  document.getElementById("scanb").style.display = "block";
 }
 
-function handleStaticIP(){
-	if (document.getElementById("checkboxStaticIP").checked === true){
-		document.getElementById("divIP").style.display = "block";
-		document.getElementById("divSubnet").style.display = "block";
-		document.getElementById("divGateway").style.display = "block";
-		document.getElementById("divDNS").style.display = "block";
-	}
-	else{
-		document.getElementById("divIP").style.display = "none";
-		document.getElementById("divSubnet").style.display = "none";
-		document.getElementById("divGateway").style.display = "none";
-		document.getElementById("divDNS").style.display = "none";
-	}
+function handleStaticIP() {
+  if (document.getElementById("checkboxStaticIP").checked === true) {
+    document.getElementById("divIP").style.display = "block";
+    document.getElementById("divSubnet").style.display = "block";
+    document.getElementById("divGateway").style.display = "block";
+    document.getElementById("divDNS").style.display = "block";
+  }
+  else {
+    document.getElementById("divIP").style.display = "none";
+    document.getElementById("divSubnet").style.display = "none";
+    document.getElementById("divGateway").style.display = "none";
+    document.getElementById("divDNS").style.display = "none";
+  }
 }
 
 function handleRFID() {
-	if (document.getElementById("checkboxRfid").checked === true){
-		document.getElementById("gain").disabled = false;
-		document.getElementById("gpioss").disabled = false;
-	}
-	else {
-		document.getElementById("gain").disabled = true;
-		document.getElementById("gpioss").disabled = true;	
-	}
+  if (document.getElementById("checkboxRfid").checked === true) {
+    document.getElementById("gain").disabled = false;
+    document.getElementById("gpioss").disabled = false;
+  }
+  else {
+    document.getElementById("gain").disabled = true;
+    document.getElementById("gpioss").disabled = true;
+  }
 }
 
-function handleMeter(){
-	if (document.getElementById("checkboxMeter").checked === true){
-		document.getElementById("gpioint").disabled = false;
-		document.getElementById("impkwh").disabled = false;
-		document.getElementById("implen").disabled = false;
-		document.getElementById("price").disabled = false;
-		document.getElementById("smetertype").disabled = false;
-	}
-	else {
-		document.getElementById("gpioint").disabled = true;
-		document.getElementById("impkwh").disabled = true;	
-		document.getElementById("implen").disabled = true;
-		document.getElementById("price").disabled = true;
-		document.getElementById("smetertype").disabled = true;
-	}
+function handleMeter() {
+  if (document.getElementById("checkboxMeter").checked === true) {
+    document.getElementById("gpioint").disabled = false;
+    document.getElementById("impkwh").disabled = false;
+    document.getElementById("implen").disabled = false;
+    document.getElementById("price").disabled = false;
+    document.getElementById("smetertype").disabled = false;
+  }
+  else {
+    document.getElementById("gpioint").disabled = true;
+    document.getElementById("impkwh").disabled = true;
+    document.getElementById("implen").disabled = true;
+    document.getElementById("price").disabled = true;
+    document.getElementById("smetertype").disabled = true;
+  }
 }
 
-function handleMeterType(){
-	if (document.getElementById("smetertype").value !== "S0"){
-		document.getElementById("divImpKwh").style.display = "none";
-		document.getElementById("divImpLen").style.display = "none";
-		document.getElementById("divMeterPin").style.display = "none";
-		document.getElementById("divMeterPhase").style.display = "none";
-		document.getElementById("meterRegisters").style.display = "block";
-	}
-	else{
-		document.getElementById("divImpKwh").style.display = "block";
-		document.getElementById("divMeterPin").style.display = "block";
-		document.getElementById("divMeterPhase").style.display = "block";
-		document.getElementById("divImpLen").style.display = "block";
-		document.getElementById("meterRegisters").style.display = "none";
-	}
+function handleMeterType() {
+  if (document.getElementById("smetertype").value !== "S0") {
+    document.getElementById("divImpKwh").style.display = "none";
+    document.getElementById("divImpLen").style.display = "none";
+    document.getElementById("divMeterPin").style.display = "none";
+    document.getElementById("divMeterPhase").style.display = "none";
+    document.getElementById("meterRegisters").style.display = "block";
+  }
+  else {
+    document.getElementById("divImpKwh").style.display = "block";
+    document.getElementById("divMeterPin").style.display = "block";
+    document.getElementById("divMeterPhase").style.display = "block";
+    document.getElementById("divImpLen").style.display = "block";
+    document.getElementById("meterRegisters").style.display = "none";
+  }
 }
 
-function handleButtonActive(){
-	if(document.getElementById("checkboxButtonActive").checked === true){
-		document.getElementById("gpiobutton").disabled = false;
-	}
-	else{
-		document.getElementById("gpiobutton").disabled = true;
-	}
+function handleButtonActive() {
+  if (document.getElementById("checkboxButtonActive").checked === true) {
+    document.getElementById("gpiobutton").disabled = false;
+  }
+  else {
+    document.getElementById("gpiobutton").disabled = true;
+  }
 }
 
-function shWifi(){
-	var x = document.getElementById("wifipass");
-	if (x.type === "password"){
-		x.type = "text";
-		document.getElementById("shwifi").innerHTML = "hide";
-	} else {
-		x.type = "password";
-		document.getElementById("shwifi").innerHTML = "show";
-	}
+function shWifi() {
+  var x = document.getElementById("wifipass");
+  if (x.type === "password") {
+    x.type = "text";
+    document.getElementById("shwifi").innerHTML = "hide";
+  } else {
+    x.type = "password";
+    document.getElementById("shwifi").innerHTML = "show";
+  }
 }
-function shAdmin(){
-	var x = document.getElementById("adminpwd");
-	if (x.type === "password"){
-		x.type = "text";
-		document.getElementById("shadmin").innerHTML = "hide";
-	} else {
-		x.type = "password";
-		document.getElementById("shadmin").innerHTML = "show";
-	}
+function shAdmin() {
+  var x = document.getElementById("adminpwd");
+  if (x.type === "password") {
+    x.type = "text";
+    document.getElementById("shadmin").innerHTML = "hide";
+  } else {
+    x.type = "password";
+    document.getElementById("shadmin").innerHTML = "show";
+  }
 }
 
 function listSSID(obj) {
-  obj.list.sort(function(a,b){return a.rssi <= b.rssi});
+  obj.list.sort(function (a, b) { return a.rssi <= b.rssi });
   var select = document.getElementById("ssid");
   for (var i = 0; i < obj.list.length; i++) {
     var opt = document.createElement("option");
@@ -785,21 +767,21 @@ function scanWifi() {
 }
 
 function saveConf() {
-//Validate input
+  //Validate input
   var a = document.getElementById("adminpwd").value;
   if (a === null || a === "") {
     alert("Administrator Password cannot be empty");
     return;
   }
-  else if (a.length < 8 ){
-	alert("Administrator Password must be at least 8 characters");
-	return;
+  else if (a.length < 8) {
+    alert("Administrator Password must be at least 8 characters");
+    return;
   }
-  else if (a !== document.getElementById("cadminpwd").value){
-	alert("Administrator Password did not match. Please confirm admin Password!");
-	return;  
+  else if (a !== document.getElementById("cadminpwd").value) {
+    alert("Administrator Password did not match. Please confirm admin Password!");
+    return;
   }
-  
+
   var ssid;
   if (document.getElementById("inputtohide").style.display === "none") {
     var b = document.getElementById("ssid");
@@ -809,75 +791,94 @@ function saveConf() {
   }
   var datatosend = {};
   datatosend.command = "configfile";
-  var wmode = "0";
+  datatosend.configversion = 1;
+  datatosend.wifi = {};
+  datatosend.meter = [];
+  datatosend.meter[0] = {};
+  datatosend.rfid = {};
+  datatosend.ntp = {};
+  datatosend.button = [];
+  datatosend.button[0] = {};
+  datatosend.system = {};
+  datatosend.evse = [];
+  datatosend.evse[0] = {};
+
+  var wmode = false;
   if (document.getElementById("wmodeap").checked) {
-    wmode = "1";
-    datatosend.bssid = document.getElementById("wifibssid").value = 0;
-	if (document.getElementById("wifipass").value.length < 8 &&
-		document.getElementById("wifipass").value.length !== 0){
-		alert("WiFi Password in AP mode must be at least 8 characters or empty (for wifi without protection)");
-		return;
-		}
+    wmode = true;
+    datatosend.wifi.bssid = document.getElementById("wifibssid").value = "";
+    if (document.getElementById("wifipass").value.length < 8 &&
+      document.getElementById("wifipass").value.length !== 0) {
+      alert("WiFi Password in AP mode must be at least 8 characters or empty (for wifi without protection)");
+      return;
+    }
   }
   else {
-    datatosend.bssid = document.getElementById("wifibssid").value;
+    datatosend.wifi.bssid = document.getElementById("wifibssid").value;
   }
- 
-  datatosend.ssid = ssid;
-  datatosend.wmode = wmode;
-  datatosend.pswd = document.getElementById("wifipass").value;
-  
-  if (document.getElementById("checkboxStaticIP").checked === true){
-	datatosend.staticip = document.getElementById("checkboxStaticIP").checked;
-	datatosend.ip = document.getElementById("ipch").value;
-	datatosend.subnet = document.getElementById("subnetch").value;
-	datatosend.gateway = document.getElementById("gatewaych").value;
-	datatosend.dns = document.getElementById("dnsch").value;
-  }
-  
-  datatosend.wsauth = document.getElementById("checkboxSafari").checked;
-  datatosend.disableled = document.getElementById("checkboxDisableLED").checked;
-  datatosend.debug = document.getElementById("checkboxDebug").checked;
 
-  datatosend.rfid = document.getElementById("checkboxRfid").checked;
-  datatosend.sspin = document.getElementById("gpioss").value;
-  datatosend.rfidgain = document.getElementById("gain").value;
-  
-  
-  if (document.getElementById("checkboxMeter").checked === true){
-	  datatosend.meter = document.getElementById("checkboxMeter").checked;
-	  datatosend.metertype = document.getElementById("smetertype").value;
-	  datatosend.price = document.getElementById("price").value;
-	  if (document.getElementById("smetertype").value === "S0"){
-		datatosend.intpin = document.getElementById("gpioint").value;
-		datatosend.kwhimp = document.getElementById("impkwh").value;
-		datatosend.implen = document.getElementById("implen").value;
-		datatosend.meterphase = document.getElementById("meterphase").value;
-	  }
-  }
-  datatosend.buttonpin = document.getElementById("gpiobutton").value;
-  datatosend.factor = document.getElementById("factor").value;
-  datatosend.timezone = document.getElementById("DropDownTimezone").value;
-  datatosend.hostnm = document.getElementById("hostname").value;
-  datatosend.adminpwd = a;
-  datatosend.maxinstall = document.getElementById("maxinstall").value;
-  datatosend.buttonactive = document.getElementById("checkboxButtonActive").checked;
-  datatosend.alwaysactive = document.getElementById("checkboxAlwaysActive").checked;
-  datatosend.resetcurrentaftercharge = document.getElementById("checkboxResetCurrentAfterCharge").checked;
-  datatosend.avgconsumption = document.getElementById("avgconsumption").value;
+  datatosend.wifi.ssid = ssid;
+  datatosend.wifi.wmode = wmode;
+  datatosend.wifi.pswd = document.getElementById("wifipass").value;
 
-  datatosend.ntpIP = document.getElementById("ntpIP").value;
-  
+  if (document.getElementById("checkboxStaticIP").checked === true) {
+    datatosend.wifi.staticip = document.getElementById("checkboxStaticIP").checked;
+    datatosend.wifi.ip = document.getElementById("ipch").value;
+    datatosend.wifi.subnet = document.getElementById("subnetch").value;
+    datatosend.wifi.gateway = document.getElementById("gatewaych").value;
+    datatosend.wifi.dns = document.getElementById("dnsch").value;
+  }
+  else {
+    datatosend.wifi.staticip = false;
+    datatosend.wifi.ip = "";
+    datatosend.wifi.subnet = "";
+    datatosend.wifi.gateway = "";
+    datatosend.wifi.dns = "";
+  }
+
+  datatosend.meter[0].usemeter = document.getElementById("checkboxMeter").checked;
+  datatosend.meter[0].metertype = document.getElementById("smetertype").value;
+  datatosend.meter[0].price = parseFloat(document.getElementById("price").value);
+  datatosend.meter[0].intpin = parseInt(document.getElementById("gpioint").value);
+  datatosend.meter[0].kwhimp = parseInt(document.getElementById("impkwh").value);
+  datatosend.meter[0].implen = parseInt(document.getElementById("implen").value);
+  datatosend.meter[0].meterphase = parseInt(document.getElementById("meterphase").value);
+  datatosend.meter[0].factor = parseInt(document.getElementById("factor").value);
+
+  datatosend.rfid.userfid = document.getElementById("checkboxRfid").checked;
+  datatosend.rfid.sspin = parseInt(document.getElementById("gpioss").value);
+  datatosend.rfid.rfidgain = parseInt(document.getElementById("gain").value);
+
+  datatosend.ntp.ntpip = document.getElementById("ntpIP").value;
+  datatosend.ntp.timezone = parseInt(document.getElementById("DropDownTimezone").value);
+
+  datatosend.button[0].usebutton = document.getElementById("checkboxButtonActive").checked;
+  datatosend.button[0].buttonpin = parseInt(document.getElementById("gpiobutton").value);
+
+  datatosend.system.hostnm = document.getElementById("hostname").value;
+  datatosend.system.adminpwd = a;
+  datatosend.system.wsauth = document.getElementById("checkboxSafari").checked;
+  datatosend.system.debug = document.getElementById("checkboxDebug").checked;
+  datatosend.system.maxinstall = parseInt(document.getElementById("maxinstall").value);
+  datatosend.system.evsecount = 1;
+
+  datatosend.evse[0].mbid = 1;
+  datatosend.evse[0].alwaysactive = document.getElementById("checkboxAlwaysActive").checked;
+  datatosend.evse[0].disableled = document.getElementById("checkboxDisableLED").checked;
+  datatosend.evse[0].resetcurrentaftercharge = document.getElementById("checkboxResetCurrentAfterCharge").checked;
+  datatosend.evse[0].evseinstall = parseInt(document.getElementById("maxinstall").value);
+  datatosend.evse[0].avgconsumption = parseFloat(document.getElementById("avgconsumption").value);
+
   websock.send(JSON.stringify(datatosend));
   alert("Device now should reboot with new settings");
   location.reload();
 }
 
 function backupuser() {
-    var commandtosend = {};
-    commandtosend.command = "userlist";
-    commandtosend.page = page;
-    websock.send(JSON.stringify(commandtosend));
+  var commandtosend = {};
+  commandtosend.command = "userlist";
+  commandtosend.page = page;
+  websock.send(JSON.stringify(commandtosend));
 }
 
 function backupset() {
@@ -900,13 +901,16 @@ function restoreSet() {
     if (input.files.length === 0) {
       alert("You did not select file to restore");
     } else {
-      reader.onload = function() {
+      reader.onload = function () {
         var json;
         try {
           json = JSON.parse(reader.result);
         } catch (e) {
           alert("Not a valid backup file");
           return;
+        }
+        if (!json.hasOwnProperty("command")) {
+          json.command = "configfile";
         }
         if (json.command === "configfile") {
           var x = confirm("File seems to be valid, do you wish to continue?");
@@ -915,6 +919,10 @@ function restoreSet() {
             alert("Device now should reboot with new settings");
             location.reload();
           }
+        }
+        else {
+          alert("Not a valid backup file");
+          return;
         }
       };
       reader.readAsText(input.files[0]);
@@ -954,7 +962,7 @@ function restoreUser() {
     if (input.files.length === 0) {
       alert("You did not select any file to restore");
     } else {
-      reader.onload = function() {
+      reader.onload = function () {
         var json;
         try {
           json = JSON.parse(reader.result);
@@ -978,32 +986,42 @@ function restoreUser() {
 }
 
 function resetLogFile() {
-	if (confirm("Are you sure to reset all your charging logs?")){
-		websock.send("{\"command\":\"initlog\"}");
-		alert("Log File Resetted!");
-		location.reload();
-	}
-	else {
-		alert("Aborted!");
-	}
-	
+  if (confirm("Are you sure to reset all your charging logs?")) {
+    websock.send("{\"command\":\"initlog\"}");
+    alert("Log File Resetted!");
+    location.reload();
+  }
+  else {
+    alert("Aborted!");
+  }
+}
+
+function resetUserData() {
+  if (confirm("Are you sure to reset all your user data?")) {
+    websock.send("{\"command\":\"resetuserdata\"}");
+    alert("Log File Resetted!");
+    location.reload();
+  }
+  else {
+    alert("Aborted!");
+  }
+}
+
+function resetFactoryReset() {
+  if (confirm("Are you sure to reset all your settings and logs? EVSE-WiFi will reboot in factory settings! This cannot be undone! ")) {
+    websock.send("{\"command\":\"factoryreset\"}");
+    alert("Factory settings restored!");
+    location.reload();
+  }
+  else {
+    alert("Aborted!");
+  }
 }
 
 var FWUpdatePerc = 0;
 
-function firwareUpdate(){
-	//var tFirmware = setInterval(progressFWUpdate, 1200);
-	$("#updatemodal").modal();
-}
-
-function progressFWUpdate(){
-	if (FWUpdatePerc === 100){
-		setTimeout(function(){location.reload()}, 1000);
-	}
-	else {
-		FWUpdatePerc = FWUpdatePerc + 4;
-		document.getElementById("dynamicFWUpdate").style.width = FQUpdatePerc + "%";
-	}
+function firwareUpdate() {
+  $("#updatemodal").modal();
 }
 
 function colorStatusbar(ref) {
@@ -1021,16 +1039,16 @@ function listStats(obj) {
   document.getElementById("chip").innerHTML = obj.chipid;
   document.getElementById("cpu").innerHTML = obj.cpu + " Mhz";
   document.getElementById("uptime").innerHTML = obj.uptime;
-  document.getElementById("heap").innerHTML = obj.heap + " B";
+  document.getElementById("heap").innerHTML = Math.round((obj.heap / 1024) * 10) / 10 + " kB";
   document.getElementById("heap").style.width = (obj.heap * 100) / 81920 + "%";
   colorStatusbar(document.getElementById("heap"));
-  document.getElementById("flash").innerHTML = obj.availsize + " B";
+  document.getElementById("flash").innerHTML = Math.round((obj.availsize / 1024) * 10) / 10 + " kB";
   document.getElementById("flash").style.width = (obj.availsize * 100) / (4194304 - obj.spiffssize) + "%";
   colorStatusbar(document.getElementById("flash"));
-  document.getElementById("spiffs").innerHTML = obj.availspiffs + " B";
+  document.getElementById("spiffs").innerHTML = Math.round((obj.availspiffs / 1024) * 10) / 10 + " kB";
   document.getElementById("spiffs").style.width = (obj.availspiffs * 100) / obj.spiffssize + "%";
   colorStatusbar(document.getElementById("spiffs"));
-  document.getElementById("ssidstat").innerHTML = obj.ssid;
+  document.getElementById("ssidstat").innerHTML = obj.ssid + "<object id=\"rssi\"></object>";
   document.getElementById("ip").innerHTML = obj.ip;
   document.getElementById("gate").innerHTML = obj.gateway;
   document.getElementById("mask").innerHTML = obj.netmask;
@@ -1051,43 +1069,62 @@ function listStats(obj) {
   document.getElementById("evse_2005").innerHTML = obj.evse_2005;				//2005
   document.getElementById("evse_sharing_mode").innerHTML = obj.evse_sharing_mode;//2006
   document.getElementById("pp_detection").innerHTML = obj.evse_pp_detection;	//2007
-  
   document.getElementById("meter_total").innerHTML = obj.meter_total;
+  if (obj.hasOwnProperty("rssi")) {
+    document.getElementById("rssi").innerHTML = " (" + obj.rssi + "dBm)";
+    document.getElementById("rssi").style.fontWeight = 'bold';
+    if (obj.rssi < -84) { // bad wifi signal
+      document.getElementById("rssi").style.color = '#c30';
+    }
+    else if (obj.rssi < -69) { // middle-bad wifi signal
+      document.getElementById("rssi").style.color = '#fc0';
+    }
+    else if (obj.rssi < -59) { // middle-good wifi signal
+      document.getElementById("rssi").style.color = '#6f3';
+    }
+    else if (obj.rssi < -49) { // good wifi signal
+      document.getElementById("rssi").style.color = '#093';
+    }
+  }
+  else {
+    document.getElementById("rssi").innerHTML = " (AP Mode)";
+    document.getElementById("rssi").style.color = '#093';
+  }
 }
 
 //General functions
 function round(x) {
   var k = (Math.round(x * 100) / 100).toString();
-  k += (k.indexOf('.') == -1)? '.00' : '00';
+  k += (k.indexOf('.') == -1) ? '.00' : '00';
   return k.substring(0, k.indexOf('.') + 3);
 }
 
 function twoDigits(value) {
-   if(value < 10) {
+  if (value < 10) {
     return "0" + value;
-   }
-   return value;
+  }
+  return value;
 }
 
 function openNav() {
-    document.getElementById("mySidenav").style.width = "250px";
+  document.getElementById("mySidenav").style.width = "250px";
 }
 
 function closeNav() {
-    document.getElementById("mySidenav").style.width = "0";
+  document.getElementById("mySidenav").style.width = "0";
 }
 
 function showCurrentModal() {
-	$("#currentModal").modal();
-	currentModalOpen = true;
+  $("#currentModal").modal();
+  currentModalOpen = true;
 }
 
 function showEvseRegModal() {
-	$("#evseRegModal").modal();
+  $("#evseRegModal").modal();
 }
 
-$(document).ready(function(){
-    $('[data-toggle="tooltip"]').tooltip();
+$(document).ready(function () {
+  $('[data-toggle="tooltip"]').tooltip();
 });
 
 function socketMessageListener(evt) {
@@ -1096,31 +1133,31 @@ function socketMessageListener(evt) {
     listEVSEData(obj);
   }
   else if (obj.command === "sessiontimeout") {
-	  if (document.getElementById("evseContent").style.display !== "none"){
-		sessionTimeOut();
-	  }
+    if (document.getElementById("evseContent").style.display !== "none") {
+      sessionTimeOut();
+    }
   }
   else if (obj.command === "piccscan") {
-	  if(document.getElementById("usersContent").style.display === "block"){
-		listSCAN(obj);
-	  }
+    if (document.getElementById("usersContent").style.display === "block") {
+      listSCAN(obj);
+    }
   }
   else if (obj.command === "gettime") {
     timezone = obj.timezone;
-	utcSeconds = obj.epoch;
+    utcSeconds = obj.epoch;
   }
   else if (obj.command === "userlist") {
     haspages = obj.haspages;
     if (haspages === 0) {
-		document.getElementById("usertable").innerHTML = null;
-		initUserTable();
-		$(".footable-show").click();
-		$(".fooicon-remove").click();
-	}
+      document.getElementById("usertable").innerHTML = null;
+      initUserTable();
+      $(".footable-show").click();
+      $(".fooicon-remove").click();
+    }
     builduserdata(obj);
   }
   else if (obj.command === "result") {
-	if (obj.resultof === "userfile" && document.getElementById("settingsContent").style.display !== "none") {
+    if (obj.resultof === "userfile" && document.getElementById("settingsContent").style.display !== "none") {
       if (!completed && obj.result === true) {
         restore1by1(slot, recordstorestore, userdata);
       }
@@ -1130,103 +1167,103 @@ function socketMessageListener(evt) {
         getnextpage(page);
       }
       else if (page === haspages) {
-		if (document.getElementById("settingsContent").style.display !== "none"){
-			file.type = "evse-wifi-userbackup";
-			file.version = "v0.1";
-			file.list = userdata;
-			piccBackup(file);
-		}
-		else if (document.getElementById("usersContent").style.display !== "none"){
-			document.getElementById("usertable").innerHTML = null;
-			initUserTable();
-			$(".footable-show").click();
-			$(".fooicon-remove").click();
-			websock.send("{\"command\":\"gettime\"}");
-		}
+        if (document.getElementById("settingsContent").style.display !== "none") {
+          file.type = "evse-wifi-userbackup";
+          file.version = "v0.1";
+          file.list = userdata;
+          piccBackup(file);
+        }
+        else if (document.getElementById("usersContent").style.display !== "none") {
+          document.getElementById("usertable").innerHTML = null;
+          initUserTable();
+          $(".footable-show").click();
+          $(".fooicon-remove").click();
+          websock.send("{\"command\":\"gettime\"}");
+        }
       }
     }
   }
   else if (obj.command === "ssidlist") {
     listSSID(obj);
-  } 
-  else if (obj.command === "configfile") {
+  }
+  else if (typeof obj.configversion !== "undefined") {
     listCONF(obj);
     websock.send("{\"command\":\"gettime\"}");
-  } 
+  }
   else if (obj.command === "userlist") {
-	haspages = obj.haspages;
-	builduserdata(obj);
-  } 
+    haspages = obj.haspages;
+    builduserdata(obj);
+  }
   else if (obj.command === "status") {
     listStats(obj);
   }
   if (obj.type === "latestlog") {
-	logdata = obj.list;
-	for(i in logdata){ 
-	if(logdata[i].price === "e"){
-		logdata[i].costs = "<span class=\"glyphicon glyphicon-remove\"></span>";
-		}
-		else {
-			logdata[i].costs = String(round(logdata[i].price / 100 * logdata[i].energy)) + " €";
-		}
-	}
-	if (logdata.length > 0 || logtable === false){
-		document.getElementById("latestlogtable").innerHTML = null;
-		initLogTable();
-	}
+    logdata = obj.list;
+    for (i in logdata) {
+      if (logdata[i].price === "e") {
+        logdata[i].costs = "<span class=\"glyphicon glyphicon-remove\"></span>";
+      }
+      else {
+        logdata[i].costs = String(round(logdata[i].price / 100 * logdata[i].energy)) + " €";
+      }
+    }
+    if (logdata.length > 0 || logtable === false) {
+      document.getElementById("latestlogtable").innerHTML = null;
+      initLogTable();
+    }
   }
 }
 
 function socketCloseListener(evt) {
-    console.log('socket closed');
-    websock = new WebSocket(wsUri);
-    websock.addEventListener('message', socketMessageListener);
-    websock.addEventListener('close', socketCloseListener);
-    websock.addEventListener('error', socketErrorListener);
+  console.log('socket closed');
+  websock = new WebSocket(wsUri);
+  websock.addEventListener('message', socketMessageListener);
+  websock.addEventListener('close', socketCloseListener);
+  websock.addEventListener('error', socketErrorListener);
 }
 
 function socketErrorListener(evt) {
-    console.log('socket error');
-    console.log(evt);
+  console.log('socket error');
+  console.log(evt);
 }
 function login() {
-    var username = "admin"
-    var passwd = document.getElementById("password").value;
-    var url = "/login";
-    var xhr = new XMLHttpRequest();
-    xhr.open("get", url, true, username, passwd);
-    xhr.onload = function(e) {
-      if (xhr.readyState === 4) {
-        if (xhr.status === 200) {
-		  wsConnect();
-        } else {
-          alert("Incorrect password!");
-        }
+  var username = "admin"
+  var passwd = document.getElementById("password").value;
+  var url = "/login";
+  var xhr = new XMLHttpRequest();
+  xhr.open("get", url, true, username, passwd);
+  xhr.onload = function (e) {
+    if (xhr.readyState === 4) {
+      if (xhr.status === 200) {
+        wsConnect();
+      } else {
+        alert("Incorrect password!");
       }
-    };
-    xhr.send(null);
+    }
+  };
+  xhr.send(null);
 }
 
-function wsConnect(){
-	var protocol = "ws://"; 
-	if (window.location.protocol === "https:") {
-		protocol = "wss://";
-	}
-	
-	wsUri =protocol+ window.location.hostname + "/ws"; 
-	websock = new WebSocket(wsUri);
-	websock.addEventListener('message', socketMessageListener);
-	websock.addEventListener('error', socketErrorListener);
-	websock.addEventListener('close', socketCloseListener);
-	
-	websock.onopen = function(evt) {
-		loadEVSEControl();
-	};
+function wsConnect() {
+  var protocol = "ws://";
+  if (window.location.protocol === "https:") {
+    protocol = "wss://";
+  }
+
+  wsUri = protocol + window.location.hostname + "/ws";
+  websock = new WebSocket(wsUri);
+  websock.addEventListener('message', socketMessageListener);
+  websock.addEventListener('error', socketErrorListener);
+  websock.addEventListener('close', socketCloseListener);
+
+  websock.onopen = function (evt) {
+    loadEVSEControl();
+  };
 }
 
 function start() {
-	document.getElementById("evseContent").style.display = "none";
-	document.getElementById("usersContent").style.display = "none";
-	document.getElementById("settingsContent").style.display = "none";
-	document.getElementById("logContent").style.display = "none";
+  document.getElementById("evseContent").style.display = "none";
+  document.getElementById("usersContent").style.display = "none";
+  document.getElementById("settingsContent").style.display = "none";
+  document.getElementById("logContent").style.display = "none";
 }

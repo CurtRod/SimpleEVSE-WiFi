@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -10,903 +11,989 @@
   <script src="/required/required.js" type="text/javascript"></script>
   <link href="/required/required.css" rel="stylesheet">
   <style>
-</style>
+  </style>
 </head>
+
 <body onload="start()">
-<div style="z-index: 99" id="mySidenav" class="sidenav">
-  <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
-  <a href="#" onclick="loadEVSEControl()"><nobr><b><span class="glyphicon glyphicon-road"></span>&nbsp;&nbsp;EVSE&nbsp;Control</b></nobr></a>
-  <a href="#" onclick="loadUsers()"><nobr><span class="glyphicon glyphicon-user"></span>&nbsp;&nbsp;Users</nobr></a>
-  <a href="#" onclick="loadSettings()"><nobr><span class="glyphicon glyphicon-cog"></span>&nbsp;&nbsp;Settings</nobr></a>
-  <a href="#" onclick="loadLog()"><nobr><span class="glyphicon glyphicon-list-alt"></span>&nbsp;&nbsp;Log</nobr></a>
-  <div style="position: fixed; bottom: 0px; padding: 10px 10px 10px 10px"><object class="fw_version"></object></div>
-</div>
-<!-- Current Modal -->
-<div class="modal fade" id="currentModal" tabindex="-1" role="dialog" aria-labelledby="currentModalLabel" aria-hidden="true">
-  <div class="modal-dialog" role="document">
-    <div class="modal-content form-horizontal" id="current-content">
-      <div class="modal-header">
-	     <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-         <h4 class="modal-title" id="current-title">Current&nbsp;<span id="slider_current"></span>&nbsp;A</h4>
-      </div>
-      <div class="modal-body">
-		<div class="slidecontainer">
-			<input type="range" min="6" max="25" value="20" class="slider" id="myRange" oninput="handleSlider(this.value)">
-		</div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" onclick="abortCurrentModal()" data-dismiss="modal">Abort</button>
-        <button type="submit" class="btn btn-primary" onclick="setEVSECurrent()">Save</button>
+  <div style="z-index: 99" id="mySidenav" class="sidenav">
+    <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+    <a href="#" onclick="loadEVSEControl()">
+      <nobr><b><span class="glyphicon glyphicon-road"></span>&nbsp;&nbsp;EVSE&nbsp;Control</b></nobr>
+    </a>
+    <a href="#" onclick="loadUsers()">
+      <nobr><span class="glyphicon glyphicon-user"></span>&nbsp;&nbsp;Users</nobr>
+    </a>
+    <a href="#" onclick="loadSettings()">
+      <nobr><span class="glyphicon glyphicon-cog"></span>&nbsp;&nbsp;Settings</nobr>
+    </a>
+    <a href="#" onclick="loadLog()">
+      <nobr><span class="glyphicon glyphicon-list-alt"></span>&nbsp;&nbsp;Log</nobr>
+    </a>
+    <div style="position: fixed; bottom: 0px; padding: 10px 10px 10px 10px"><object class="fw_version"></object></div>
+  </div>
+  <!-- Current Modal -->
+  <div class="modal fade" id="currentModal" tabindex="-1" role="dialog" aria-labelledby="currentModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content form-horizontal" id="current-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+              aria-hidden="true">&times;</span></button>
+          <h4 class="modal-title" id="current-title">Current&nbsp;<span id="slider_current"></span>&nbsp;A</h4>
+        </div>
+        <div class="modal-body">
+          <div class="slidecontainer">
+            <input type="range" min="6" max="25" value="20" class="slider" id="myRange"
+              oninput="handleSlider(this.value)">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="abortCurrentModal()"
+            data-dismiss="modal">Abort</button>
+          <button type="submit" class="btn btn-primary" onclick="setEVSECurrent()">Save</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
-<!-- Edit EVSE Register Modal -->
-<div class="modal fade" id="evseRegModal" tabindex="-1" role="dialog" aria-labelledby="evseRegModalLabel" aria-hidden="true">
-  <style scoped>
-     .form-group.required .control-label:after {
-     content: "*";
-     color: red;
-     margin-left: 4px;
-     }
-  </style>
-  <div class="modal-dialog" role="document">
-    <div class="modal-content form-horizontal" id="evseRegModal-content">
-      <div class="modal-header">
-	     <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-         <h4 class="modal-title" id="current-title">Edit EVSE Register</h4>
-      </div>
-      <div class="modal-body">
-	    <div class="form-group required">
+  <!-- Edit EVSE Register Modal -->
+  <div class="modal fade" id="evseRegModal" tabindex="-1" role="dialog" aria-labelledby="evseRegModalLabel"
+    aria-hidden="true">
+    <style scoped>
+      .form-group.required .control-label:after {
+        content: "*";
+        color: red;
+        margin-left: 4px;
+      }
+    </style>
+    <div class="modal-dialog" role="document">
+      <div class="modal-content form-horizontal" id="evseRegModal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+              aria-hidden="true">&times;</span></button>
+          <h4 class="modal-title" id="current-title">Edit EVSE Register</h4>
+        </div>
+        <div class="modal-body">
+          <div class="form-group required">
             <label for="evseRegToSet" class="col-sm-3 control-label">Register</label>
             <div class="col-sm-9">
-				<select class="form-control" id="evseRegToSet" required>
-					<option value="1000">1000: Configured Current</option>
-					<option value="1004">1004: Turn off bit</option>
-					<option value="2000">2000: Current after boot</option>
-					<option value="2001">2001: Modbus Status</option>
-					<option value="2002">2002: Min. Current Value</option>
-					<option value="2003">2003: Analog Input Config</option>
-					<option value="2004">2004: Amps after boot (evse-button)</option>
-					<option value="2005">2005: Register 2005</option>
-					<option value="2006">2006: Current Sharing Mode</option>
-					<option value="2007">2007: PP-Detection</option>
-				</select>
+              <select class="form-control" id="evseRegToSet" required>
+                <option value="1000">1000: Configured Current</option>
+                <option value="1004">1004: Turn off bit</option>
+                <option value="2000">2000: Current after boot</option>
+                <option value="2001">2001: Modbus Status</option>
+                <option value="2002">2002: Min. Current Value</option>
+                <option value="2003">2003: Analog Input Config</option>
+                <option value="2004">2004: Amps after boot (evse-button)</option>
+                <option value="2005">2005: Register 2005</option>
+                <option value="2006">2006: Current Sharing Mode</option>
+                <option value="2007">2007: PP-Detection</option>
+              </select>
             </div>
-        </div>
-        <div class="form-group required">
-			<label for="evseRegValue" class="col-sm-3 control-label">Value</label>
+          </div>
+          <div class="form-group required">
+            <label for="evseRegValue" class="col-sm-3 control-label">Value</label>
             <div class="col-sm-9">
-				<input type="number" class="form-control" id="evseRegValue" name="evseRegValue" placeholder="Value" required>
+              <input type="number" class="form-control" id="evseRegValue" name="evseRegValue" placeholder="Value"
+                required>
             </div>
+          </div>
         </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-dismiss="modal">Abort</button>
-        <button type="submit" class="btn btn-primary" onclick="setEVSERegister()">Set Register</button>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Abort</button>
+          <button type="submit" class="btn btn-primary" onclick="setEVSERegister()">Set Register</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
-<!-- Login Container -->
-      <div class="container text-center" id="loginContent" style="display: block">
-         <div class="header clearfix">
-            <h3 class="text-muted">EVSE-WiFi</h3>
-         </div>
-         <div>
-            <div class="row">
-               <div class="well center-block" style="max-width:250px">
-                  <form id="loginForm" method="GET" onsubmit="login(); return false">
-                     <div class="form-group">
-                        <label for="password" class="control-label">Password</label>
-                        <input type="password" class="form-control" id="password" name="password" value="" required="" title="Please enter your password">
-                     </div>
-                     <button type="submit" class="btn btn-success btn-sm">Login</button>
-                  </form>
-               </div>
+  <!-- Login Container -->
+  <div class="container text-center" id="loginContent" style="display: block">
+    <div class="header clearfix">
+      <h3 class="text-muted">EVSE-WiFi</h3>
+    </div>
+    <div>
+      <div class="row">
+        <div class="well center-block" style="max-width:250px">
+          <form id="loginForm" method="GET" onsubmit="login(); return false">
+            <div class="form-group">
+              <label for="password" class="control-label">Password</label>
+              <input type="password" class="form-control" id="password" name="password" value="" required=""
+                title="Please enter your password">
             </div>
-         </div>
+            <button type="submit" class="btn btn-success btn-sm">Login</button>
+          </form>
+        </div>
       </div>
-<!-- EVSE Container -->
+    </div>
+  </div>
+  <!-- EVSE Container -->
   <div class="container" id="evseContent" style="display: none">
     <div class="header clearfix">
-	<nav>
-       <ul class="nav pull-right" style="padding:10px">
-			<span class="text-muted" style="font-size:30px;cursor:pointer" onclick="openNav()">&#9776;</span>
-       </ul>
-    </nav>
-	<h3 class="text-muted">EVSE Control</h3>
-	</div>
-	<div class="hidden" id="carStatusReady" align=center>
-		<img id="statusImg" src="/status_ready.svg">
-	</div>
-	<div class="hidden" id="carStatusDetected" align=center>
-		<img id="statusImg" src="/status_detected.svg">
-	</div>
-	<div class="hidden" id="carStatusCharging" align=center>
-		<img id="statusImg" src="/status_charging.svg">
-	</div>
-	
-	<div>
-		<br>
-		<p id="evse_vehicle_state" class="text-center"></p>
-		<br>
-	</div>
-		<div class="panel panel-default table-responsive">
-          <table class="table table-hover" >
-            <tbody style="transition:0.5s">
-              <tr onclick="showCurrentModal()">
-                <th><span class="glyphicon glyphicon-cog"></span>&nbsp;&nbsp;Max. Current >></th>
-                <td id="evse_current_limit" class="text-right"></td>
-              </tr>
-              <tr  style="transition:0.3s">
-                <th><span class="glyphicon glyphicon-signal"></span>&nbsp;&nbsp;Power</th>
-                <td id="evse_current" class="text-right"></td>
-			  </tr>
-              <tr  style="transition:0.3s">
-                <th><span class="glyphicon glyphicon-time"></span>&nbsp;&nbsp;Duration</th>
-                <td id="evse_charging_time" class="text-right"></td>
-              </tr>
-              <tr  style="transition:0.3s">
-                <th><span class="glyphicon glyphicon-download-alt"></span>&nbsp;&nbsp;Energy</th>
-                <td id="evse_charged_kwh" class="text-right"></td>
-              </tr>
-              <tr  style="transition:0.3s">
-                <th><span class="glyphicon glyphicon-road"></span>&nbsp;&nbsp;Charged mileage</th>
-                <td id="evse_charged_mileage" class="text-right"></td>
-              </tr>
-			  </tbody>
-          </table>
-        </div>
-		<div class="hidden" id="evseNotActive" align=center>
-			<button id="buttonActivate" type="button" class="btn btn-success" onclick="activateEVSE()">Activate EVSE</button>
-		</div>
-		<div class="hidden" id="evseActive" align=center>
-			<button id="buttonDeactivate" type="button" class="btn btn-danger" onclick="deactivateEVSE()">Deactivate EVSE</button>
-		</div>
-		<footer class="footer">
-            <h6 class="text-muted"><a href="https://www.evse-wifi.de" target="_blank">EVSE WiFi</a></h6>
-        </footer>
+      <nav>
+        <ul class="nav pull-right" style="padding:10px">
+          <span class="text-muted" style="font-size:30px;cursor:pointer" onclick="openNav()">&#9776;</span>
+        </ul>
+      </nav>
+      <h3 class="text-muted">EVSE Control</h3>
+    </div>
+    <div class="hidden" id="carStatusReady" align=center>
+      <img id="statusImg" src="/status_ready.svg">
+    </div>
+    <div class="hidden" id="carStatusDetected" align=center>
+      <img id="statusImg" src="/status_detected.svg">
+    </div>
+    <div class="hidden" id="carStatusCharging" align=center>
+      <img id="statusImg" src="/status_charging.svg">
+    </div>
+
+    <div>
+      <br>
+      <p id="evse_vehicle_state" class="text-center"></p>
+      <br>
+    </div>
+    <div class="panel panel-default table-responsive">
+      <table class="table table-hover">
+        <tbody style="transition:0.5s">
+          <tr onclick="showCurrentModal()">
+            <th><span class="glyphicon glyphicon-cog"></span>&nbsp;&nbsp;Max. Current >></th>
+            <td id="evse_current_limit" class="text-right"></td>
+          </tr>
+          <tr style="transition:0.3s">
+            <th><span class="glyphicon glyphicon-signal"></span>&nbsp;&nbsp;Power</th>
+            <td id="evse_current" class="text-right"></td>
+          </tr>
+          <tr style="transition:0.3s">
+            <th><span class="glyphicon glyphicon-time"></span>&nbsp;&nbsp;Duration</th>
+            <td id="evse_charging_time" class="text-right"></td>
+          </tr>
+          <tr style="transition:0.3s">
+            <th><span class="glyphicon glyphicon-download-alt"></span>&nbsp;&nbsp;Energy</th>
+            <td id="evse_charged_kwh" class="text-right"></td>
+          </tr>
+          <tr style="transition:0.3s">
+            <th><span class="glyphicon glyphicon-road"></span>&nbsp;&nbsp;Charged mileage</th>
+            <td id="evse_charged_mileage" class="text-right"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="hidden" id="evseNotActive" align=center>
+      <button id="buttonActivate" type="button" class="btn btn-success" onclick="activateEVSE()">Activate EVSE</button>
+    </div>
+    <div class="hidden" id="evseActive" align=center>
+      <button id="buttonDeactivate" type="button" class="btn btn-danger" onclick="deactivateEVSE()">Deactivate
+        EVSE</button>
+    </div>
+    <footer class="footer">
+      <h6 class="text-muted"><a href="https://www.evse-wifi.de" target="_blank">EVSE WiFi</a></h6>
+    </footer>
   </div>
   <div class="container" id="mainContent">
   </div>
-<!-- Users Container -->
-        <div class="container" id="usersContent" style="display: none">
-		<div class="header clearfix">
-		<nav>
-			<ul class="nav pull-right" style="padding:10px">
-			<span class="text-muted" style="font-size:30px;cursor:pointer" onclick="openNav()">&#9776;</span>
-			</ul>
-		</nav>
-		<h3 class="text-muted">Users</h3>
-		</div>
-            <div class="overlay">
-               <div>
-                  <h5>You can add new users by either scanning a RFID Tag or by clicking on "New User" button.</h5>
-               </div>
-               <br>
-            </div>
-            <div class="panel panel-default">
-               <table id="usertable" class="table" data-paging="true" data-filtering="true" data-sorting="true" data-editing="true" data-state="true"></table>
-            </div>
-            <div class="modal fade" id="editor-modal" tabindex="-1" role="dialog" aria-labelledby="editor-title">
-               <style scoped>
-                  .form-group.required .control-label:after {
-                  content: "*";
-                  color: red;
-                  margin-left: 4px;
-                  }
-               </style>
-               <div class="modal-dialog" role="document">
-                  <form class="modal-content form-horizontal" id="editor">
-                     <div class="modal-header">
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-                        <h4 class="modal-title" id="editor-title">Add User</h4>
-                     </div>
-                     <div class="modal-body">
-                        <input type="number" id="id" name="id" class="hidden" />
-                        <div class="form-group">
-                           <label for="picctype" class="col-sm-3 control-label">PICC Type</label>
-                           <div class="col-sm-9">
-                              <input type="text" class="form-control" id="picctype" name="picctype" placeholder="PICC Type" disabled>
-                           </div>
-                        </div>
-                        <div class="form-group required">
-                           <label for="uid" class="col-sm-3 control-label">UID</label>
-                           <div class="col-sm-9">
-                              <input type="text" class="form-control" id="uid" name="uid" placeholder="UID" required>
-                           </div>
-                        </div>
-                        <div class="form-group required">
-                           <label for="username" class="col-sm-3 control-label">User Name or Label</label>
-                           <div class="col-sm-9">
-                              <input type="text" class="form-control" id="username" name="username" placeholder="User Name or Label" required>
-                           </div>
-                        </div>
-                        <div class="form-group required">
-                           <label for="acctype" class="col-sm-3 control-label">Access Type</label>
-                           <div class="col-sm-9">
-                              <select class="form-control" id="acctype" required>
-                                 <option selected="selected" value="1">Active</option>
-                                 <option value="99">Admin</option>
-                                 <option value="0">Disabled</option>
-                              </select>
-                           </div>
-                        </div>
-                        <div class="form-group required">
-                           <label for="validuntil" class="col-sm-3 control-label">Valid Until</label>
-                           <div class="col-sm-9">
-                              <input type="date" class="form-control" id="validuntil" name="validuntil" value="2038-01-01" placeholder="Valid Until" required>
-                           </div>
-                        </div>
-                     </div>
-                     <div class="modal-footer">
-                        <button type="submit" class="btn btn-primary">Save changes</button>
-                        <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-                     </div>
-                  </form>
-               </div>
-            </div>
-         <hr>
-         <footer class="footer">
-            <h6 class="text-muted"><a href="https://www.evse-wifi.de" target="_blank">EVSE WiFi</a></h6>
-         </footer>
+  <!-- Users Container -->
+  <div class="container" id="usersContent" style="display: none">
+    <div class="header clearfix">
+      <nav>
+        <ul class="nav pull-right" style="padding:10px">
+          <span class="text-muted" style="font-size:30px;cursor:pointer" onclick="openNav()">&#9776;</span>
+        </ul>
+      </nav>
+      <h3 class="text-muted">Users</h3>
+    </div>
+    <div class="overlay">
+      <div>
+        <h5>You can add new users by either scanning a RFID Tag or by clicking on "New User" button.</h5>
       </div>
-	  
-<!-- Log Container -->
-        <div class="container" id="logContent" style="display: none">
-		<div class="header clearfix">
-		<nav>
-			<ul class="nav pull-right" style="padding:10px">
-			<span class="text-muted" style="font-size:30px;cursor:pointer" onclick="openNav()">&#9776;</span>
-			</ul>
-		</nav>
-		<h3 class="text-muted">Log</h3>
-		</div>
-            <div class="panel panel-default">
-                 <table id="latestlogtable" class="table" data-paging="false" data-filtering="true" data-sorting="true" data-editing="false" data-state="true" data-show-footer="true"></table>
+      <br>
+    </div>
+    <div class="panel panel-default">
+      <table id="usertable" class="table" data-paging="true" data-filtering="true" data-sorting="true"
+        data-editing="true" data-state="true"></table>
+    </div>
+    <div class="modal fade" id="editor-modal" tabindex="-1" role="dialog" aria-labelledby="editor-title">
+      <style scoped>
+        .form-group.required .control-label:after {
+          content: "*";
+          color: red;
+          margin-left: 4px;
+        }
+      </style>
+      <div class="modal-dialog" role="document">
+        <form class="modal-content form-horizontal" id="editor">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                aria-hidden="true">×</span></button>
+            <h4 class="modal-title" id="editor-title">Add User</h4>
+          </div>
+          <div class="modal-body">
+            <input type="number" id="id" name="id" class="hidden" />
+            <div class="form-group">
+              <label for="picctype" class="col-sm-3 control-label">PICC Type</label>
+              <div class="col-sm-9">
+                <input type="text" class="form-control" id="picctype" name="picctype" placeholder="PICC Type" disabled>
+              </div>
             </div>
-         <hr>
-		 <footer class="footer">
-            <h6 class="text-muted"><a href="https://www.evse-wifi.de" target="_blank">EVSE WiFi</a></h6>
-         </footer>
+            <div class="form-group required">
+              <label for="uid" class="col-sm-3 control-label">UID</label>
+              <div class="col-sm-9">
+                <input type="text" class="form-control" id="uid" name="uid" placeholder="UID" required>
+              </div>
+            </div>
+            <div class="form-group required">
+              <label for="username" class="col-sm-3 control-label">User Name or Label</label>
+              <div class="col-sm-9">
+                <input type="text" class="form-control" id="username" name="username" placeholder="User Name or Label"
+                  required maxlength="10">
+              </div>
+            </div>
+            <div class="form-group required">
+              <label for="acctype" class="col-sm-3 control-label">Access Type</label>
+              <div class="col-sm-9">
+                <select class="form-control" id="acctype" required>
+                  <option selected="selected" value="1">Active</option>
+                  <option value="0">Disabled</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group required">
+              <label for="validuntil" class="col-sm-3 control-label">Valid Until</label>
+              <div class="col-sm-9">
+                <input type="date" class="form-control" id="validuntil" name="validuntil" value="2038-01-01"
+                  placeholder="Valid Until" required>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-primary">Save changes</button>
+            <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+          </div>
+        </form>
       </div>
-<!-- Settings Container -->
-      <div class="container" id="settingsContent" style="display: none">
-		<div class="header clearfix">
-		<nav>
-			<ul class="nav pull-right" style="padding:10px">
-			<span class="text-muted" style="font-size:30px;cursor:pointer" onclick="openNav()">&#9776;</span>
-			</ul>
-		</nav>
-		<h3 class="text-muted">Settings</h3>
-		</div>
-        <div class="alert alert-warning"><strong>Warning!</strong> Settings will take effect when the device is rebooted. 
-        </div>
-        <div>
-          <button data-toggle="collapse" data-target="#status" id="refstat" onclick="refreshStats()" class="btn btn-link btn-sm">Show Device Status</button>
-        </div>
-        <div id="status" class="row collapse">
-            <div class="col-sm-6">
-              <div class="panel panel-default table-responsive">
-                <table class="table table-hover table-striped">
-                  <caption>Device</caption>
-                  <tr>
-                    <th>Chip ID</th>
-                    <td id="chip"></td>
-                  </tr>
-                  <tr>
-                    <th>CPU Clock</th>
-                    <td id="cpu"></td>
-                  </tr>
-                                    <tr>
-                    <th>Uptime</th>
-                    <td id="uptime"></td>
-                  </tr>
-                  <tr>
-                    <th>Free Heap</th>
-                    <td>
-                      <div class="progress" style="margin-bottom: 0 !important;">
-                        <div id="heap" class="progress-bar progress-bar-primary" role="progressbar">
-                          Progress
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                  <tr>
-                    <th>Free Flash</th>
-                    <td>
-                      <div class='progress' style="margin-bottom: 0 !important;">
-                        <div id="flash" class="progress-bar progress-bar-primary" role="progressbar">
-                          Progress
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                  				<tr>
- 					<th>Free SPIFFS</th>
- 					<td>			
- 					<div class='progress' style="margin-bottom: 0 !important;">
- 						<div id="spiffs" class="progress-bar progress-bar-primary" role="progressbar">
- 							Progress
- 						</div>
- 					</div></td>
-				  </tr>
-                </table>
-              </div>
-            </div>
-            <div class="col-sm-6">
-              <div class="panel panel-default table-responsive">
-                <table class="table table-hover table-striped">
-                  <caption>Network</caption>
-                  <tr>
-                    <th>SSID</th>
-                    <td id="ssidstat"></td>
-                  </tr>
-                  <tr>
-                    <th>IP</th>
-                    <td id="ip"></td>
-                  </tr>
-                  <tr>
-                    <th>Gateway</th>
-                    <td id="gate"></td>
-                  </tr>
-                  <tr>
-                    <th>Mask</th>
-                    <td id="mask"></td>
-                  </tr>
-                  <tr>
-                    <th>DNS</th>
-                    <td id="dns"></td>
-                  </tr>
-                  <tr>
-                    <th>MAC</th>
-                    <td id="mac"></td>
-                  </tr>
-                </table>
-              </div>
-            </div>
-			<div class="col-sm-6">
-              <div class="panel panel-default table-responsive">
-                <table class="table table-hover table-striped">
-                  <caption>
-				  <span style="float: left">EVSE Registers</span>
-				  <span style="float: right" class="glyphicon glyphicon-pencil" onclick="showEvseRegModal()"></span>
-				  </caption>
-                  <tr>
-                    <th>1000: Configured Current</th>
-                    <td id="amps_conf"></td>
-                  </tr>
-                  <tr>
-                    <th>1001: Actual Current</th>
-                    <td id="amps_out"></td>
-                  </tr>
-                  <tr>
-                    <th>1002: Vehicle Status</th>
-                    <td id="vehicle_status"></td>
-                  </tr>
-                  <tr>
-                    <th>1003: PP-Limit</th>
-                    <td id="amps_pp"></td>
-                  </tr>
-                  <tr>
-                    <th>1004: Turn off bit</th>
-                    <td id="amps_turn_off"></td>
-                  </tr>
-				  <tr>
-                    <th>1005: Firmware Version</th>
-                    <td id="evse_version"></td>
-                  </tr>
-                  <tr>
-                    <th>1006: EVSE Status</th>
-                    <td id="evse_status"></td>
-                  </tr>
-                  <tr>
-                    <th>2000: Current after boot</th>
-                    <td id="amps_boot"></td>
-                  </tr>
-				  <tr>
-                    <th>2001: Modbus Status</th>
-                    <td id="evse_modbus"></td>
-                  </tr>
-				  <tr>
-                    <th>2002: Min. Current Value</th>
-                    <td id="amps_min"></td>
-                  </tr>
-                  <tr>
-                    <th>2003: Analog Input Config</th>
-                    <td id="evse_analog_in"></td>
-                  </tr>
-                  <tr>
-                    <th>2004: Amps after boot (evse-button)</th>
-                    <td id="amps_power_on"></td>
-                  </tr>
-                  <tr>
-                    <th>2005: Register 2005</th>
-                    <td id="evse_2005"></td>
-                  </tr>
-                  <tr>
-                    <th>2006: Current Sharing Mode</th>
-                    <td id="evse_sharing_mode"></td>
-                  </tr>
-				  <tr>
-                    <th>2007: PP-Detection</th>
-                    <td id="pp_detection"></td>
-                  </tr>
-                </table>
-              </div>
-            </div>
+    </div>
+    <hr>
+    <footer class="footer">
+      <h6 class="text-muted"><a href="https://www.evse-wifi.de" target="_blank">EVSE WiFi</a></h6>
+    </footer>
+  </div>
 
-			<div id="meterRegisters" class="col-sm-6">
-              <div class="panel panel-default table-responsive">
-                <table class="table table-hover table-striped">
-                  <caption>Meter Registers</caption>
-                  <tr>
-                    <th>Total active energy </th>
-                    <td id="meter_total"></td>
-                  </tr>
-                </table>
-              </div>
-            </div>			
-			
-          </div>
-            <br>
-        <div class="row">
-          <div class="col-sm-6">
-            <legend>Wi-Fi Settings</legend>
-            <h6 class="text-muted">Type your Wi-Fi Network's SSID or Scan for nerby Wireless Networks to join.</h6>
-            <div class="row form-group">
-              <label data-toggle="tooltip" title="You can run your ESP in AP Mode or Client Mode. In client mode you will need to connect to an existing Wi-Fi network, in AP Mode ESP creates a Wi-Fi network itself." class="col-xs-3">Wi-Fi Mode</label>
-              <div class="col-xs-9">
-                <form>
-                  <label class="radio-inline"><input type="radio" value="1" name="wmode" id="wmodeap" onclick="handleAP();">Access Point </label>
-                  <label class="radio-inline"><input type="radio" value="0" name="wmode" id="wmodesta" onclick="handleSTA();">Client</label>
-                </form>
-              </div>
-            </div>
-            <div class="row form-group">
-              <label data-toggle="tooltip" title="Wi-Fi Network's Name" class="col-xs-3">SSID</label> 
-              <span class="col-xs-6 col-md-5">
-                <input class="form-control input-sm" id="inputtohide" type="text" name="ap_ssid">
-                <select class="form-control input-sm" style="display:none;" id="ssid" onchange="listBSSID();"></select>
-              </span>
-              <span class="col-xs-3">
-                <button id="scanb" type="button" class="btn btn-primary btn-xs" onclick="scanWifi()">Scan</button>
-              </span>
-            </div>
-            <div class="row form-group" style="display:none" id="hideBSSID">
-              <label data-toggle="tooltip" title="If you have two Wi-Fi networks with the same SSID you may want to choose the specific one by BSSID" class="col-xs-3">BSSID</label> 
-              <span class="col-xs-9 col-md-5">
-              <input id="wifibssid" class="form-control input-sm" type="text" name="ap_bssid">
-              </span> 
-            </div>
-            <div class="row form-group">
-              <label data-toggle="tooltip" title="WiFi Password - in AP mode at least 8 characters!" class="col-xs-3">Password</label> 
-              <span class="col-xs-6 col-md-5">
-              <input id="wifipass" class="form-control input-sm" type="password" name="ap_passwd">
-              </span> 
-			  <span class="col-xs-3">
-                <button id="shwifi" type="button" class="btn btn-primary btn-xs" onclick="shWifi()">show</button>
-              </span>
-            </div>
-			<div class="row form-group">
-              <label data-toggle="tooltip" title="Use a static IP Address instead of DHCP" class="col-xs-3">Static IP</label>
-              <div class="col-xs-9">
-                <form>
-                  <label class="checkbox-inline"><input type="checkbox" id="checkboxStaticIP" value="" onclick="handleStaticIP();">Active</label>
-                </form>
-              </div>
-            </div>
-			<div id="divIP" class="row form-group">
-				<label data-toggle="tooltip" title="Give an IP Address" class="col-xs-3">IP Address</label> 
- 				<span class="col-xs-9 col-md-5">
-				<input class="form-control input-sm" placeholder="IP Address" id="ipch" type="text" name="ip">
- 				</span>
-			</div>
-			<div id="divSubnet" class="row form-group">
-				<label data-toggle="tooltip" title="Give a Subnet Mask" class="col-xs-3">Subnet Mask</label> 
- 				<span class="col-xs-9 col-md-5">
-				<input class="form-control input-sm" placeholder="Subnet Mask" id="subnetch" type="text" name="subnet">
- 				</span>
-			</div>
-			<div id="divGateway" class="row form-group">
-				<label data-toggle="tooltip" title="Give a Gateway" class="col-xs-3">Gateway</label> 
- 				<span class="col-xs-9 col-md-5">
-				<input class="form-control input-sm" placeholder="Gateway" id="gatewaych" type="text" name="gateway">
- 				</span>
-			</div>
-			<div id="divDNS" class="row form-group">
-				<label data-toggle="tooltip" title="Give a DNS Server" class="col-xs-3">DNS Server</label> 
- 				<span class="col-xs-9 col-md-5">
-				<input class="form-control input-sm" placeholder="DNS Server" id="dnsch" type="text" name="dns">
- 				</span>
-			</div>
-			<br>
-		  </div>
-          <div class="col-sm-6">
-            <legend>RFID Hardware Settings</legend>
-            <h6 class="text-muted">Please refer the <a href="https://github.com/CurtRod/SimpleEVSE-WiFi#wiring-wemos-d1-mini-nodemcu">documentation</a> for pin configuration.</h6>
-			<div class="alert alert-warning"><strong>Warning!</strong> Activating RFID-Hardware when there is no RC522 connected to ESP, causes boot loop!</div>
-			<div class="row form-group">
-              <label data-toggle="tooltip" title="When you want to use a RC522 RFID Hardware to activate your EVSE, please activate this option." class="col-xs-3">RFID-Hardware</label>
-              <div class="col-xs-9">
-                <form>
-                  <label class="checkbox-inline"><input type="checkbox" id="checkboxRfid" value="" name="rfidmode" onclick="handleRFID();">Active</label>
-                </form>
-              </div>
-            </div>
-            <div class="row form-group">
-              <label data-toggle="tooltip" title="Choose which ESP port is connected to RFID Hardware SDA pin" class="col-xs-3">SPI SS</label> 
-              <span class="col-xs-9 col-md-5">
-                <select class="form-control input-sm" id="gpioss">
-                  <option value="0">GPIO-0</option>
-                  <option value="2">GPIO-2</option>
-                  <option value="4">GPIO-4</option>
-                  <option value="5">GPIO-5</option>
-                  <option selected="selected" value="15">GPIO-15</option>
-                  <option value="16">GPIO-16</option>
-                </select>
-              </span>
-            </div>
-            <div class="row form-group">
-              <label data-toggle="tooltip" title="Higher value means the longer RFID reader's reading distance" class="col-xs-3">Antenna Gain</label> 
-              <span class="col-xs-9 col-md-5">
-                <select class="form-control input-sm" id="gain">
-                  <option value="112">Max (48 db)</option>
-                  <option value="96">43 db</option>
-                  <option value="48">38 db</option>
-                  <option selected="selected" value="32">Avg (33 db)</option>
-                  <option value="16">23 db</option>
-                  <option value="0">Min (18 db)</option>
-                </select>
-              </span>
-            </div>
-			<br>
-		  </div>
-		</div>
-		 <div class="row">
-		  <div class="col-sm-6">
-			<legend>Meter Hardware Settings</legend>
-			<div class="row form-group">
-              <label data-toggle="tooltip" title="If you want to use an electricity meter to count the power consumption, please activate this option." class="col-xs-3">Meter Hardware</label>
-              <div class="col-xs-9">
-                <form>
-                  <label class="checkbox-inline"><input type="checkbox" id="checkboxMeter" value="" name="checkboxMeter" onclick="handleMeter();">Active</label>
-                </form>
-              </div>
-            </div>
-			<div class="row form-group">
-              <label data-toggle="tooltip" title="Choose whether you want to use an s0 meter or a modbus meter." class="col-xs-3">Type of Meter</label> 
-              <span class="col-xs-9 col-md-5">
-                <select class="form-control input-sm" id="smetertype" onchange="handleMeterType()">
-                  <option selected value="S0">S0 Meter</option>
-				  <option value="SDM120">SDM120 (Modbus - experimental)</option>
-				  <option value="SDM630">SDM630 (Modbus - experimental)</option>
-                </select>
-              </span>
-            </div>
-			<div id="divMeterPin" class="row form-group">
-              <label data-toggle="tooltip" title="Choose which ESP port is connected to S0 interface of electricity meter" class="col-xs-3">Meter GPIO</label> 
-              <span class="col-xs-9 col-md-5">
-                <select class="form-control input-sm" id="gpioint">
-                  <option selected="selected" value="0">GPIO-0</option>
-                  <option value="2">GPIO-2</option>
-                  <option value="4">GPIO-4</option>
-                  <option value="5">GPIO-5</option>
-                  <option value="15">GPIO-15</option>
-                </select>
-              </span>
-            </div>
-			<div id="divMeterPhase" class="row form-group">
-              <label data-toggle="tooltip" title="Choose the kind of Meter you Use" class="col-xs-3">Meter Phases</label> 
-              <span class="col-xs-9 col-md-5">
-                <select class="form-control input-sm" id="meterphase">
-                  <option selected="selected" value="1">1-phase</option>
-                  <option value="3">3-phase</option>
-                </select>
-              </span>
-            </div>
-            <div id="divImpKwh" class="row form-group">
- 						<label data-toggle="tooltip" title="Depending on your meter setup, you can choose the impulses per kWh (usually 1000 or 2000 imp/kWh)" class="col-xs-3">Impulses</label> 
- 						<span class="col-xs-9 col-md-5">
-						<input class="form-control input-sm" value="1000" placeholder="impulses per kWh" id="impkwh" type="text" name="impsperkwh">
- 						</span>
-			</div>
-            <div id="divImpLen" class="row form-group">
- 						<label data-toggle="tooltip" title="Depending on your meter setup, you can choose the impulse length in milliseconds (for SDM120 use 90). Default: 30ms" class="col-xs-3">Impulse Length</label> 
- 						<span class="col-xs-9 col-md-5">
-						<input class="form-control input-sm" placeholder="impulse length in ms" id="implen" type="text" name="implength">
- 						</span>
-			</div>
-			<div class="row form-group">
- 						<label data-toggle="tooltip" title="Price per kWh in cent" class="col-xs-3">Price</label> 
- 						<span class="col-xs-9 col-md-5">
-						<input class="form-control input-sm" value="25" placeholder="cent per kWh" id="price" type="text" name="price">
- 						</span>
-			</div>
-			<br>
-			</div>
-		  <div class="col-sm-6">
-			<legend>EVSE Settings</legend>
-            <div class="row form-group">
- 						<label data-toggle="tooltip" title="Enter the maximum current (A) allowed by your electical installation to limit the slider in /'EVSE Control/'." class="col-xs-3">Max Current</label> 
- 						<span class="col-xs-9 col-md-5">
-						<input class="form-control input-sm" value="6" placeholder="Ampere" id="maxinstall" type="text" name="maxinstall">
- 						</span>
-			</div>
-			<div class="row form-group">
-              <label data-toggle="tooltip" title="If you want to activate your EVSE via button, please activate this option." class="col-xs-3">Button</label>
-              <div class="col-xs-9">
-                <form>
-                  <label class="checkbox-inline"><input type="checkbox" id="checkboxButtonActive" value="" name="buttonsactive" onclick="handleButtonActive();">Active</label>
-                </form>
-              </div>
-            </div>
-			<div class="row form-group">
-              <label data-toggle="tooltip" title="Choose which ESP port is connected to Button for activating/deactivating your EVSE" class="col-xs-3">Button Pin</label> 
-              <span class="col-xs-9 col-md-5">
-                <select class="form-control input-sm" id="gpiobutton">
-                  <option value="0">GPIO-0</option>
-                  <option selected="selected" value="2">GPIO-2</option>
-                  <option value="4">GPIO-4</option>
-                  <option value="5">GPIO-5</option>
-                  <option value="15">GPIO-15</option>
-                </select>
-              </span>
-            </div>
-			<div class="row form-group">
-              <label data-toggle="tooltip" title="If you want to keep your EVSE always active, please activate this option." class="col-xs-3">EVSE always active</label>
-              <div class="col-xs-9">
-                <form>
-                  <label class="checkbox-inline"><input type="checkbox" id="checkboxAlwaysActive" value="" name="checkboxalwaysactive">Active</label>
-                </form>
-              </div>
-            </div>
-			<div class="row form-group">
-              <label data-toggle="tooltip" title="Sets the configured current to 'Default amps value after boot' (EVSE Reg 2000), when charging stops." class="col-xs-3">Reset current after charge</label>
-              <div class="col-xs-9">
-                <form>
-                  <label class="checkbox-inline"><input type="checkbox" id="checkboxResetCurrentAfterCharge" value="" name="checkboxResetCurrentAfterCharge">Active</label>
-                </form>
-              </div>
-            </div>
-			<br>
-          </div>
-		</div>
-		<div class="row">
-		<div class="col-sm-6">
-            <legend>Car Settings</legend>
-           <div class="row form-group">
-              <label data-toggle="tooltip" title="Average energy consumption of your car" class="col-xs-3">Average consumption</label> 
-              <span class="col-xs-6 col-md-5">
-              <input class="form-control input-sm" placeholder="kWh per 100km" id="avgconsumption" type="text">
-              </span>
-              <br>
-            </div>
-			<div class="row form-group">
- 				<label data-toggle="tooltip" title="Specify a factor with which the measured energy is to be multiplied (e.g. when using a single-phase meter in combination with a two- or three-phase charging vehicle). Use '1' if you don't need a factor." class="col-xs-3">Factor</label> 
- 				<span class="col-xs-9 col-md-5">
-					<select class="form-control input-sm" id="factor">
-						<option selected="selected" value="1">Factor 1 (no Factor)</option>
-						<option value="2">Factor 2</option>
-						<option value="3">Factor 3</option>
-					</select>
- 				</span>
-			</div>
-            <br>
-		  </div>
-		  </div>
-        <div class="row">
-          <div class="col-sm-6">
-            <legend>General Settings</legend>
-            <div class="row form-group">
-              <label data-toggle="tooltip" title="Log On password for the Administrator" class="col-xs-3">Admin Password</label> 
-              <span class="col-xs-6 col-md-5">
-              <input class="form-control input-sm" placeholder="Administrator Password" id="adminpwd" type="password">
-              </span>
-			  <span class="col-xs-3">
-                <button id="shadmin" type="button" class="btn btn-primary btn-xs" onclick="shAdmin()">show</button>
-              </span>
-              <br>
-            </div>
-			<div class="row form-group">
-              <label data-toggle="tooltip" title="Log On password for the Administrator" class="col-xs-3">Confirm Admin Password</label> 
-              <span class="col-xs-6 col-md-5">
-              <input class="form-control input-sm" placeholder="Administrator Password" id="cadminpwd" type="password">
-              </span>
-              <br>
-            </div>
-			
-            <div class="row form-group">
-              <label data-toggle="tooltip" title="Hostname for your ESP, When Bonjour is installed on your computer you can access your ESP via http://hostname.local" class="col-xs-3">Host Name</label> 
-              <span class="col-xs-9 col-md-5">
-              <input class="form-control input-sm" placeholder="Hostname" value="evse-wifi" id="hostname" type="text">
-              </span>
-            </div>
-			<div class="row form-group">
-              <label data-toggle="tooltip" title="Enable Debug Mode" class="col-xs-3">Debug Mode</label> 
-              <span class="col-xs-9 col-md-5">
-                <form>
-                  <label class="checkbox-inline"><input type="checkbox" id="checkboxDebug" value="">Active</label>
-                </form>
-              </span>
-            </div>
-			<div class="row form-group">
-               <label data-toggle="tooltip" title="Disables BasicAuthentication for Websocket. This opens a security hole but is necessary when using Safari Browser." class="col-xs-3">Disable BasicAuth (Safari Mode)</label> 
-               <span class="col-xs-9 col-md-5">
-                 <form>
-                   <label class="checkbox-inline"><input type="checkbox" id="checkboxSafari" value="">Active</label>
-                 </form>
-               </span>
-            </div>
-			<div class="row form-group">
-               <label data-toggle="tooltip" title="Disables LED actions for GPIO16 (D0)." class="col-xs-3">Disable LED</label> 
-               <span class="col-xs-9 col-md-5">
-                 <form>
-                   <label class="checkbox-inline"><input type="checkbox" id="checkboxDisableLED" value="">Active</label>
-                 </form>
-               </span>
-            </div>
-			<br>
-          </div>
-          <div class="col-sm-6">
-            <legend>Time Settings</legend>
-            <div class="row form-group">
-              <label data-toggle="tooltip" title="Choose an NTP Server (recommended: pool.ntp.org)" class="col-xs-3">NTP Server</label> 
-              <span class="col-xs-9 col-md-5">
-              <input class="form-control input-sm" placeholder="NTP Server" value="pool.ntp.org" id="ntpIP" type="text">
-              </span>
-            </div>
-            <h6 class="text-muted">Small differences between device time and local time can be ignored.</h6>
-            <div class="row form-group">
-              <label class="col-xs-3">Device Time</label> 
-              <span id="utc" class="col-xs-9 col-md-5">
-              </span>
-            </div>
-            <div class="row form-group">
-              <label class="col-xs-3">Browser Time</label> 
-              <span id="rtc" class="col-xs-9 col-md-5">
-              </span>
-            </div>
-            <div class="row form-group">
-              <div data-toggle="tooltip" title="Send your PC/Phone time to ESP, useful when the ESP does not have Internet connection." class="col-xs-3"><button onclick="syncBrowserTime(false)" class="btn btn-link btn-sm">Sync Browser Time to Device</button></div>
-              </div>
-            <div class="row form-group">
-              <label class="col-xs-3">Time Zone</label> 
-              <span class="col-xs-9 col-md-5">
-                <select class="form-control input-sm" name="DropDownTimezone" id="DropDownTimezone">
-                  <option value="-12">(GMT -12:00) Eniwetok, Kwajalein</option>
-                  <option value="-11">(GMT -11:00) Midway Island, Samoa</option>
-                  <option value="-10">(GMT -10:00) Hawaii</option>
-                  <option value="-9">(GMT -9:00) Alaska</option>
-                  <option value="-8">(GMT -8:00) Pacific Time (US &amp; Canada)</option>
-                  <option value="-7">(GMT -7:00) Mountain Time (US &amp; Canada)</option>
-                  <option value="-6">(GMT -6:00) Central Time (US &amp; Canada), Mexico City</option>
-                  <option value="-5">(GMT -5:00) Eastern Time (US &amp; Canada), Bogota, Lima</option>
-                  <option value="-4">(GMT -4:00) Atlantic Time (Canada), Caracas, La Paz</option>
-                  <option value="-3.5">(GMT -3:30) Newfoundland</option>
-                  <option value="-3">(GMT -3:00) Brazil, Buenos Aires, Georgetown</option>
-                  <option value="-2">(GMT -2:00) Mid-Atlantic</option>
-                  <option value="-1">(GMT -1:00 hour) Azores, Cape Verde Islands</option>
-                  <option value="0">(GMT) Western Europe Time, London, Lisbon, Casablanca</option>
-                  <option selected="selected" value="1">(GMT +1:00 hour) Brussels, Copenhagen, Madrid, Paris</option>
-                  <option value="2">(GMT +2:00) Kaliningrad, South Africa</option>
-                  <option value="3">(GMT +3:00) Baghdad, Riyadh, Moscow, St. Petersburg</option>
-                  <option value="3.5">(GMT +3:30) Tehran</option>
-                  <option value="4">(GMT +4:00) Abu Dhabi, Muscat, Baku, Tbilisi</option>
-                  <option value="4.5">(GMT +4:30) Kabul</option>
-                  <option value="5">(GMT +5:00) Ekaterinburg, Islamabad, Karachi, Tashkent</option>
-                  <option value="5.5">(GMT +5:30) Bombay, Calcutta, Madras, New Delhi</option>
-                  <option value="5.75">(GMT +5:45) Kathmandu</option>
-                  <option value="6">(GMT +6:00) Almaty, Dhaka, Colombo</option>
-                  <option value="7">(GMT +7:00) Bangkok, Hanoi, Jakarta</option>
-                  <option value="8">(GMT +8:00) Beijing, Perth, Singapore, Hong Kong</option>
-                  <option value="9">(GMT +9:00) Tokyo, Seoul, Osaka, Sapporo, Yakutsk</option>
-                  <option value="9.5">(GMT +9:30) Adelaide, Darwin</option>
-                  <option value="10">(GMT +10:00) Eastern Australia, Guam, Vladivostok</option>
-                  <option value="11">(GMT +11:00) Magadan, Solomon Islands, New Caledonia</option>
-                  <option value="12">(GMT +12:00) Auckland, Wellington, Fiji, Kamchatka</option>
-                </select>
-              </span>
-            </div>
-			<br>
+  <!-- Log Container -->
+  <div class="container" id="logContent" style="display: none">
+    <div class="header clearfix">
+      <nav>
+        <ul class="nav pull-right" style="padding:10px">
+          <span class="text-muted" style="font-size:30px;cursor:pointer" onclick="openNav()">&#9776;</span>
+        </ul>
+      </nav>
+      <h3 class="text-muted">Log</h3>
+    </div>
+    <div class="panel panel-default">
+      <table id="latestlogtable" class="table" data-paging="false" data-filtering="true" data-sorting="true"
+        data-editing="false" data-state="true" data-show-footer="true"></table>
+    </div>
+    <hr>
+    <footer class="footer">
+      <h6 class="text-muted"><a href="https://www.evse-wifi.de" target="_blank">EVSE WiFi</a></h6>
+    </footer>
+  </div>
+  <!-- Settings Container -->
+  <div class="container" id="settingsContent" style="display: none">
+    <div class="header clearfix">
+      <nav>
+        <ul class="nav pull-right" style="padding:10px">
+          <span class="text-muted" style="font-size:30px;cursor:pointer" onclick="openNav()">&#9776;</span>
+        </ul>
+      </nav>
+      <h3 class="text-muted">Settings</h3>
+    </div>
+    <div class="alert alert-warning"><strong>Warning!</strong> Settings will take effect when the device is rebooted.
+    </div>
+    <div>
+      <button data-toggle="collapse" data-target="#status" id="refstat" onclick="refreshStats()"
+        class="btn btn-link btn-sm">Show Device Status</button>
+    </div>
+    <div id="status" class="row collapse">
+      <div class="col-sm-6">
+        <div class="panel panel-default table-responsive">
+          <table class="table table-hover table-striped">
+            <caption>Device</caption>
+            <tr>
+              <th>Chip ID</th>
+              <td id="chip"></td>
+            </tr>
+            <tr>
+              <th>CPU Clock</th>
+              <td id="cpu"></td>
+            </tr>
+            <tr>
+              <th>Uptime</th>
+              <td id="uptime"></td>
+            </tr>
+            <tr>
+              <th>Free Heap</th>
+              <td>
+                <div class="progress" style="margin-bottom: 0 !important;">
+                  <div id="heap" class="progress-bar progress-bar-primary" role="progressbar">
+                    Progress
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <th>Free Flash</th>
+              <td>
+                <div class='progress' style="margin-bottom: 0 !important;">
+                  <div id="flash" class="progress-bar progress-bar-primary" role="progressbar">
+                    Progress
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <th>Free SPIFFS</th>
+              <td>
+                <div class='progress' style="margin-bottom: 0 !important;">
+                  <div id="spiffs" class="progress-bar progress-bar-primary" role="progressbar">
+                    Progress
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+      <div class="col-sm-6">
+        <div class="panel panel-default table-responsive">
+          <table class="table table-hover table-striped">
+            <caption>Network</caption>
+            <tr>
+              <th>SSID</th>
+              <td id="ssidstat"></td>
+            </tr>
+            <tr>
+              <th>IP</th>
+              <td id="ip"></td>
+            </tr>
+            <tr>
+              <th>Gateway</th>
+              <td id="gate"></td>
+            </tr>
+            <tr>
+              <th>Mask</th>
+              <td id="mask"></td>
+            </tr>
+            <tr>
+              <th>DNS</th>
+              <td id="dns"></td>
+            </tr>
+            <tr>
+              <th>MAC</th>
+              <td id="mac"></td>
+            </tr>
+          </table>
+        </div>
+      </div>
+      <div class="col-sm-6">
+        <div class="panel panel-default table-responsive">
+          <table class="table table-hover table-striped">
+            <caption>
+              <span style="float: left">EVSE Registers</span>
+              <span style="float: right" class="glyphicon glyphicon-pencil" onclick="showEvseRegModal()"></span>
+            </caption>
+            <tr>
+              <th>1000: Configured Current</th>
+              <td id="amps_conf"></td>
+            </tr>
+            <tr>
+              <th>1001: Actual Current</th>
+              <td id="amps_out"></td>
+            </tr>
+            <tr>
+              <th>1002: Vehicle Status</th>
+              <td id="vehicle_status"></td>
+            </tr>
+            <tr>
+              <th>1003: PP-Limit</th>
+              <td id="amps_pp"></td>
+            </tr>
+            <tr>
+              <th>1004: Turn off bit</th>
+              <td id="amps_turn_off"></td>
+            </tr>
+            <tr>
+              <th>1005: Firmware Version</th>
+              <td id="evse_version"></td>
+            </tr>
+            <tr>
+              <th>1006: EVSE Status</th>
+              <td id="evse_status"></td>
+            </tr>
+            <tr>
+              <th>2000: Current after boot</th>
+              <td id="amps_boot"></td>
+            </tr>
+            <tr>
+              <th>2001: Modbus Status</th>
+              <td id="evse_modbus"></td>
+            </tr>
+            <tr>
+              <th>2002: Min. Current Value</th>
+              <td id="amps_min"></td>
+            </tr>
+            <tr>
+              <th>2003: Analog Input Config</th>
+              <td id="evse_analog_in"></td>
+            </tr>
+            <tr>
+              <th>2004: Amps after boot (evse-button)</th>
+              <td id="amps_power_on"></td>
+            </tr>
+            <tr>
+              <th>2005: Register 2005</th>
+              <td id="evse_2005"></td>
+            </tr>
+            <tr>
+              <th>2006: Current Sharing Mode</th>
+              <td id="evse_sharing_mode"></td>
+            </tr>
+            <tr>
+              <th>2007: PP-Detection</th>
+              <td id="pp_detection"></td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+      <div id="meterRegisters" class="col-sm-6">
+        <div class="panel panel-default table-responsive">
+          <table class="table table-hover table-striped">
+            <caption>Meter Registers</caption>
+            <tr>
+              <th>Total active energy </th>
+              <td id="meter_total"></td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+    </div>
+    <br>
+    <div class="row">
+      <div class="col-sm-6">
+        <legend>Wi-Fi Settings</legend>
+        <h6 class="text-muted">Type your Wi-Fi Network's SSID or Scan for nerby Wireless Networks to join.</h6>
+        <div class="row form-group">
+          <label data-toggle="tooltip"
+            title="You can run your ESP in AP Mode or Client Mode. In client mode you will need to connect to an existing Wi-Fi network, in AP Mode ESP creates a Wi-Fi network itself."
+            class="col-xs-3">Wi-Fi Mode</label>
+          <div class="col-xs-9">
+            <form>
+              <label class="radio-inline"><input type="radio" value="1" name="wmode" id="wmodeap"
+                  onclick="handleAP();">Access Point </label>
+              <label class="radio-inline"><input type="radio" value="0" name="wmode" id="wmodesta"
+                  onclick="handleSTA();">Client</label>
+            </form>
           </div>
         </div>
-        <hr>
-        <div>
-          <button onclick="saveConf()" class="btn btn-primary btn-sm pull-right">Save & Reboot</button> 
+        <div class="row form-group">
+          <label data-toggle="tooltip" title="Wi-Fi Network's Name" class="col-xs-3">SSID</label>
+          <span class="col-xs-6 col-md-5">
+            <input class="form-control input-sm" id="inputtohide" type="text" name="ap_ssid">
+            <select class="form-control input-sm" style="display:none;" id="ssid" onchange="listBSSID();"></select>
+          </span>
+          <span class="col-xs-3">
+            <button id="scanb" type="button" class="btn btn-primary btn-xs" onclick="scanWifi()">Scan</button>
+          </span>
         </div>
-        <br><br><br>
-      <div class="jumbotron">
-        <div class="row">
-          <div class="col-sm-6">
-            <legend>Backup</legend>
-            <h6 class="text-muted">Please make sure that you have made a backup before updating the firmware.</h6>
-            <div>
-              <button class="btn btn-link btn-sm" onclick="backupuser()">Backup User Data</button>
-              <a id="downloadUser" style="display:none"></a>
-              <button class="btn btn-link btn-sm" onclick="backupset()">Backup Settings</button>
-              <a id="downloadSet" style="display:none"></a>
-            </div>
-            <br>
-            <div>
-              <legend>Restore</legend>
-              <h6 class="text-muted">Click on links and choose your backup file to restore.</h6>
-              <label for="restoreUser" class="btn btn-link btn-sm">Restore User Data</label>
-              <input id="restoreUser" type="file" accept="text/json" onchange="restoreUser()" style="display:none;">
-              <label for="restoreSet" class="btn btn-link btn-sm">Restore Settings</label>
-              <input id="restoreSet" type="file" accept="text/json" onchange="restoreSet()" style="display:none;">
-            </div>
-			<div>
-              <legend>Reset</legend>
-              <h6 class="text-muted">Choose the kind of reset.</h6>
-              <button class="btn btn-link btn-sm" onclick="resetLogFile()">Reset Log File</button>
-            </div>
-            <br>
-            <div id="restoremodal" class="modal fade" role="dialog">
-				<div class="modal-dialog">
-					<div class="modal-content">
-						<div class="modal-header">
-							<button type="button" class="close" data-dismiss="modal">&times;</button>
-							<h4 class="modal-title">Please wait while restoring user data...</h4>
-						</div>
-						<div class="modal-body">
-							<div id="pbar" class="progress">
-								<div id="dynamic" class="progress-bar progress-bar-primary progress-bar-striped active">Restoring...</div>
-							</div>
-						</div>
-						<div class="modal-footer">
-							<button type="button" id="restoreclose" style="display:none;" class="btn btn-default" data-dismiss="modal">Close</button>
-						</div>
-					</div>
-				</div>
-			</div>
-            <div id="updatemodal" class="modal fade" role="dialog">
-				<div class="modal-dialog">
-					<div class="modal-content">
-						<div class="modal-header">
-							<h4 class="modal-title">Please wait while uploading...</h4>
-						</div>
-						<div class="modal-body">
-							<!-- <div id="pbarFWUpdate" class="progress">
-								<div id="dynamicFWUpdate" class="progress-bar progress-bar-primary progress-bar-striped active">Updating...</div>
-							</div> -->
-							<div class="loader"></div>
-						</div>
-						<div class="modal-footer">
-							<button type="button" id="restoreclose" style="display:none;" class="btn btn-default" data-dismiss="modal">Close</button>
-						</div>
-					</div>
-				</div>
-			</div>
+        <div class="row form-group" style="display:none" id="hideBSSID">
+          <label data-toggle="tooltip"
+            title="If you have two Wi-Fi networks with the same SSID you may want to choose the specific one by BSSID"
+            class="col-xs-3">BSSID</label>
+          <span class="col-xs-9 col-md-5">
+            <input id="wifibssid" class="form-control input-sm" type="text" name="ap_bssid">
+          </span>
+        </div>
+        <div class="row form-group">
+          <label data-toggle="tooltip" title="WiFi Password - in AP mode at least 8 characters!"
+            class="col-xs-3">Password</label>
+          <span class="col-xs-6 col-md-5">
+            <input id="wifipass" class="form-control input-sm" type="password" name="ap_passwd">
+          </span>
+          <span class="col-xs-3">
+            <button id="shwifi" type="button" class="btn btn-primary btn-xs" onclick="shWifi()">show</button>
+          </span>
+        </div>
+        <div class="row form-group">
+          <label data-toggle="tooltip" title="Use a static IP Address instead of DHCP" class="col-xs-3">Static
+            IP</label>
+          <div class="col-xs-9">
+            <form>
+              <label class="checkbox-inline"><input type="checkbox" id="checkboxStaticIP" value=""
+                  onclick="handleStaticIP();">Active</label>
+            </form>
           </div>
-          <div class="col-sm-6">
-		   <div>
-			<legend>Support this Project</legend>
-			<h6 class="text-muted"><b>The development of EVSE-WiFi is very time consuming. If you want to support this project, I would be very happy about a donation.</b></h6>
-			<h4><a href="https://www.paypal.com/pools/c/85c7xRbeay">Donate now!</a></h4>
-			<br>
-		   </div>
-		   <div>
+        </div>
+        <div id="divIP" class="row form-group" style="display: none;">
+          <label data-toggle="tooltip" title="Give an IP Address" class="col-xs-3">IP Address</label>
+          <span class="col-xs-9 col-md-5">
+            <input class="form-control input-sm" placeholder="IP Address" id="ipch" type="text" name="ip">
+          </span>
+        </div>
+        <div id="divSubnet" class="row form-group" style="display: none;">
+          <label data-toggle="tooltip" title="Give a Subnet Mask" class="col-xs-3">Subnet Mask</label>
+          <span class="col-xs-9 col-md-5">
+            <input class="form-control input-sm" placeholder="Subnet Mask" id="subnetch" type="text" name="subnet">
+          </span>
+        </div>
+        <div id="divGateway" class="row form-group" style="display: none;">
+          <label data-toggle="tooltip" title="Give a Gateway" class="col-xs-3">Gateway</label>
+          <span class="col-xs-9 col-md-5">
+            <input class="form-control input-sm" placeholder="Gateway" id="gatewaych" type="text" name="gateway">
+          </span>
+        </div>
+        <div id="divDNS" class="row form-group" style="display: none;">
+          <label data-toggle="tooltip" title="Give a DNS Server" class="col-xs-3">DNS Server</label>
+          <span class="col-xs-9 col-md-5">
+            <input class="form-control input-sm" placeholder="DNS Server" id="dnsch" type="text" name="dns">
+          </span>
+        </div>
+        <br>
+      </div>
+      <div class="col-sm-6">
+        <legend>RFID Hardware Settings</legend>
+        <h6 class="text-muted">Please refer the <a
+            href="https://github.com/CurtRod/SimpleEVSE-WiFi#wiring-wemos-d1-mini-nodemcu">documentation</a> for pin
+          configuration.</h6>
+        <div class="alert alert-warning"><strong>Warning!</strong> Activating RFID-Hardware when there is no RC522
+          connected to ESP, causes boot loop!</div>
+        <div class="row form-group">
+          <label data-toggle="tooltip"
+            title="When you want to use a RC522 RFID Hardware to activate your EVSE, please activate this option."
+            class="col-xs-3">RFID-Hardware</label>
+          <div class="col-xs-9">
+            <form>
+              <label class="checkbox-inline"><input type="checkbox" id="checkboxRfid" value="" name="rfidmode"
+                  onclick="handleRFID();">Active</label>
+            </form>
+          </div>
+        </div>
+        <div class="row form-group">
+          <label data-toggle="tooltip" title="Choose which ESP port is connected to RFID Hardware SDA pin"
+            class="col-xs-3">SPI SS</label>
+          <span class="col-xs-9 col-md-5">
+            <select class="form-control input-sm" id="gpioss">
+              <option value="0">GPIO-0</option>
+              <option value="2">GPIO-2</option>
+              <option value="4">GPIO-4</option>
+              <option value="5">GPIO-5</option>
+              <option selected="selected" value="15">GPIO-15</option>
+              <option value="16">GPIO-16</option>
+            </select>
+          </span>
+        </div>
+        <div class="row form-group">
+          <label data-toggle="tooltip" title="Higher value means the longer RFID reader's reading distance"
+            class="col-xs-3">Antenna Gain</label>
+          <span class="col-xs-9 col-md-5">
+            <select class="form-control input-sm" id="gain">
+              <option value="112">Max (48 db)</option>
+              <option value="96">43 db</option>
+              <option value="48">38 db</option>
+              <option selected="selected" value="32">Avg (33 db)</option>
+              <option value="16">23 db</option>
+              <option value="0">Min (18 db)</option>
+            </select>
+          </span>
+        </div>
+        <br>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-sm-6">
+        <legend>Meter Hardware Settings</legend>
+        <div class="row form-group">
+          <label data-toggle="tooltip"
+            title="If you want to use an electricity meter to count the power consumption, please activate this option."
+            class="col-xs-3">Meter Hardware</label>
+          <div class="col-xs-9">
+            <form>
+              <label class="checkbox-inline"><input type="checkbox" id="checkboxMeter" value="" name="checkboxMeter"
+                  onclick="handleMeter();">Active</label>
+            </form>
+          </div>
+        </div>
+        <div class="row form-group">
+          <label data-toggle="tooltip" title="Choose whether you want to use an s0 meter or a modbus meter."
+            class="col-xs-3">Type of Meter</label>
+          <span class="col-xs-9 col-md-5">
+            <select class="form-control input-sm" id="smetertype" onchange="handleMeterType()">
+              <option selected value="S0">S0 Meter</option>
+              <option value="SDM120">SDM120 (Modbus - experimental)</option>
+              <option value="SDM630">SDM630 (Modbus - experimental)</option>
+            </select>
+          </span>
+        </div>
+        <div id="divMeterPin" class="row form-group">
+          <label data-toggle="tooltip" title="Choose which ESP port is connected to S0 interface of electricity meter"
+            class="col-xs-3">Meter GPIO</label>
+          <span class="col-xs-9 col-md-5">
+            <select class="form-control input-sm" id="gpioint">
+              <option selected="selected" value="0">GPIO-0</option>
+              <option value="2">GPIO-2</option>
+              <option value="4">GPIO-4</option>
+              <option value="5">GPIO-5</option>
+              <option value="15">GPIO-15</option>
+            </select>
+          </span>
+        </div>
+        <div id="divMeterPhase" class="row form-group">
+          <label data-toggle="tooltip" title="Choose the kind of Meter you Use" class="col-xs-3">Meter Phases</label>
+          <span class="col-xs-9 col-md-5">
+            <select class="form-control input-sm" id="meterphase">
+              <option selected="selected" value="1">1-phase</option>
+              <option value="3">3-phase</option>
+            </select>
+          </span>
+        </div>
+        <div id="divImpKwh" class="row form-group">
+          <label data-toggle="tooltip"
+            title="Depending on your meter setup, you can choose the impulses per kWh (usually 1000 or 2000 imp/kWh)"
+            class="col-xs-3">Impulses</label>
+          <span class="col-xs-9 col-md-5">
+            <input class="form-control input-sm" value="1000" placeholder="impulses per kWh" id="impkwh" type="number"
+              name="impsperkwh">
+          </span>
+        </div>
+        <div id="divImpLen" class="row form-group">
+          <label data-toggle="tooltip"
+            title="Depending on your meter setup, you can choose the impulse length in milliseconds (for SDM120 use 90). Default: 30ms"
+            class="col-xs-3">Impulse Length</label>
+          <span class="col-xs-9 col-md-5">
+            <input class="form-control input-sm" placeholder="impulse length in ms" id="implen" type="number"
+              name="implength">
+          </span>
+        </div>
+        <div class="row form-group">
+          <label data-toggle="tooltip" title="Price per kWh in cent" class="col-xs-3">Price</label>
+          <span class="col-xs-9 col-md-5">
+            <input class="form-control input-sm" value="25" placeholder="cent per kWh" id="price" type="number"
+              step="0.1" name="price">
+          </span>
+        </div>
+        <br>
+      </div>
+      <div class="col-sm-6">
+        <legend>EVSE Settings</legend>
+        <div class="row form-group">
+          <label data-toggle="tooltip"
+            title="Enter the maximum current (A) allowed by your electical installation to limit the slider in /'EVSE Control/'."
+            class="col-xs-3">Max Current</label>
+          <span class="col-xs-9 col-md-5">
+            <input class="form-control input-sm" value="6" placeholder="Ampere" id="maxinstall" type="number"
+              name="maxinstall">
+          </span>
+        </div>
+        <div class="row form-group">
+          <label data-toggle="tooltip"
+            title="If you want to activate your EVSE via button, please activate this option."
+            class="col-xs-3">Button</label>
+          <div class="col-xs-9">
+            <form>
+              <label class="checkbox-inline"><input type="checkbox" id="checkboxButtonActive" value=""
+                  name="buttonsactive" onclick="handleButtonActive();">Active</label>
+            </form>
+          </div>
+        </div>
+        <div class="row form-group">
+          <label data-toggle="tooltip"
+            title="Choose which ESP port is connected to Button for activating/deactivating your EVSE"
+            class="col-xs-3">Button Pin</label>
+          <span class="col-xs-9 col-md-5">
+            <select class="form-control input-sm" id="gpiobutton">
+              <option value="0">GPIO-0</option>
+              <option selected="selected" value="2">GPIO-2</option>
+              <option value="4">GPIO-4</option>
+              <option value="5">GPIO-5</option>
+              <option value="15">GPIO-15</option>
+            </select>
+          </span>
+        </div>
+        <div class="row form-group">
+          <label data-toggle="tooltip" title="If you want to keep your EVSE always active, please activate this option."
+            class="col-xs-3">Always active mode</label>
+          <div class="col-xs-9">
+            <form>
+              <label class="checkbox-inline"><input type="checkbox" id="checkboxAlwaysActive" value=""
+                  name="checkboxalwaysactive"></label>
+            </form>
+          </div>
+        </div>
+        <div class="row form-group">
+          <label data-toggle="tooltip"
+            title="Sets the configured current to 'Default amps value after boot' (EVSE Reg 2000), when charging stops."
+            class="col-xs-3">Reset current after charge</label>
+          <div class="col-xs-9">
+            <form>
+              <label class="checkbox-inline"><input type="checkbox" id="checkboxResetCurrentAfterCharge" value=""
+                  name="checkboxResetCurrentAfterCharge"></label>
+            </form>
+          </div>
+        </div>
+        <br>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-sm-6">
+        <legend>Car Settings</legend>
+        <div class="row form-group">
+          <label data-toggle="tooltip" title="Average energy consumption of your car" class="col-xs-3">Average
+            consumption</label>
+          <span class="col-xs-6 col-md-5">
+            <input class="form-control input-sm" placeholder="kWh per 100km" id="avgconsumption" type="number"
+              step="0.1">
+          </span>
+          <br>
+        </div>
+        <div class="row form-group">
+          <label data-toggle="tooltip"
+            title="Specify a factor with which the measured energy is to be multiplied (e.g. when using a single-phase meter in combination with a two- or three-phase charging vehicle). Use '1' if you don't need a factor."
+            class="col-xs-3">Factor</label>
+          <span class="col-xs-9 col-md-5">
+            <select class="form-control input-sm" id="factor">
+              <option selected="selected" value="1">Factor 1 (no Factor)</option>
+              <option value="2">Factor 2</option>
+              <option value="3">Factor 3</option>
+            </select>
+          </span>
+        </div>
+        <br>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-sm-6">
+        <legend>General Settings</legend>
+        <div class="row form-group">
+          <label data-toggle="tooltip" title="Log On password for the Administrator" class="col-xs-3">Admin
+            Password</label>
+          <span class="col-xs-6 col-md-5">
+            <input class="form-control input-sm" placeholder="Administrator Password" id="adminpwd" type="password">
+          </span>
+          <span class="col-xs-3">
+            <button id="shadmin" type="button" class="btn btn-primary btn-xs" onclick="shAdmin()">show</button>
+          </span>
+          <br>
+        </div>
+        <div class="row form-group">
+          <label data-toggle="tooltip" title="Log On password for the Administrator" class="col-xs-3">Confirm Admin
+            Password</label>
+          <span class="col-xs-6 col-md-5">
+            <input class="form-control input-sm" placeholder="Administrator Password" id="cadminpwd" type="password">
+          </span>
+          <br>
+        </div>
+
+        <div class="row form-group">
+          <label data-toggle="tooltip"
+            title="Hostname for your ESP, When Bonjour is installed on your computer you can access your ESP via http://hostname.local"
+            class="col-xs-3">Host Name</label>
+          <span class="col-xs-9 col-md-5">
+            <input class="form-control input-sm" placeholder="Hostname" value="evse-wifi" id="hostname" type="text">
+          </span>
+        </div>
+        <div class="row form-group">
+          <label data-toggle="tooltip" title="Enable Debug Mode" class="col-xs-3">Debug Mode</label>
+          <span class="col-xs-9 col-md-5">
+            <form>
+              <label class="checkbox-inline"><input type="checkbox" id="checkboxDebug" value=""></label>
+            </form>
+          </span>
+        </div>
+        <div class="row form-group">
+          <label data-toggle="tooltip"
+            title="Disables BasicAuthentication for Websocket. This opens a security hole but is necessary when using Safari Browser."
+            class="col-xs-3">Disable BasicAuth (Safari Mode)</label>
+          <span class="col-xs-9 col-md-5">
+            <form>
+              <label class="checkbox-inline"><input type="checkbox" id="checkboxSafari" value=""></label>
+            </form>
+          </span>
+        </div>
+        <div class="row form-group">
+          <label data-toggle="tooltip" title="Disables LED actions for GPIO16 (D0)." class="col-xs-3">Disable
+            LED</label>
+          <span class="col-xs-9 col-md-5">
+            <form>
+              <label class="checkbox-inline"><input type="checkbox" id="checkboxDisableLED" value=""></label>
+            </form>
+          </span>
+        </div>
+        <br>
+      </div>
+      <div class="col-sm-6">
+        <legend>Time Settings</legend>
+        <div class="row form-group">
+          <label data-toggle="tooltip" title="Choose an NTP Server (recommended: pool.ntp.org)" class="col-xs-3">NTP
+            Server</label>
+          <span class="col-xs-9 col-md-5">
+            <input class="form-control input-sm" placeholder="NTP Server" value="pool.ntp.org" id="ntpIP" type="text">
+          </span>
+        </div>
+        <h6 class="text-muted">Small differences between device time and local time can be ignored.</h6>
+        <div class="row form-group">
+          <label class="col-xs-3">Device Time</label>
+          <span id="utc" class="col-xs-9 col-md-5">
+          </span>
+        </div>
+        <div class="row form-group">
+          <label class="col-xs-3">Browser Time</label>
+          <span id="rtc" class="col-xs-9 col-md-5">
+          </span>
+        </div>
+        <div class="row form-group">
+          <div data-toggle="tooltip"
+            title="Send your PC/Phone time to ESP, useful when the ESP does not have Internet connection."
+            class="col-xs-3"><button onclick="syncBrowserTime(false)" class="btn btn-link btn-sm">Sync Browser Time to
+              Device</button></div>
+        </div>
+        <div class="row form-group">
+          <label class="col-xs-3">Time Zone</label>
+          <span class="col-xs-9 col-md-5">
+            <select class="form-control input-sm" name="DropDownTimezone" id="DropDownTimezone">
+              <option value="-12">(GMT -12:00) Eniwetok, Kwajalein</option>
+              <option value="-11">(GMT -11:00) Midway Island, Samoa</option>
+              <option value="-10">(GMT -10:00) Hawaii</option>
+              <option value="-9">(GMT -9:00) Alaska</option>
+              <option value="-8">(GMT -8:00) Pacific Time (US &amp; Canada)</option>
+              <option value="-7">(GMT -7:00) Mountain Time (US &amp; Canada)</option>
+              <option value="-6">(GMT -6:00) Central Time (US &amp; Canada), Mexico City</option>
+              <option value="-5">(GMT -5:00) Eastern Time (US &amp; Canada), Bogota, Lima</option>
+              <option value="-4">(GMT -4:00) Atlantic Time (Canada), Caracas, La Paz</option>
+              <option value="-3.5">(GMT -3:30) Newfoundland</option>
+              <option value="-3">(GMT -3:00) Brazil, Buenos Aires, Georgetown</option>
+              <option value="-2">(GMT -2:00) Mid-Atlantic</option>
+              <option value="-1">(GMT -1:00 hour) Azores, Cape Verde Islands</option>
+              <option value="0">(GMT) Western Europe Time, London, Lisbon, Casablanca</option>
+              <option selected="selected" value="1">(GMT +1:00 hour) Brussels, Copenhagen, Madrid, Paris</option>
+              <option value="2">(GMT +2:00) Kaliningrad, South Africa</option>
+              <option value="3">(GMT +3:00) Baghdad, Riyadh, Moscow, St. Petersburg</option>
+              <option value="3.5">(GMT +3:30) Tehran</option>
+              <option value="4">(GMT +4:00) Abu Dhabi, Muscat, Baku, Tbilisi</option>
+              <option value="4.5">(GMT +4:30) Kabul</option>
+              <option value="5">(GMT +5:00) Ekaterinburg, Islamabad, Karachi, Tashkent</option>
+              <option value="5.5">(GMT +5:30) Bombay, Calcutta, Madras, New Delhi</option>
+              <option value="5.75">(GMT +5:45) Kathmandu</option>
+              <option value="6">(GMT +6:00) Almaty, Dhaka, Colombo</option>
+              <option value="7">(GMT +7:00) Bangkok, Hanoi, Jakarta</option>
+              <option value="8">(GMT +8:00) Beijing, Perth, Singapore, Hong Kong</option>
+              <option value="9">(GMT +9:00) Tokyo, Seoul, Osaka, Sapporo, Yakutsk</option>
+              <option value="9.5">(GMT +9:30) Adelaide, Darwin</option>
+              <option value="10">(GMT +10:00) Eastern Australia, Guam, Vladivostok</option>
+              <option value="11">(GMT +11:00) Magadan, Solomon Islands, New Caledonia</option>
+              <option value="12">(GMT +12:00) Auckland, Wellington, Fiji, Kamchatka</option>
+            </select>
+          </span>
+        </div>
+        <br>
+      </div>
+    </div>
+    <hr>
+    <div>
+      <button onclick="saveConf()" class="btn btn-primary btn-sm pull-right">Save & Reboot</button>
+    </div>
+    <br><br><br>
+    <div class="jumbotron">
+      <div class="row">
+        <div class="col-sm-6">
+          <legend>Backup</legend>
+          <h6 class="text-muted">Please make sure that you have made a backup before updating the firmware.</h6>
+          <div>
+            <button class="btn btn-link btn-sm" onclick="backupuser()">Backup User Data</button>
+            <a id="downloadUser" style="display:none"></a>
+            <button class="btn btn-link btn-sm" onclick="backupset()">Backup Settings</button>
+            <a id="downloadSet" style="display:none"></a>
+          </div>
+          <br>
+          <div>
+            <legend>Restore</legend>
+            <h6 class="text-muted">Click on links and choose your backup file to restore.</h6>
+            <label for="restoreUser" class="btn btn-link btn-sm">Restore User Data</label>
+            <input id="restoreUser" type="file" accept="text/json" onchange="restoreUser()" style="display:none;">
+            <label for="restoreSet" class="btn btn-link btn-sm">Restore Settings</label>
+            <input id="restoreSet" type="file" accept="text/json" onchange="restoreSet()" style="display:none;">
+          </div>
+          <div>
+            <legend>Reset</legend>
+            <h6 class="text-muted">Choose the kind of reset.</h6>
+            <button class="btn btn-link btn-sm" onclick="resetLogFile()">Reset Log File</button>
+            <button class="btn btn-link btn-sm" onclick="resetUserData()">Reset User Data</button>
+            <button class="btn btn-link btn-sm" onclick="resetFactoryReset()">Factory Reset</button>
+          </div>
+          <br>
+          <div id="restoremodal" class="modal fade" role="dialog">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <button type="button" class="close" data-dismiss="modal">&times;</button>
+                  <h4 class="modal-title">Please wait while restoring user data...</h4>
+                </div>
+                <div class="modal-body">
+                  <div id="pbar" class="progress">
+                    <div id="dynamic" class="progress-bar progress-bar-primary progress-bar-striped active">Restoring...
+                    </div>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" id="restoreclose" style="display:none;" class="btn btn-default"
+                    data-dismiss="modal">Close</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="updatemodal" class="modal fade" role="dialog">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h4 class="modal-title">Please wait while uploading...</h4>
+                </div>
+                <div class="modal-body">
+                  <div class="loader"></div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" id="restoreclose" style="display:none;" class="btn btn-default"
+                    data-dismiss="modal">Close</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-6">
+          <div>
+            <legend>Support this Project</legend>
+            <h6 class="text-muted"><b>The development of EVSE-WiFi is very time consuming. If you want to support this
+                project, I would be very happy about a donation.</b></h6>
+            <h4><a href="https://www.paypal.com/pools/c/85c7xRbeay">Donate now!</a></h4>
+            <br>
+          </div>
+          <div>
             <legend>Update Firmware</legend>
-			<h6 class="text-muted">Current Firmware Version:&nbsp;<object class="fw_version"></object></h6>
-            <h6 class="text-muted">Download <a href="https://github.com/CurtRod/SimpleEVSE-WiFi/releases" target="_blank">latest version</a> from GitHub.</h6>
+            <h6 class="text-muted">Current Firmware Version:&nbsp;<object class="fw_version"></object></h6>
+            <h6 class="text-muted">Current Config Version:&nbsp;<object id="configversion"></object></h6>
+            <h6 class="text-muted">Download <a href="https://github.com/CurtRod/SimpleEVSE-WiFi/releases"
+                target="_blank">latest version</a> from GitHub.</h6>
             <form class="form-inline" method="POST" action="/update" enctype="multipart/form-data">
               <div class="form-group">
                 <input type="file" name="update">
               </div>
               <button type="submit" onclick="firwareUpdate()" class="btn btn-primary btn-sm">Upload</button>
             </form>
-		   </div>
-
           </div>
         </div>
       </div>
-      <hr>
-      <footer class="footer">
-        <h6 class="text-muted"><a href="https://www.evse-wifi.de" target="_blank">EVSE WiFi</a></h6>
-      </footer>
     </div>
+    <hr>
+    <footer class="footer">
+      <h6 class="text-muted"><a href="https://www.evse-wifi.de" target="_blank">EVSE WiFi</a></h6>
+    </footer>
+  </div>
   <script src="script.js" type="text/javascript"></script>
 </body>
+
 </html>
