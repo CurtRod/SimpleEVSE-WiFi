@@ -1,10 +1,13 @@
 #include "config.h"
+#include "templates.h"
+#include <string.h>
 
 bool ICACHE_FLASH_ATTR EvseWiFiConfig::loadConfig(String givenConfig) {
     String jsonString;
+    bool loadDefault = false;
     configLoaded = false;
     pre_0_4_Config = false;
-
+    
     if (givenConfig != "") {
         Serial.println("loadConfig: given config string...");
         jsonString = givenConfig;
@@ -12,16 +15,29 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::loadConfig(String givenConfig) {
     else {
         Serial.println("loadConfig: no config string given -> check config file");
         File configFile = SPIFFS.open("/config.json", "r");
+        #ifdef ESP8266
         if (!configFile) {
             Serial.println("loading config file failed");
             return false;
         }
-        while (configFile.available()) {
-            jsonString += char(configFile.read());
+        #else
+        if (!configFile.available()) {
+            configFile.close();
+            Serial.println("loading config file failed - rebuild factory settings");
+            loadDefault = true;
+        }
+        #endif
+        if (loadDefault) {
+            jsonString = SRC_CONFIG_TEMPLATE;
+        }
+        else {
+            while (configFile.available()) {
+                jsonString += char(configFile.read());
+            }
         }
     }
 
-    DynamicJsonDocument jsonDoc(1800);
+    DynamicJsonDocument jsonDoc(2000);
     DeserializationError error = deserializeJson(jsonDoc, jsonString);
     if (error) {
         Serial.println("parsing config file failed");
@@ -36,159 +52,115 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::loadConfig(String givenConfig) {
         Serial.println("actual config file found");
     }
 
-    serializeJson(jsonDoc, Serial);
-
     // wifiConfig
-    if (pre_0_4_Config) {
-        if (jsonDoc.containsKey("wmode")) {
-            if (strcmp(strdup(jsonDoc["wmode"]), "0") == 0) {
-                wifiConfig.wmode = false;
-                Serial.println("Wmode: 0");
-            }
-            else {
-                wifiConfig.wmode = true;
-                Serial.println("Wmode: 1");
-            }
-        }
-        if (jsonDoc.containsKey("bssid")) {
-            wifiConfig.bssid = strdup(jsonDoc["bssid"]);
-        }
-        if (jsonDoc.containsKey("ssid")) {
-            wifiConfig.ssid = strdup(jsonDoc["ssid"]);
-        }
-        if (jsonDoc.containsKey("pswd")) {
-            wifiConfig.pswd = strdup(jsonDoc["pswd"]);
-        }
-        if (jsonDoc.containsKey("staticip")) {
-            wifiConfig.staticip = jsonDoc["staticip"];
-        }
-        if (jsonDoc.containsKey("ip")) {
-            wifiConfig.ip = strdup(jsonDoc["ip"]);
-        }
-        if (jsonDoc.containsKey("subnet")) {
-            wifiConfig.subnet = strdup(jsonDoc["subnet"]);
-        }
-        if (jsonDoc.containsKey("gateway")) {
-            wifiConfig.gateway = strdup(jsonDoc["gateway"]);
-        }
-        if (jsonDoc.containsKey("dns")) {
-            wifiConfig.dns = strdup(jsonDoc["dns"]);
-        }
-    }
-    else {
-        wifiConfig.bssid = strdup(jsonDoc["wifi"]["bssid"]);
-        wifiConfig.ssid = strdup(jsonDoc["wifi"]["ssid"]);
-        wifiConfig.wmode = jsonDoc["wifi"]["wmode"];
-        wifiConfig.pswd = strdup(jsonDoc["wifi"]["pswd"]);
-        wifiConfig.staticip = jsonDoc["wifi"]["staticip"];
-        wifiConfig.ip = strdup(jsonDoc["wifi"]["ip"]);
-        wifiConfig.subnet = strdup(jsonDoc["wifi"]["subnet"]);
-        wifiConfig.gateway = strdup(jsonDoc["wifi"]["gateway"]);
-        wifiConfig.dns = strdup(jsonDoc["wifi"]["dns"]);
-    }
+    wifiConfig.bssid = strdup(jsonDoc["wifi"]["bssid"]);
+    wifiConfig.ssid = strdup(jsonDoc["wifi"]["ssid"]);
+    wifiConfig.wmode = jsonDoc["wifi"]["wmode"];
+    wifiConfig.pswd = strdup(jsonDoc["wifi"]["pswd"]);
+    wifiConfig.staticip = jsonDoc["wifi"]["staticip"];
+    wifiConfig.ip = strdup(jsonDoc["wifi"]["ip"]);
+    wifiConfig.subnet = strdup(jsonDoc["wifi"]["subnet"]);
+    wifiConfig.gateway = strdup(jsonDoc["wifi"]["gateway"]);
+    wifiConfig.dns = strdup(jsonDoc["wifi"]["dns"]);
     Serial.println("WIFI loaded");
+
     // meterConfig
-    if (pre_0_4_Config) {
-        meterConfig[0].usemeter = jsonDoc["meter"];
-        if (jsonDoc.containsKey("metertype")) {
-            meterConfig[0].metertype = strdup(jsonDoc["metertype"]);
-        }
-        meterConfig[0].price = jsonDoc["price"];
-        meterConfig[0].intpin = jsonDoc["intpin"];
-        meterConfig[0].kwhimp = jsonDoc["kwhimp"];
-        meterConfig[0].implen = jsonDoc["implen"];
-        meterConfig[0].meterphase = jsonDoc["meterphase"];
-        meterConfig[0].factor = jsonDoc["factor"];
-    }
-    else {
-        meterConfig[0].usemeter = jsonDoc["meter"][0]["usemeter"];
-        meterConfig[0].metertype = strdup(jsonDoc["meter"][0]["metertype"]);
-        meterConfig[0].price = jsonDoc["meter"][0]["price"];
-        meterConfig[0].intpin = jsonDoc["meter"][0]["intpin"];
-        meterConfig[0].kwhimp = jsonDoc["meter"][0]["kwhimp"];
-        meterConfig[0].implen = jsonDoc["meter"][0]["implen"];
-        meterConfig[0].meterphase = jsonDoc["meter"][0]["meterphase"];
-        meterConfig[0].factor = jsonDoc["meter"][0]["factor"];
-    }
+    meterConfig[0].usemeter = jsonDoc["meter"][0]["usemeter"];
+    meterConfig[0].metertype = strdup(jsonDoc["meter"][0]["metertype"]);
+    meterConfig[0].price = jsonDoc["meter"][0]["price"];
+    meterConfig[0].intpin = jsonDoc["meter"][0]["intpin"];
+    meterConfig[0].kwhimp = jsonDoc["meter"][0]["kwhimp"];
+    meterConfig[0].implen = jsonDoc["meter"][0]["implen"];
+    meterConfig[0].meterphase = jsonDoc["meter"][0]["meterphase"];
+    meterConfig[0].factor = jsonDoc["meter"][0]["factor"];
     Serial.println("METER loaded");
+
     // rfidConfig
-    if (pre_0_4_Config) {
-        rfidConfig.userfid = jsonDoc["rfid"];
-        rfidConfig.sspin = jsonDoc["sspin"];
-        rfidConfig.rfidgain = jsonDoc["rfidgain"];
-    }
-    else {
-        rfidConfig.userfid = jsonDoc["rfid"]["userfid"];
-        rfidConfig.sspin = jsonDoc["rfid"]["sspin"];
-        rfidConfig.rfidgain = jsonDoc["rfid"]["rfidgain"];
-    }
+    rfidConfig.userfid = jsonDoc["rfid"]["userfid"];
+    rfidConfig.sspin = jsonDoc["rfid"]["sspin"];
+    rfidConfig.rfidgain = jsonDoc["rfid"]["rfidgain"];
     Serial.println("RFID loaded");
+
     // ntpConfig
-    if (pre_0_4_Config) {
-        ntpConfig.timezone = jsonDoc["timezone"];
-        if (jsonDoc.containsKey("ntpIP")) {
-            ntpConfig.ntpip = strdup(jsonDoc["ntpIP"]);
-        }
-    }
-    else {
-        ntpConfig.timezone = jsonDoc["ntp"]["timezone"];
-        ntpConfig.ntpip = strdup(jsonDoc["ntp"]["ntpip"]);
-    }
+    ntpConfig.timezone = jsonDoc["ntp"]["timezone"];
+    ntpConfig.ntpip = strdup(jsonDoc["ntp"]["ntpip"]);
     Serial.println("NTP loaded");
-    // buttonConfig
-    if (pre_0_4_Config) {
-        buttonConfig[0].usebutton = jsonDoc["buttonactive"];
-        buttonConfig[0].buttonpin = jsonDoc["buttonpin"];
+    if (jsonDoc["ntp"].containsKey("dst")) {
+        ntpConfig.dst = jsonDoc["ntp"]["dst"];
     }
     else {
-        buttonConfig[0].usebutton = jsonDoc["button"][0]["usebutton"];
-        buttonConfig[0].buttonpin = jsonDoc["button"][0]["buttonpin"];
+        ntpConfig.dst = false;
     }
 
+    // buttonConfig
+    buttonConfig[0].usebutton = jsonDoc["button"][0]["usebutton"];
+    buttonConfig[0].buttonpin = jsonDoc["button"][0]["buttonpin"];
     Serial.println("BUTTON loaded");
+
     // systemConfig
-    if (pre_0_4_Config) {
-        if (jsonDoc.containsKey("hostnm")) {
-            systemConfig.hostnm = strdup(jsonDoc["hostnm"]);
-        }
-        if (jsonDoc.containsKey("adminpwd")) {
-            systemConfig.adminpwd = strdup(jsonDoc["adminpwd"]);
-        }
-        systemConfig.wsauth = jsonDoc["wsauth"];
-        systemConfig.debug = jsonDoc["debug"];
-        systemConfig.maxinstall = jsonDoc["maxinstall"];
+    systemConfig.hostnm = strdup(jsonDoc["system"]["hostnm"]);
+    systemConfig.adminpwd = strdup(jsonDoc["system"]["adminpwd"]);
+    systemConfig.wsauth = jsonDoc["system"]["wsauth"];
+    systemConfig.debug = jsonDoc["system"]["debug"];
+    systemConfig.maxinstall = jsonDoc["system"]["maxinstall"];
+    systemConfig.evsecount = jsonDoc["system"]["evsecount"];
+    systemConfig.configversion = jsonDoc["configversion"];
+    if (jsonDoc["system"].containsKey("logging")) {
+        systemConfig.logging = jsonDoc["system"]["logging"];
     }
     else {
-        systemConfig.hostnm = strdup(jsonDoc["system"]["hostnm"]);
-        systemConfig.adminpwd = strdup(jsonDoc["system"]["adminpwd"]);
-        systemConfig.wsauth = jsonDoc["system"]["wsauth"];
-        systemConfig.debug = jsonDoc["system"]["debug"];
-        systemConfig.maxinstall = jsonDoc["system"]["maxinstall"];
-        systemConfig.evsecount = jsonDoc["system"]["evsecount"];
-        systemConfig.configversion = jsonDoc["configversion"];
+        systemConfig.logging = true;
+    }
+    if (jsonDoc["system"].containsKey("api")) {
+        systemConfig.api = jsonDoc["system"]["api"];
+    }
+    else {
+        systemConfig.api = true;
     }
     Serial.println("SYSTEM loaded");
+
    // evseConfig
-    if (pre_0_4_Config) {
-        evseConfig[0].mbid = 1;
-        evseConfig[0].alwaysactive = jsonDoc["alwaysactive"];
-        evseConfig[0].disableled = jsonDoc["disableled"];
-        evseConfig[0].resetcurrentaftercharge = jsonDoc["resetcurrentaftercharge"];      
-        evseConfig[0].maxcurrent =  jsonDoc["maxinstall"];
-        String s = jsonDoc["avgconsumption"];
-        evseConfig[0].avgconsumption = strtof((s).c_str(),0);
+    evseConfig[0].mbid = 1;
+    evseConfig[0].alwaysactive = jsonDoc["evse"][0]["alwaysactive"];
+    
+    //evseConfig[0].ledconfig = jsonDoc["evse"][0]["ledconfig"];
+
+    evseConfig[0].resetcurrentaftercharge = jsonDoc["evse"][0]["resetcurrentaftercharge"];
+    evseConfig[0].maxcurrent =  jsonDoc["evse"][0]["maxinstall"];
+    evseConfig[0].avgconsumption = jsonDoc["evse"][0]["avgconsumption"];
+
+    if (jsonDoc["evse"][0].containsKey("disableled")) {
+        bool disableled = jsonDoc["evse"][0]["disableled"];
+        Serial.println(disableled);
+        if (disableled == true) {
+            evseConfig[0].ledconfig = 1;
+        }
+        else {
+            evseConfig[0].ledconfig = 3;
+        }
+    }
+    else{
+        evseConfig[0].ledconfig = jsonDoc["evse"][0]["ledconfig"];
+    }
+
+    if (jsonDoc["evse"][0].containsKey("rsevalue")) {
+        evseConfig[0].rseValue = jsonDoc["evse"][0]["rsevalue"];
     }
     else {
-        evseConfig[0].mbid = 1;
-        evseConfig[0].alwaysactive = jsonDoc["evse"][0]["alwaysactive"];
-        evseConfig[0].disableled = jsonDoc["evse"][0]["disableled"];
-        evseConfig[0].resetcurrentaftercharge = jsonDoc["evse"][0]["resetcurrentaftercharge"];
-        evseConfig[0].maxcurrent =  jsonDoc["evse"][0]["maxinstall"];
-        evseConfig[0].avgconsumption = jsonDoc["evse"][0]["avgconsumption"];
+        evseConfig[0].rseValue = 100;
     }
-
-    systemConfig.debug = true;  ///TMP
-
+    if (jsonDoc["evse"][0].containsKey("rseactive")) {
+        evseConfig[0].rseActive = jsonDoc["evse"][0]["rseactive"];
+    }
+    else {
+        evseConfig[0].rseActive = false;
+    }
+    if (jsonDoc["evse"][0].containsKey("remote")) {
+        evseConfig[0].remote = jsonDoc["evse"][0]["remote"];
+    }
+    else {
+        evseConfig[0].remote = false;
+    }
     Serial.println("EVSE loaded");
     Serial.println("loadConfig.. Check!");
     configLoaded = true;
@@ -216,12 +188,6 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::loadConfiguration() {
             useMMeter = true;
             Serial.println("Use SDM630");
         }
-    }
-
-    // systemConfig
-    if (!evseConfig[0].disableled)
-    {
-        pinMode(D0, OUTPUT);
     }
     return true;
 }
@@ -274,6 +240,7 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::printConfig() {
     Serial.println("// NTP Config");
     Serial.println("timezone: " + String(getNtpTimezone()));
     Serial.println("ntpip: " + String(getNtpIp()));
+    Serial.println("dst: " + String(getNtpDst()));
     Serial.println();
     Serial.println("// Button Config");
     Serial.println("usebutton: " + String(getButtonActive(0)));
@@ -286,14 +253,19 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::printConfig() {
     Serial.println("debug: " + String(getSystemDebug()));
     Serial.println("maxinstall: " + String(getSystemMaxInstall()));
     Serial.println("evsecount: " + String(getSystemEvseCount()));
+    Serial.println("logging: " + String(getSystemLogging()));
+    Serial.println("api: " + String(getSystemApi()));
     Serial.println("configversion: " + String(getSystemConfigVersion()));
     Serial.println("// EVSE Config");
     Serial.println("mbid: " + String(getEvseMbid(0)));
     Serial.println("alwaysactive: " + String(getEvseAlwaysActive(0)));
-    Serial.println("disableled: " + String(getEvseDisableLed(0)));
+    Serial.println("remote: " + String(getEvseRemote(0)));
+    Serial.println("ledconfig: " + String(getEvseLedConfig(0)));
     Serial.println("resetcurrentaftercharge: " + String(getEvseResetCurrentAfterCharge(0)));
     Serial.println("evseinstall: " + String(getEvseMaxCurrent(0)));
     Serial.println("avgconsumption: " + String(getEvseAvgConsumption(0)));
+    Serial.println("rseactive: " + String(getEvseRseActive(0)));
+    Serial.println("rsevalue: " + String(getEvseRseValue(0)));
     Serial.println("--- End of Config...");
     return true;
 }
@@ -315,6 +287,11 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::renewConfigFile() {
 String ICACHE_FLASH_ATTR EvseWiFiConfig::getConfigJson() {
     DynamicJsonDocument rootDoc(2000);
     rootDoc["configversion"] = ACTUAL_CONFIG_VERSION;
+    #ifdef ESP8266
+    rootDoc["hardwarerev"] = "ESP8266";
+    #else
+    rootDoc["hardwarerev"] = "ESP32";
+    #endif
 
     JsonObject wifiItem = rootDoc.createNestedObject("wifi");
     wifiItem["bssid"] = this->getWifiBssid();
@@ -354,6 +331,7 @@ String ICACHE_FLASH_ATTR EvseWiFiConfig::getConfigJson() {
     JsonObject ntpItem = rootDoc.createNestedObject("ntp");
     ntpItem["timezone"] = this->getNtpTimezone();
     ntpItem["ntpip"] = this->getNtpIp();
+    ntpItem["dst"] = this->getNtpDst();
 
     JsonArray buttonArray = rootDoc.createNestedArray("button");
     JsonObject buttonObject_0 = buttonArray.createNestedObject();
@@ -367,15 +345,20 @@ String ICACHE_FLASH_ATTR EvseWiFiConfig::getConfigJson() {
     systemItem["debug"] = this->getSystemDebug();
     systemItem["maxinstall"] = this->getSystemMaxInstall();
     systemItem["evsecount"] = this->getSystemEvseCount();
+    systemItem["logging"] = this->getSystemLogging();
+    systemItem["api"] = this->getSystemApi();
 
     JsonArray evseArray = rootDoc.createNestedArray("evse");
     JsonObject evseObject_0 = evseArray.createNestedObject();
     evseObject_0["mbid"] = this->getEvseMbid(0);
     evseObject_0["alwaysactive"] = this->getEvseAlwaysActive(0);
-    evseObject_0["disableled"] = this->getEvseDisableLed(0);
+    evseObject_0["remote"] = this->getEvseRemote(0);
+    evseObject_0["ledconfig"] = this->getEvseLedConfig(0);
     evseObject_0["resetcurrentaftercharge"] = this->getEvseResetCurrentAfterCharge(0);
-    evseObject_0["evseinstall"] = this->getEvseDisableLed(0);
+    evseObject_0["evseinstall"] = this->getEvseMaxCurrent(0);
     evseObject_0["avgconsumption"] = this->getEvseAvgConsumption(0);
+    evseObject_0["rseactive"] = this->getEvseRseActive(0);
+    evseObject_0["rsevalue"] = this->getEvseRseValue(0);
     
     String sReturn;
     serializeJsonPretty(rootDoc, sReturn);
@@ -396,7 +379,6 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::saveConfigFile(String jsonConfig) {
 
     File configFile = SPIFFS.open("/config.json", "w+");
     if (configFile) {
-        //configFile.print(jsonConfig);
         if (jsonDoc.containsKey("command")) {
             jsonDoc.remove("command");
         }
@@ -417,7 +399,6 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::saveConfigFile(String jsonConfig) {
                 Serial.println("[ SYSTEM ] New config file created");
             }
             configFile.close();
-
             return true;
         }
     }
@@ -478,7 +459,11 @@ float ICACHE_FLASH_ATTR EvseWiFiConfig::getMeterEnergyPrice(uint8_t meterId){
 }
 uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getMeterPin(uint8_t meterId) {
     if (meterConfig[meterId].intpin) return meterConfig[meterId].intpin;
+    #ifdef ESP8266
     return D3;
+    #else
+    return 17;
+    #endif
 }
 uint16_t ICACHE_FLASH_ATTR EvseWiFiConfig::getMeterImpKwh(uint8_t meterId) {
     if (meterConfig[meterId].kwhimp) return meterConfig[meterId].kwhimp;
@@ -501,9 +486,18 @@ uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getMeterFactor(uint8_t meterId) {
 bool ICACHE_FLASH_ATTR EvseWiFiConfig::getRfidActive(){
     return rfidConfig.userfid;
 }
+
+uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getRfidUsePN532() {
+    return false;
+}
+
 uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getRfidPin() {
     if (rfidConfig.sspin) return rfidConfig.sspin;
+    #ifdef ESP8266
     return D8;
+    #else
+    return 5;
+    #endif
 }
 int8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getRfidGain() {
     if (rfidConfig.rfidgain) return rfidConfig.rfidgain;
@@ -518,6 +512,9 @@ const char * ICACHE_FLASH_ATTR EvseWiFiConfig::getNtpIp() {
     if (ntpConfig.ntpip) return ntpConfig.ntpip;
     return "pool.ntp.org";
 }
+bool ICACHE_FLASH_ATTR EvseWiFiConfig::getNtpDst() {
+    return ntpConfig.dst;
+}
 
 // buttonConfig getter/setter
 bool ICACHE_FLASH_ATTR EvseWiFiConfig::getButtonActive(uint8_t buttonId) {
@@ -525,7 +522,11 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::getButtonActive(uint8_t buttonId) {
 }
 uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getButtonPin(uint8_t buttonId) {
     if (buttonConfig[0].buttonpin) return buttonConfig[buttonId].buttonpin;
+    #ifdef ESP8266
     return D4;
+    #else
+    return 16;
+    #endif
 }
 
 // systemConfig getter/setter
@@ -550,6 +551,12 @@ uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getSystemMaxInstall() {
 uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getSystemEvseCount() {
     return 1;
 }
+bool ICACHE_FLASH_ATTR EvseWiFiConfig::getSystemLogging() {
+    return systemConfig.logging;
+}
+bool ICACHE_FLASH_ATTR EvseWiFiConfig::getSystemApi() {
+    return systemConfig.api;
+}
 
 // evseConfig getter/setter
 uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseMbid(uint8_t evseId) {
@@ -558,8 +565,18 @@ uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseMbid(uint8_t evseId) {
 bool ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseAlwaysActive(uint8_t evseId) {
     return evseConfig[evseId].alwaysactive;
 }
-bool ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseDisableLed(uint8_t evseId) {
-    return evseConfig[evseId].disableled;
+bool ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseRemote(uint8_t evseId) {
+    return evseConfig[evseId].remote;
+}
+uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseLedConfig(uint8_t evseId) {
+    return evseConfig[evseId].ledconfig;
+}
+uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseLedPin(uint8_t evseId) {
+    #ifdef ESP8266
+    return D0;
+    #else
+    return 26;
+    #endif
 }
 bool ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseResetCurrentAfterCharge(uint8_t evseId) {
     return evseConfig[evseId].resetcurrentaftercharge;
@@ -570,4 +587,16 @@ uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseMaxCurrent(uint8_t evseId) {
 float ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseAvgConsumption(uint8_t evseId) {
     if (evseConfig[evseId].avgconsumption) return evseConfig[0].avgconsumption;
     return 15.0;
+}
+uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseCpIntPin(uint8_t evseId) {
+    return 4;
+}
+bool ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseRseActive(uint8_t evseId) {
+    return evseConfig[evseId].rseActive;
+}
+uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseRsePin(uint8_t evseId) {
+    return 2;
+}
+uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseRseValue(uint8_t evseId) {
+    return evseConfig[evseId].rseValue;
 }

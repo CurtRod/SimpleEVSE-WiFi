@@ -16,7 +16,6 @@
       "usemeter": false,
       "metertype": "S0",
       "price": 0,
-      "intpin": 0,
       "kwhimp": 1000,
       "implen": 30,
       "meterphase": 1,
@@ -25,17 +24,15 @@
   ],
   "rfid": {
     "userfid": false,
-    "sspin": 15,
     "rfidgain": 32
   },
   "ntp": {
-    "timezone": 1,
-    "ntpip": "pool.ntp.org"
+    "ntpip": "pool.ntp.org",
+    "timezone": 1
   },
   "button": [
     {
-      "usebutton": false,
-      "buttonpin": 2
+      "usebutton": true
     }
   ],
   "system": {
@@ -53,7 +50,9 @@
       "disableled": false,
       "resetcurrentaftercharge": true,
       "evseinstall": 16,
-      "avgconsumption": 15
+      "avgconsumption": 15,
+      "rseactive": false,
+      "rsevalue": 80
     }
   ]
 }

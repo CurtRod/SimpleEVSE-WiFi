@@ -1,9 +1,13 @@
 //Globals
 var websock = null;
 var wsUri;
-var fw_version = "0.4.1"
+var sw_rev = ""
+var hw_rev = "";
+var timeoutInterval;
+var inApMode = false;
 
 //EVSE Control
+var pp_limit;
 var chargingTime;
 var evseActive;
 var vehicleCharging;
@@ -33,8 +37,8 @@ var completed = false;
 var wsUri;
 
 window.onload = function () {
-  const fw = document.getElementsByClassName("fw_version")
-  for (let i of fw) { i.innerHTML = fw_version; }
+
+
 }
 
 // Script data for EVSE Control
@@ -52,6 +56,13 @@ function listEVSEData(obj) {
   evseActive = obj.evse_active;
   document.getElementById("evse_charging_time").innerHTML = getTimeFormat(obj.evse_charging_time);
   document.getElementById("evse_current_limit").innerHTML = obj.evse_current_limit + " A";
+  if (obj.evse_rse_status === true) {
+    document.getElementById("evse_current_limit").innerHTML = "RSE Active <span class=\"glyphicon glyphicon-flash\" style=\"color:red\"></span>&nbsp;" + obj.evse_current_limit + " / " + obj.evse_rse_current_before + " A (" + obj.evse_rse_value + "%)";
+  }
+  if (obj.evse_current_limit > pp_limit) {
+    document.getElementById("evse_current_limit").innerHTML = "PP-Limit <span class=\"glyphicon glyphicon-flash\" style=\"color:orange\"></span>&nbsp;" + pp_limit + " A / " + obj.evse_current_limit + " A";
+  }
+
   document.getElementById("evse_current").innerHTML = obj.evse_current + " kW";
   document.getElementById("evse_charged_kwh").innerHTML = obj.evse_charged_kwh + " kWh / " + obj.evse_charged_amount + " €";
   document.getElementById("evse_charged_mileage").innerHTML = obj.evse_charged_mileage + " km";
@@ -101,23 +112,32 @@ function listEVSEData(obj) {
     syncBrowserTime(false);
   }
   if (currentModalOpen === false) {
-    if (document.getElementById("myRange").value != prevCurrent) {
-      document.getElementById("myRange").value = obj.evse_current_limit;
-      document.getElementById("slider_current").innerHTML = obj.evse_current_limit;
+    if (document.getElementById("currentSlider").value != prevCurrent) {
+      document.getElementById("currentSlider").value = obj.evse_current_limit;
+      document.getElementById("slider_current").innerHTML = obj.evse_current_limit + " A";
     }
     prevCurrent = obj.evse_current_limit;
-    if (document.getElementById("myRange").max != prevMaxCurrent) {
-      document.getElementById("myRange").max = obj.evse_maximum_current;
+    if (document.getElementById("currentSlider").max != prevMaxCurrent) {
+      document.getElementById("currentSlider").max = obj.evse_maximum_current;
     }
     prevMaxCurrent = obj.evse_maximum_current;
   }
 
+  if (obj.evse_slider_status === false) {
+    document.getElementById("currentSlider").disabled = true;
+    document.getElementById("currentModalSaveButton").disabled = true;
+    document.getElementById("slider_current").innerHTML = obj.evse_current_limit + " A <br><span style=\"color:red\">Manual current specification disabled!</span>";
+  } else {
+    document.getElementById("currentSlider").disabled = false;
+    document.getElementById("currentModalSaveButton").disabled = false;
+  }
+
 }
 function handleSlider(value) {
-  document.getElementById("slider_current").innerHTML = value;
+  document.getElementById("slider_current").innerHTML = value + " A";
 }
 function setEVSECurrent() {
-  var currentToSet = document.getElementById("myRange").value;
+  var currentToSet = document.getElementById("currentSlider").value;
   websock.send("{\"command\":\"setcurrent\", \"current\":" + currentToSet + "}");
   $("#currentModal").modal("hide");
   currentModalOpen = false;
@@ -126,14 +146,18 @@ function abortCurrentModal() {
   currentModalOpen = false;
 }
 function activateEVSE() {
-  websock.send("{\"command\":\"activateevse\"}");
-  $("#buttonActivate").addClass('disabled');
-  setTimeout(function () { $("#buttonActivate").removeClass('disabled'); }, 4000);
+  if (document.getElementById("buttonActivate").className.includes("disabled") === false) {
+    websock.send("{\"command\":\"activateevse\"}");
+    $("#buttonActivate").addClass('disabled');
+    setTimeout(function () { $("#buttonActivate").removeClass("disabled"); }, 4000);
+  }
 }
 function deactivateEVSE() {
-  websock.send("{\"command\":\"deactivateevse\"}");
-  $("#buttonDeactivate").addClass('disabled');
-  setTimeout(function () { $("#buttonDeactivate").removeClass('disabled'); }, 4000);
+  if (document.getElementById("buttonDeactivate").className.includes("disabled") === false) {
+    websock.send("{\"command\":\"deactivateevse\"}");
+    $("#buttonDeactivate").addClass('disabled');
+    setTimeout(function () { $("#buttonDeactivate").removeClass('disabled'); }, 4000);
+  }
 }
 function getTimeFormat(millisec) {
   var seconds = (millisec / 1000).toFixed(0);
@@ -401,6 +425,14 @@ FooTable.MyFiltering = FooTable.Filtering.extend({
 
 //Functions for Log
 function loadLog() {
+
+  if (hw_rev === "ESP8266") {
+    document.getElementById("textlimitlogfile").innerHTML = "The log file is limited to 50 entries (LIFO principle)";
+  }
+  else {
+    document.getElementById("textlimitlogfile").innerHTML = "The log file is limited to 100 entries (LIFO principle)";
+  }
+
   document.getElementById("evseContent").style.display = "none";
   document.getElementById("usersContent").style.display = "none";
   document.getElementById("settingsContent").style.display = "none";
@@ -511,11 +543,18 @@ function loadSettings() {
   handleRFID();
   handleMeter();
   handleMeterType();
-  handleButtonActive();
   handleStaticIP();
+  handleApi();
 }
 function listCONF(obj) {
   document.getElementById("configversion").innerHTML = obj.configversion;
+
+  if(obj.hardwarerev === "ESP8266") {
+    hw_rev = "ESP8266";
+    document.getElementById("divRSEValue").style.display = "none";
+    document.getElementById("divUseRSE").style.display = "none";
+    document.getElementById("divCPInterrupt").style.display = "none";
+  }
 
   //Load WiFi settings
   document.getElementById("inputtohide").value = obj.wifi.ssid;
@@ -532,6 +571,7 @@ function listCONF(obj) {
     document.getElementById("wmodeap").checked = true;
     handleAP();
     syncBrowserTime(false);
+    inApMode = true;
   }
   else {
     document.getElementById("wmodesta").checked = true;
@@ -540,7 +580,6 @@ function listCONF(obj) {
 
   //Load meter settings
   document.getElementById("checkboxMeter").checked = obj.meter[0].usemeter;
-  document.getElementById("gpioint").value = obj.meter[0].intpin;
   document.getElementById("impkwh").value = obj.meter[0].kwhimp;
   document.getElementById("implen").value = obj.meter[0].implen;
   document.getElementById("meterphase").value = obj.meter[0].meterphase;
@@ -551,7 +590,6 @@ function listCONF(obj) {
   handleMeter();
 
   //Load RFID settings
-  document.getElementById("gpioss").value = obj.rfid.sspin;
   document.getElementById("gain").value = obj.rfid.rfidgain;
   document.getElementById("checkboxRfid").checked = obj.rfid.userfid;
   handleRFID();
@@ -559,11 +597,10 @@ function listCONF(obj) {
   //Load NTP settings
   document.getElementById("DropDownTimezone").value = obj.ntp.timezone;
   document.getElementById("ntpIP").value = obj.ntp.ntpip;
+  document.getElementById("checkboxDst").checked = obj.ntp.dst;
 
   //Load button settings
   document.getElementById("checkboxButtonActive").checked = obj.button[0].usebutton;
-  document.getElementById("gpiobutton").value = obj.button[0].buttonpin;
-  handleButtonActive();
 
   //Load system settings
   document.getElementById("hostname").value = obj.system.hostnm;
@@ -572,20 +609,46 @@ function listCONF(obj) {
   document.getElementById("checkboxSafari").checked = obj.system.wsauth;
   document.getElementById("checkboxDebug").checked = obj.system.debug;
   document.getElementById("maxinstall").value = obj.system.maxinstall;
+  if (obj.system.hasOwnProperty("logging")) {
+    document.getElementById("checkboxEnableLogging").checked = obj.system.logging;
+  }
+  else {
+    document.getElementById("checkboxEnableLogging").checked = true;
+  }
   //document.getElementById("evsecount").value = obj.system.evsecount;  -> prep for dual evse
 
   //Load evse settings
   //document.getElementById("mbid").value = obj.evse[0].mbid; -> prep for dual evse
-  document.getElementById("checkboxAlwaysActive").checked = obj.evse[0].alwaysactive;
-  document.getElementById("checkboxDisableLED").checked = obj.evse[0].disableled;
+  handleOperatingMode(obj);
+  if (obj.evse[0].hasOwnProperty("ledconfig")) {
+    document.getElementById("ledconfig").value = obj.evse[0].ledconfig;
+  }
+  else if (obj.evse[0].hasOwnProperty("disableled")) {
+    if (obj.evse[0].disabled === true) {
+      document.getElementById("ledconfig").value = 1;
+    }
+    else {
+      document.getElementById("ledconfig").value = 3;
+    }
+  }
+  
+  if (obj.system.hasOwnProperty("api")) {
+    document.getElementById("checkboxApi").checked = obj.system.api;
+  }
+  else {
+    document.getElementById("checkboxApi").checked = false;
+  }
   document.getElementById("checkboxResetCurrentAfterCharge").checked = obj.evse[0].resetaftercharge;
   //document.getElementById("lp1_install").value = obj.evse[0].maxcurrent; -> prep for dual evse
   document.getElementById("avgconsumption").value = obj.evse[0].avgconsumption;
+  document.getElementById("checkboxUseRse").checked = obj.evse[0].rseactive;
+  document.getElementById("rsevalue").value = obj.evse[0].rsevalue;
+  handleUseRse();
 
   var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2));
   var dlAnchorElem = document.getElementById("downloadSet");
   dlAnchorElem.setAttribute("href", dataStr);
-  dlAnchorElem.setAttribute("download", "esp-rfid-settings.json");
+  dlAnchorElem.setAttribute("download", "evse-wifi-settings.json");
 }
 
 function browserTime() {
@@ -598,7 +661,20 @@ function browserTime() {
 
 function deviceTime() {
   var t = new Date(0); // The 0 there is the key, which sets the date to the epoch,
-  t.setUTCSeconds(Math.floor(utcSeconds + (timezone * 3600)));
+  var dst = 0;
+  if (document.getElementById("checkboxDst").checked) {
+    dst = 3600;
+  }
+  if (inApMode) {
+    t.setUTCSeconds(Math.floor(utcSeconds));
+    document.getElementById("DropDownTimezone").disabled = true;
+    document.getElementById("checkboxDst").disabled = true;
+  }
+  else {
+    t.setUTCSeconds(Math.floor(utcSeconds + (timezone * 3600) + dst));
+    document.getElementById("DropDownTimezone").disabled = false;
+    document.getElementById("checkboxDst").disabled = false;
+  }
   document.getElementById("utc").innerHTML = t.toUTCString().slice(0, -3);
   utcSeconds = utcSeconds + 1;
 }
@@ -620,8 +696,15 @@ function setEVSERegister() {
   datatosend.register = document.getElementById("evseRegToSet").value;
   datatosend.value = document.getElementById("evseRegValue").value;
   websock.send(JSON.stringify(datatosend));
-  $("#evseRegModal").modal("hide");
-  refreshStats();
+  document.getElementById("buttonsetregister").disabled = true;
+  $("#loadersetevsereg").removeClass('hidden');
+  
+  setTimeout(function () {
+    refreshStats();
+    $("#evseRegModal").modal("hide");
+    document.getElementById("buttonsetregister").disabled = false;
+    $("#loadersetevsereg").addClass('hidden');
+  }, 3000);
 }
 
 function syncBrowserTime(reload) {
@@ -664,28 +747,39 @@ function handleStaticIP() {
 function handleRFID() {
   if (document.getElementById("checkboxRfid").checked === true) {
     document.getElementById("gain").disabled = false;
-    document.getElementById("gpioss").disabled = false;
   }
   else {
     document.getElementById("gain").disabled = true;
-    document.getElementById("gpioss").disabled = true;
   }
 }
 
 function handleMeter() {
   if (document.getElementById("checkboxMeter").checked === true) {
-    document.getElementById("gpioint").disabled = false;
     document.getElementById("impkwh").disabled = false;
     document.getElementById("implen").disabled = false;
     document.getElementById("price").disabled = false;
     document.getElementById("smetertype").disabled = false;
+    document.getElementById("meterphase").disabled = false;
+    handleMeterFactor();
   }
   else {
-    document.getElementById("gpioint").disabled = true;
     document.getElementById("impkwh").disabled = true;
     document.getElementById("implen").disabled = true;
     document.getElementById("price").disabled = true;
     document.getElementById("smetertype").disabled = true;
+    document.getElementById("meterphase").disabled = true;
+    document.getElementById("factor").disabled = true;
+  }
+}
+
+function handleMeterFactor() {
+  if (document.getElementById("meterphase").value === "3" ||
+      document.getElementById("smetertype").value === "SDM630") {
+    document.getElementById("factor").value = "1";
+    document.getElementById("factor").disabled = true;;
+  }
+  else {
+    document.getElementById("factor").disabled = false;
   }
 }
 
@@ -693,25 +787,54 @@ function handleMeterType() {
   if (document.getElementById("smetertype").value !== "S0") {
     document.getElementById("divImpKwh").style.display = "none";
     document.getElementById("divImpLen").style.display = "none";
-    document.getElementById("divMeterPin").style.display = "none";
     document.getElementById("divMeterPhase").style.display = "none";
     document.getElementById("meterRegisters").style.display = "block";
   }
   else {
     document.getElementById("divImpKwh").style.display = "block";
-    document.getElementById("divMeterPin").style.display = "block";
     document.getElementById("divMeterPhase").style.display = "block";
     document.getElementById("divImpLen").style.display = "block";
     document.getElementById("meterRegisters").style.display = "none";
+    if (document.getElementById("smetertype").value === "SDM120") {
+      document.getElementById("meterphase").value = "1";
+    }
+  }
+  handleMeterFactor();
+}
+
+function handleUseRse() {
+  if (document.getElementById("checkboxUseRse").checked === true) {
+    document.getElementById("rsevalue").disabled = false;
+  }
+  else {
+    document.getElementById("rsevalue").disabled = true;
   }
 }
 
-function handleButtonActive() {
-  if (document.getElementById("checkboxButtonActive").checked === true) {
-    document.getElementById("gpiobutton").disabled = false;
+function handleOperatingMode(obj) {
+  if (obj.evse[0].remote === true) {
+    document.getElementById("radioOperatingMode_Remote").checked = true;
+  }
+  else if (obj.evse[0].alwaysactive === true) {
+    document.getElementById("radioOperatingMode_AlwaysActive").checked = true;
   }
   else {
-    document.getElementById("gpiobutton").disabled = true;
+    document.getElementById("radioOperatingMode_Normal").checked = true;
+  }
+}
+
+function handleApi() {
+  if (document.getElementById("radioOperatingMode_Remote").checked === true) {
+    document.getElementById("checkboxApi").disabled = true;
+    document.getElementById("checkboxApi").checked = true;
+  }
+  if (document.getElementById("radioOperatingMode_AlwaysActive").checked === true) {
+    document.getElementById("checkboxApi").disabled = false;
+    document.getElementById("checkboxApi").checked = false;
+  }
+  if (document.getElementById("radioOperatingMode_Normal").checked === true) {
+    document.getElementById("checkboxApi").disabled = false;
+    document.getElementById("checkboxApi").checked = false;
   }
 }
 
@@ -734,6 +857,10 @@ function shAdmin() {
     x.type = "password";
     document.getElementById("shadmin").innerHTML = "show";
   }
+}
+
+function interruptCp() {
+  websock.send("{\"command\":\"interruptcp\"}");
 }
 
 function listSSID(obj) {
@@ -839,36 +966,53 @@ function saveConf() {
   datatosend.meter[0].usemeter = document.getElementById("checkboxMeter").checked;
   datatosend.meter[0].metertype = document.getElementById("smetertype").value;
   datatosend.meter[0].price = parseFloat(document.getElementById("price").value);
-  datatosend.meter[0].intpin = parseInt(document.getElementById("gpioint").value);
+  //datatosend.meter[0].intpin = parseInt(document.getElementById("gpioint").value);
   datatosend.meter[0].kwhimp = parseInt(document.getElementById("impkwh").value);
   datatosend.meter[0].implen = parseInt(document.getElementById("implen").value);
   datatosend.meter[0].meterphase = parseInt(document.getElementById("meterphase").value);
   datatosend.meter[0].factor = parseInt(document.getElementById("factor").value);
 
   datatosend.rfid.userfid = document.getElementById("checkboxRfid").checked;
-  datatosend.rfid.sspin = parseInt(document.getElementById("gpioss").value);
+  //datatosend.rfid.sspin = parseInt(document.getElementById("gpioss").value);
   datatosend.rfid.rfidgain = parseInt(document.getElementById("gain").value);
 
   datatosend.ntp.ntpip = document.getElementById("ntpIP").value;
   datatosend.ntp.timezone = parseInt(document.getElementById("DropDownTimezone").value);
+  datatosend.ntp.dst = document.getElementById("checkboxDst").checked;
 
   datatosend.button[0].usebutton = document.getElementById("checkboxButtonActive").checked;
-  datatosend.button[0].buttonpin = parseInt(document.getElementById("gpiobutton").value);
+  //datatosend.button[0].buttonpin = parseInt(document.getElementById("gpiobutton").value);
 
   datatosend.system.hostnm = document.getElementById("hostname").value;
   datatosend.system.adminpwd = a;
   datatosend.system.wsauth = document.getElementById("checkboxSafari").checked;
   datatosend.system.debug = document.getElementById("checkboxDebug").checked;
   datatosend.system.maxinstall = parseInt(document.getElementById("maxinstall").value);
+  datatosend.system.logging = document.getElementById("checkboxEnableLogging").checked;
+  datatosend.system.api = document.getElementById("checkboxApi").checked;
   datatosend.system.evsecount = 1;
 
   datatosend.evse[0].mbid = 1;
-  datatosend.evse[0].alwaysactive = document.getElementById("checkboxAlwaysActive").checked;
-  datatosend.evse[0].disableled = document.getElementById("checkboxDisableLED").checked;
+  if (document.getElementById("radioOperatingMode_Remote").checked === true) {
+    datatosend.evse[0].alwaysactive = true;
+    datatosend.evse[0].remote = true;
+  } else {
+    datatosend.evse[0].alwaysactive = document.getElementById("radioOperatingMode_AlwaysActive").checked;
+    datatosend.evse[0].remote = false;
+  }
+  datatosend.evse[0].ledconfig = parseInt(document.getElementById("ledconfig").value);
   datatosend.evse[0].resetcurrentaftercharge = document.getElementById("checkboxResetCurrentAfterCharge").checked;
   datatosend.evse[0].evseinstall = parseInt(document.getElementById("maxinstall").value);
   datatosend.evse[0].avgconsumption = parseFloat(document.getElementById("avgconsumption").value);
-
+  if (hw_rev === "ESP8266") {
+    datatosend.evse[0].rseactive = false;
+    datatosend.evse[0].rsevalue = 0;
+  }
+  else {
+    datatosend.evse[0].rseactive = document.getElementById("checkboxUseRse").checked;
+    datatosend.evse[0].rsevalue = parseInt(document.getElementById("rsevalue").value);
+  }
+  
   websock.send(JSON.stringify(datatosend));
   alert("Device now should reboot with new settings");
   location.reload();
@@ -890,7 +1034,7 @@ function piccBackup(obj) {
   var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2));
   var dlAnchorElem = document.getElementById("downloadUser");
   dlAnchorElem.setAttribute("href", dataStr);
-  dlAnchorElem.setAttribute("download", "esp-rfid-users.json");
+  dlAnchorElem.setAttribute("download", "evse-wifi-users.json");
   dlAnchorElem.click();
 }
 
@@ -1040,7 +1184,14 @@ function listStats(obj) {
   document.getElementById("cpu").innerHTML = obj.cpu + " Mhz";
   document.getElementById("uptime").innerHTML = obj.uptime;
   document.getElementById("heap").innerHTML = Math.round((obj.heap / 1024) * 10) / 10 + " kB";
-  document.getElementById("heap").style.width = (obj.heap * 100) / 81920 + "%";
+  if (obj.hardwarerev === "ESP8266") {
+    document.getElementById("heap").style.width = (obj.heap * 100) / 81920 + "%";
+    //document.getElementById("divintTemp").style.display = "none";
+  }
+  else {
+    document.getElementById("heap").style.width = (obj.heap * 100) / 327680 + "%";
+    //document.getElementById("int_temp").innerHTML = obj.int_temp + " °C";
+  }
   colorStatusbar(document.getElementById("heap"));
   document.getElementById("flash").innerHTML = Math.round((obj.availsize / 1024) * 10) / 10 + " kB";
   document.getElementById("flash").style.width = (obj.availsize * 100) / (4194304 - obj.spiffssize) + "%";
@@ -1061,6 +1212,7 @@ function listStats(obj) {
   document.getElementById("amps_turn_off").innerHTML = obj.evse_turn_off;		//1004
   document.getElementById("evse_version").innerHTML = obj.evse_firmware;		//1005
   document.getElementById("evse_status").innerHTML = obj.evse_state;			//1006
+  //document.getElementById("evse_rcd").innerHTML = obj.evse_rcd;			//1007
   document.getElementById("amps_boot").innerHTML = obj.evse_amps_afterboot;		//2000
   document.getElementById("evse_modbus").innerHTML = obj.evse_modbus_enabled;	//2001
   document.getElementById("amps_min").innerHTML = obj.evse_amps_min;			//2002
@@ -1070,6 +1222,12 @@ function listStats(obj) {
   document.getElementById("evse_sharing_mode").innerHTML = obj.evse_sharing_mode;//2006
   document.getElementById("pp_detection").innerHTML = obj.evse_pp_detection;	//2007
   document.getElementById("meter_total").innerHTML = obj.meter_total;
+  document.getElementById("meter_p1").innerHTML = obj.meter_p1;
+  document.getElementById("meter_p2").innerHTML = obj.meter_p2;
+  document.getElementById("meter_p3").innerHTML = obj.meter_p3;
+  document.getElementById("meter_p1_v").innerHTML = obj.meter_p1_v;
+  document.getElementById("meter_p2_v").innerHTML = obj.meter_p2_v;
+  document.getElementById("meter_p3_v").innerHTML = obj.meter_p3_v;
   if (obj.hasOwnProperty("rssi")) {
     document.getElementById("rssi").innerHTML = " (" + obj.rssi + "dBm)";
     document.getElementById("rssi").style.fontWeight = 'bold';
@@ -1186,6 +1344,14 @@ function socketMessageListener(evt) {
   else if (obj.command === "ssidlist") {
     listSSID(obj);
   }
+  else if (obj.command === "startupinfo") {
+    hw_rev = obj.hw_rev;
+    sw_rev = obj.sw_rev;
+    pp_limit = obj.pp_limit;
+    
+    const fw = document.getElementsByClassName("fw_version")
+    for (let i of fw) { i.innerHTML = sw_rev; }
+  }
   else if (typeof obj.configversion !== "undefined") {
     listCONF(obj);
     websock.send("{\"command\":\"gettime\"}");
@@ -1257,8 +1423,25 @@ function wsConnect() {
   websock.addEventListener('close', socketCloseListener);
 
   websock.onopen = function (evt) {
+    websock.send("{\"command\":\"getstartup\"}");
     loadEVSEControl();
   };
+  setTimeout(function() {
+    timeoutInterval = setInterval(connectionTimeOutCheck, 3000);
+  }, 2000); 
+}
+
+function connectionTimeOutCheck() {
+  var readyState = websock.readyState;
+  if (readyState !== 1) {
+    clearInterval(timeoutInterval);
+    if (confirm("Connection to EVSE-WiFi lost. Reload Page?")) {
+      location.reload();
+    }
+    else {
+      timeoutInterval = setInterval(connectionTimeOutCheck(), 3000);
+    }
+  }
 }
 
 function start() {

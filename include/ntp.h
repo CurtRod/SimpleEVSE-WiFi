@@ -8,8 +8,14 @@
 #ifndef NTP_H_
 #define NTP_H_
 
+#ifdef ESP8266
 #include <ESP8266WiFi.h>
 #include <ESPAsyncUDP.h>
+#else
+#include <WiFi.h>
+#include <AsyncUDP.h>
+#endif
+
 #include <TimeLib.h>
 
 #define NTP_PACKET_SIZE 48

@@ -1,6 +1,11 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
+
+#ifdef ESP8266
 #include <FS.h>
+#else
+#include <SPIFFS.h>
+#endif
 
 #define ACTUAL_CONFIG_VERSION 1
 
@@ -29,6 +34,7 @@ struct s_meterConfig {
 
 struct s_rfidConfig {
     bool userfid;
+    bool usePN532;
     uint8_t sspin;
     int8_t rfidgain;
 };
@@ -36,6 +42,7 @@ struct s_rfidConfig {
 struct s_ntpConfig {
     int8_t timezone;
     const char* ntpip;
+    bool dst;
 };
 
 struct s_buttonConfig {
@@ -52,15 +59,20 @@ struct s_systemConfig {
     uint8_t maxinstall;
     uint8_t configversion;
     uint8_t evsecount;
+    bool logging;
+    bool api;
 };
 
 struct s_evseConfig {
     uint8_t mbid;
     bool alwaysactive;
-    bool disableled;
+    bool remote;
+    uint8_t ledconfig;
     bool resetcurrentaftercharge;
     uint8_t maxcurrent;
     float avgconsumption;
+    bool rseActive;
+    uint8_t rseValue;
 };
 
 class EvseWiFiConfig {
@@ -101,11 +113,13 @@ public:
 // rfidConfig
     bool ICACHE_FLASH_ATTR getRfidActive();
     uint8_t ICACHE_FLASH_ATTR getRfidPin();
+    uint8_t ICACHE_FLASH_ATTR getRfidUsePN532();
     int8_t ICACHE_FLASH_ATTR getRfidGain();
 
 // ntpConfig
     int8_t ICACHE_FLASH_ATTR getNtpTimezone();
     const char * ICACHE_FLASH_ATTR getNtpIp();
+    bool ICACHE_FLASH_ATTR getNtpDst();
 
 // buttonConfig
     bool ICACHE_FLASH_ATTR getButtonActive(uint8_t buttonId);
@@ -120,14 +134,22 @@ public:
     uint8_t ICACHE_FLASH_ATTR getSystemMaxInstall();
     uint8_t ICACHE_FLASH_ATTR getSystemConfigVersion();
     uint8_t ICACHE_FLASH_ATTR getSystemEvseCount();
+    bool ICACHE_FLASH_ATTR getSystemLogging();
+    bool ICACHE_FLASH_ATTR getSystemApi();
 
 // evseConfig
     uint8_t ICACHE_FLASH_ATTR getEvseMbid(uint8_t evseId);
     bool ICACHE_FLASH_ATTR getEvseAlwaysActive(uint8_t evseId);
-    bool ICACHE_FLASH_ATTR getEvseDisableLed(uint8_t evseId);
+    bool ICACHE_FLASH_ATTR getEvseRemote(uint8_t evseId);
+    uint8_t ICACHE_FLASH_ATTR getEvseLedConfig(uint8_t evseId);
+    uint8_t ICACHE_FLASH_ATTR getEvseLedPin(uint8_t evseId);
     bool ICACHE_FLASH_ATTR getEvseResetCurrentAfterCharge(uint8_t evseId);
     uint8_t ICACHE_FLASH_ATTR getEvseMaxCurrent(uint8_t evseId);
     float ICACHE_FLASH_ATTR getEvseAvgConsumption(uint8_t evseId);
+    uint8_t ICACHE_FLASH_ATTR getEvseCpIntPin(uint8_t evseId);
+    bool ICACHE_FLASH_ATTR getEvseRseActive(uint8_t evseId);
+    uint8_t ICACHE_FLASH_ATTR getEvseRsePin(uint8_t evseId);
+    uint8_t ICACHE_FLASH_ATTR getEvseRseValue(uint8_t evseId);
 
 private:
     s_wifiConfig wifiConfig;

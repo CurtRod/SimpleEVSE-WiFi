@@ -4,6 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta http-equiv="Cache-control" content="no-cache">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="">
   <meta name="author" content="">
@@ -39,18 +40,18 @@
         <div class="modal-header">
           <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
               aria-hidden="true">&times;</span></button>
-          <h4 class="modal-title" id="current-title">Current&nbsp;<span id="slider_current"></span>&nbsp;A</h4>
+          <h4 class="modal-title" id="current-title">Current&nbsp;<span id="slider_current"></span></h4>
         </div>
         <div class="modal-body">
           <div class="slidecontainer">
-            <input type="range" min="6" max="25" value="20" class="slider" id="myRange"
+            <input type="range" min="6" max="25" value="20" class="slider" id="currentSlider"
               oninput="handleSlider(this.value)">
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" onclick="abortCurrentModal()"
             data-dismiss="modal">Abort</button>
-          <button type="submit" class="btn btn-primary" onclick="setEVSECurrent()">Save</button>
+          <button type="submit" id="currentModalSaveButton" class="btn btn-primary" onclick="setEVSECurrent()">Save</button>
         </div>
       </div>
     </div>
@@ -99,8 +100,9 @@
           </div>
         </div>
         <div class="modal-footer">
+          <div id="loadersetevsereg" class="hidden"> <div class="loader"></div> </div>
           <button type="button" class="btn btn-secondary" data-dismiss="modal">Abort</button>
-          <button type="submit" class="btn btn-primary" onclick="setEVSERegister()">Set Register</button>
+          <button id="buttonsetregister" type="submit" class="btn btn-primary" onclick="setEVSERegister()">Set Register</button>
         </div>
       </div>
     </div>
@@ -284,6 +286,7 @@
         </ul>
       </nav>
       <h3 class="text-muted">Log</h3>
+      <div class="alert alert-warning" id="textlimitlogfile"></div>
     </div>
     <div class="panel panel-default">
       <table id="latestlogtable" class="table" data-paging="false" data-filtering="true" data-sorting="true"
@@ -326,7 +329,11 @@
             <tr>
               <th>Uptime</th>
               <td id="uptime"></td>
-            </tr>
+            </tr> <!--
+            <tr id="divintTemp">
+              <th>Internal Temp</th>
+              <td id="int_temp"></td>
+            </tr>-->
             <tr>
               <th>Free Heap</th>
               <td>
@@ -387,7 +394,11 @@
             <tr>
               <th>MAC</th>
               <td id="mac"></td>
-            </tr>
+            </tr><!--
+            <tr>
+              <th>*</th>
+              <td>*</td>
+            </tr>-->
           </table>
         </div>
       </div>
@@ -426,6 +437,10 @@
               <th>1006: EVSE Status</th>
               <td id="evse_status"></td>
             </tr>
+            <!--<tr>
+              <th>1007: RCD Status</th>
+              <td id="evse_rcd"></td>
+            </tr>-->
             <tr>
               <th>2000: Current after boot</th>
               <td id="amps_boot"></td>
@@ -470,6 +485,31 @@
               <th>Total active energy </th>
               <td id="meter_total"></td>
             </tr>
+            <tr>
+              <th>Current P1 </th>
+              <td id="meter_p1"></td>
+            </tr>
+            <tr>
+              <th>Current P2 </th>
+              <td id="meter_p2"></td>
+            </tr>
+            <tr>
+              <th>Current P3 </th>
+              <td id="meter_p3"></td>
+            </tr>
+            <tr>
+              <th>Voltage P1 </th>
+              <td id="meter_p1_v"></td>
+            </tr>
+            <tr>
+              <th>Voltage P2 </th>
+              <td id="meter_p2_v"></td>
+            </tr>
+            <tr>
+              <th>Voltage P3 </th>
+              <td id="meter_p3_v"></td>
+            </tr>
+            
           </table>
         </div>
       </div>
@@ -482,7 +522,7 @@
         <h6 class="text-muted">Type your Wi-Fi Network's SSID or Scan for nerby Wireless Networks to join.</h6>
         <div class="row form-group">
           <label data-toggle="tooltip"
-            title="You can run your ESP in AP Mode or Client Mode. In client mode you will need to connect to an existing Wi-Fi network, in AP Mode ESP creates a Wi-Fi network itself."
+            title="You can run EVSE-WiFi in AP Mode or Client Mode. In client mode you will need to connect to an existing Wi-Fi network, in AP Mode EVSE-WiFi creates a Wi-Fi network itself."
             class="col-xs-3">Wi-Fi Mode</label>
           <div class="col-xs-9">
             <form>
@@ -522,12 +562,11 @@
           </span>
         </div>
         <div class="row form-group">
-          <label data-toggle="tooltip" title="Use a static IP Address instead of DHCP" class="col-xs-3">Static
-            IP</label>
+          <label data-toggle="tooltip" title="Use a static IP Address instead of DHCP" class="col-xs-3">Use Static IP</label>
           <div class="col-xs-9">
             <form>
               <label class="checkbox-inline"><input type="checkbox" id="checkboxStaticIP" value=""
-                  onclick="handleStaticIP();">Active</label>
+                  onclick="handleStaticIP();"></label>
             </form>
           </div>
         </div>
@@ -562,32 +601,16 @@
         <h6 class="text-muted">Please refer the <a
             href="https://github.com/CurtRod/SimpleEVSE-WiFi#wiring-wemos-d1-mini-nodemcu">documentation</a> for pin
           configuration.</h6>
-        <div class="alert alert-warning"><strong>Warning!</strong> Activating RFID-Hardware when there is no RC522
-          connected to ESP, causes boot loop!</div>
         <div class="row form-group">
           <label data-toggle="tooltip"
             title="When you want to use a RC522 RFID Hardware to activate your EVSE, please activate this option."
-            class="col-xs-3">RFID-Hardware</label>
+            class="col-xs-3">Use RFID-Hardware</label>
           <div class="col-xs-9">
             <form>
               <label class="checkbox-inline"><input type="checkbox" id="checkboxRfid" value="" name="rfidmode"
-                  onclick="handleRFID();">Active</label>
+                  onclick="handleRFID();"></label>
             </form>
           </div>
-        </div>
-        <div class="row form-group">
-          <label data-toggle="tooltip" title="Choose which ESP port is connected to RFID Hardware SDA pin"
-            class="col-xs-3">SPI SS</label>
-          <span class="col-xs-9 col-md-5">
-            <select class="form-control input-sm" id="gpioss">
-              <option value="0">GPIO-0</option>
-              <option value="2">GPIO-2</option>
-              <option value="4">GPIO-4</option>
-              <option value="5">GPIO-5</option>
-              <option selected="selected" value="15">GPIO-15</option>
-              <option value="16">GPIO-16</option>
-            </select>
-          </span>
         </div>
         <div class="row form-group">
           <label data-toggle="tooltip" title="Higher value means the longer RFID reader's reading distance"
@@ -612,11 +635,11 @@
         <div class="row form-group">
           <label data-toggle="tooltip"
             title="If you want to use an electricity meter to count the power consumption, please activate this option."
-            class="col-xs-3">Meter Hardware</label>
+            class="col-xs-3">Use Meter Hardware</label>
           <div class="col-xs-9">
             <form>
               <label class="checkbox-inline"><input type="checkbox" id="checkboxMeter" value="" name="checkboxMeter"
-                  onclick="handleMeter();">Active</label>
+                  onclick="handleMeter();"></label>
             </form>
           </div>
         </div>
@@ -626,28 +649,15 @@
           <span class="col-xs-9 col-md-5">
             <select class="form-control input-sm" id="smetertype" onchange="handleMeterType()">
               <option selected value="S0">S0 Meter</option>
-              <option value="SDM120">SDM120 (Modbus - experimental)</option>
-              <option value="SDM630">SDM630 (Modbus - experimental)</option>
-            </select>
-          </span>
-        </div>
-        <div id="divMeterPin" class="row form-group">
-          <label data-toggle="tooltip" title="Choose which ESP port is connected to S0 interface of electricity meter"
-            class="col-xs-3">Meter GPIO</label>
-          <span class="col-xs-9 col-md-5">
-            <select class="form-control input-sm" id="gpioint">
-              <option selected="selected" value="0">GPIO-0</option>
-              <option value="2">GPIO-2</option>
-              <option value="4">GPIO-4</option>
-              <option value="5">GPIO-5</option>
-              <option value="15">GPIO-15</option>
+              <option value="SDM120">SDM120 (Modbus)</option>
+              <option value="SDM630">SDM630 (Modbus)</option>
             </select>
           </span>
         </div>
         <div id="divMeterPhase" class="row form-group">
           <label data-toggle="tooltip" title="Choose the kind of Meter you Use" class="col-xs-3">Meter Phases</label>
           <span class="col-xs-9 col-md-5">
-            <select class="form-control input-sm" id="meterphase">
+            <select class="form-control input-sm" id="meterphase" onchange="handleMeterFactor()">
               <option selected="selected" value="1">1-phase</option>
               <option value="3">3-phase</option>
             </select>
@@ -669,6 +679,18 @@
           <span class="col-xs-9 col-md-5">
             <input class="form-control input-sm" placeholder="impulse length in ms" id="implen" type="number"
               name="implength">
+          </span>
+        </div>
+        <div class="row form-group">
+          <label data-toggle="tooltip"
+            title="Specify a factor with which the measured energy is to be multiplied (e.g. when using a single-phase meter in combination with a two- or three-phase charging vehicle). Use '1' if you don't need a factor."
+            class="col-xs-3">Factor</label>
+          <span class="col-xs-9 col-md-5">
+            <select class="form-control input-sm" id="factor">
+              <option selected="selected" value="1">Factor 1 (no Factor)</option>
+              <option value="2">Factor 2</option>
+              <option value="3">Factor 3</option>
+            </select>
           </span>
         </div>
         <div class="row form-group">
@@ -694,35 +716,46 @@
         <div class="row form-group">
           <label data-toggle="tooltip"
             title="If you want to activate your EVSE via button, please activate this option."
-            class="col-xs-3">Button</label>
+            class="col-xs-3">Use Button to Activate EVSE</label>
           <div class="col-xs-9">
             <form>
               <label class="checkbox-inline"><input type="checkbox" id="checkboxButtonActive" value=""
-                  name="buttonsactive" onclick="handleButtonActive();">Active</label>
+                  name="buttonsactive"></label>
             </form>
           </div>
         </div>
-        <div class="row form-group">
-          <label data-toggle="tooltip"
-            title="Choose which ESP port is connected to Button for activating/deactivating your EVSE"
-            class="col-xs-3">Button Pin</label>
-          <span class="col-xs-9 col-md-5">
-            <select class="form-control input-sm" id="gpiobutton">
-              <option value="0">GPIO-0</option>
-              <option selected="selected" value="2">GPIO-2</option>
-              <option value="4">GPIO-4</option>
-              <option value="5">GPIO-5</option>
-              <option value="15">GPIO-15</option>
-            </select>
-          </span>
-        </div>
-        <div class="row form-group">
+        <!-- <div class="row form-group">
           <label data-toggle="tooltip" title="If you want to keep your EVSE always active, please activate this option."
-            class="col-xs-3">Always active mode</label>
+            class="col-xs-3">Use always active mode</label>
           <div class="col-xs-9">
             <form>
               <label class="checkbox-inline"><input type="checkbox" id="checkboxAlwaysActive" value=""
                   name="checkboxalwaysactive"></label>
+            </form>
+          </div>
+        </div> -->
+        <div class="row form-group">
+          <label data-toggle="tooltip" title="Select the operating mode"
+            class="col-xs-3">Operating Mode</label>
+          <div class="col-xs-9">
+            <form><fieldset id="radioOperatingMode">
+              <input type="radio" id="radioOperatingMode_Normal" name="radioOperatingMode" onchange="handleApi();" value="n">
+              <label class="radio-inline" for="radioOperatingMode_Normal">Normal Mode</label>&nbsp;<span data-toggle="tooltip" title="Standalone - Normal: Uses EVSE register 1000 for current specification and Register 2005 for activating/deactivating" class="glyphicon glyphicon-question-sign"></span><br>
+              <input type="radio" id="radioOperatingMode_AlwaysActive" name="radioOperatingMode" onchange="handleApi();" value="a">
+              <label class="radio-inline" for="radioOperatingMode_AlwaysActive">Always Active Mode</label>&nbsp;<span data-toggle="tooltip" title="Standalone - Always Active: Uses only EVSE register 1000 for current specification - activating/deactivating via RFID or button is NOT possible" class="glyphicon glyphicon-question-sign"></span><br>
+              <input type="radio" id="radioOperatingMode_Remote"  name="radioOperatingMode" onchange="handleApi();" value="r">
+              <label class="radio-inline" for="radioOperatingMode_Remote">Remote Controlled</label>&nbsp;<span data-toggle="tooltip" title="Remote Controlled: Uses only EVSE register 1000 for current specification - to deactivate EVSE set current to 0 (recommended to use with openWB)" class="glyphicon glyphicon-question-sign"></span>
+            </fieldset></form>
+          </div>
+        </div>
+        <div class="row form-group">
+          <label data-toggle="tooltip"
+            title="Enables the HTTP-Rest-API"
+            class="col-xs-3">Enable API</label>
+          <div class="col-xs-9">
+            <form>
+              <label class="checkbox-inline"><input type="checkbox" id="checkboxApi" value=""
+                  name="checkboxApi"></label>
             </form>
           </div>
         </div>
@@ -736,6 +769,36 @@
                   name="checkboxResetCurrentAfterCharge"></label>
             </form>
           </div>
+        </div>
+        <div class="row form-group" id="divCPInterrupt">
+          <label data-toggle="tooltip"
+            title="Interrupt CP signal (briefly switches a relay connected to GPIO4)"
+            class="col-xs-3">CP interrupt</label>
+          <div class="col-xs-9">
+            <span class="col-xs-3">
+              <button id="interruptcpbutton" type="button" class="btn btn-primary btn-xs" onclick="interruptCp()">Int CP</button>
+            </span>
+          </div>
+        </div>
+        <div class="row form-group" id="divUseRSE">
+          <label data-toggle="tooltip"
+            title="Use the RSE Pin (GPIO0) to let your energy supplier control the charging current"
+            class="col-xs-3">Use RSE Hardware</label>
+          <div class="col-xs-9">
+            <form>
+              <label class="checkbox-inline"><input type="checkbox" id="checkboxUseRse" value=""
+                  name="checkboxUseRse" onclick="handleUseRse();" ></label>
+            </form>
+          </div>
+        </div>
+        <div class="row form-group" id="divRSEValue">
+          <label data-toggle="tooltip"
+            title="Maximum value with which the vehicle is charged when the RSE is triggered (%)"
+            class="col-xs-3">RSE Value</label>
+            <span class="col-xs-9 col-md-5">
+              <input class="form-control input-sm" value="100" placeholder="%" id="rsevalue" type="number" 
+              name="rsevalue" min="0" max="100">
+            </span>
         </div>
         <br>
       </div>
@@ -751,18 +814,6 @@
               step="0.1">
           </span>
           <br>
-        </div>
-        <div class="row form-group">
-          <label data-toggle="tooltip"
-            title="Specify a factor with which the measured energy is to be multiplied (e.g. when using a single-phase meter in combination with a two- or three-phase charging vehicle). Use '1' if you don't need a factor."
-            class="col-xs-3">Factor</label>
-          <span class="col-xs-9 col-md-5">
-            <select class="form-control input-sm" id="factor">
-              <option selected="selected" value="1">Factor 1 (no Factor)</option>
-              <option value="2">Factor 2</option>
-              <option value="3">Factor 3</option>
-            </select>
-          </span>
         </div>
         <br>
       </div>
@@ -792,10 +843,20 @@
 
         <div class="row form-group">
           <label data-toggle="tooltip"
-            title="Hostname for your ESP, When Bonjour is installed on your computer you can access your ESP via http://hostname.local"
+            title="Hostname for your EVSE-WiFi, When Bonjour is installed on your computer you can access EVSE-WiFi via http://hostname.local"
             class="col-xs-3">Host Name</label>
           <span class="col-xs-9 col-md-5">
             <input class="form-control input-sm" placeholder="Hostname" value="evse-wifi" id="hostname" type="text">
+          </span>
+        </div>
+        <div class="row form-group">
+          <label data-toggle="tooltip" title="LED actions" class="col-xs-3">LED Config</label>
+          <span class="col-xs-9 col-md-5">
+            <select class="form-control input-sm" id="ledconfig">
+              <option selected="selected" value="1">Disable LED</option>
+              <option value="2">Heartbeat and RFID Feedback</option>
+              <option value="3">Heartbeat, RFID Feedback and EVSE Status</option>
+            </select>
           </span>
         </div>
         <div class="row form-group">
@@ -809,7 +870,7 @@
         <div class="row form-group">
           <label data-toggle="tooltip"
             title="Disables BasicAuthentication for Websocket. This opens a security hole but is necessary when using Safari Browser."
-            class="col-xs-3">Disable BasicAuth (Safari Mode)</label>
+            class="col-xs-3">Safari Mode</label>
           <span class="col-xs-9 col-md-5">
             <form>
               <label class="checkbox-inline"><input type="checkbox" id="checkboxSafari" value=""></label>
@@ -817,11 +878,10 @@
           </span>
         </div>
         <div class="row form-group">
-          <label data-toggle="tooltip" title="Disables LED actions for GPIO16 (D0)." class="col-xs-3">Disable
-            LED</label>
+          <label data-toggle="tooltip" title="Enables the logging of EV charging processes" class="col-xs-3">Enable Logging</label>
           <span class="col-xs-9 col-md-5">
             <form>
-              <label class="checkbox-inline"><input type="checkbox" id="checkboxDisableLED" value=""></label>
+              <label class="checkbox-inline"><input type="checkbox" id="checkboxEnableLogging" value=""></label>
             </form>
           </span>
         </div>
@@ -849,7 +909,7 @@
         </div>
         <div class="row form-group">
           <div data-toggle="tooltip"
-            title="Send your PC/Phone time to ESP, useful when the ESP does not have Internet connection."
+            title="Send your PC/Phone time to EVSE-WiFi, useful when EVSE-WiFi does not have Internet connection."
             class="col-xs-3"><button onclick="syncBrowserTime(false)" class="btn btn-link btn-sm">Sync Browser Time to
               Device</button></div>
         </div>
@@ -889,6 +949,14 @@
               <option value="11">(GMT +11:00) Magadan, Solomon Islands, New Caledonia</option>
               <option value="12">(GMT +12:00) Auckland, Wellington, Fiji, Kamchatka</option>
             </select>
+          </span>
+        </div>
+        <div class="row form-group">
+          <label data-toggle="tooltip" title="Use Daylight Saving Time (+1 h)" class="col-xs-3">Daylight Saving Time</label>
+          <span class="col-xs-9 col-md-5">
+            <form>
+              <label class="checkbox-inline"><input type="checkbox" id="checkboxDst" value=""></label>
+            </form>
           </span>
         </div>
         <br>

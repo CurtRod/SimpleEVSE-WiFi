@@ -15,7 +15,7 @@ void ICACHE_FLASH_ATTR changeLedTimes(uint16_t, uint16_t);
 String ICACHE_FLASH_ATTR printIP(IPAddress);
 void ICACHE_FLASH_ATTR parseBytes(const char*, char, byte*, int, int);
 void ICACHE_RAM_ATTR handleMeterInt();
-void ICACHE_RAM_ATTR updateS0MeterData();
+void ICACHE_FLASH_ATTR updateS0MeterData();
 void ICACHE_FLASH_ATTR updateMMeterData();
 void ICACHE_FLASH_ATTR updateSDMMeterCurrent();
 unsigned long ICACHE_FLASH_ATTR getChargingTime();
