@@ -4,7 +4,12 @@
 
 💾 [Latest Downloads, News and Changelogs (german)](https://www.evse-wifi.de/)
 
-EVSE-WiFi brings WiFi functionality to your EVSE WB/DIN to control your Charging Station very easy. It uses an ESP8266 to communicate with the EVSE WB charging controller via ModBus (UART) and offers a web interface to control nearly everything. Optional there is a possibility to connect an impulse meter via S0 or a Modbus meter ([RS485-TTL Adapter](https://www.evse-wifi.de/produkt/evse-wifi-ttl-rs485-converter/) is required) and an RFID reader to detect valid RFID tags.
+## Attention:
+This file describes the structure of EVSE-WiFi in version 1.x.x and is only valid for the ESP8266. For the use of EVSE-WiFi 2.0 (based on ESP32) it is recommended to use the dedicated hardware 'EVSE-WiFi 2.0 Base'. You can find further information on www.evse-wifi.de. The EVSE-WiFi 2.0 Base Module can be bought [here](https://www.evse-wifi.de/produkt/evse-wifi-2-0-base/).
+
+## Introduction
+
+EVSE-WiFi brings WiFi functionality to your EVSE WB/DIN to control your Charging Station very easy. It uses an ESP8266 to communicate with the EVSE WB charging controller via ModBus (UART) and offers a web interface to control nearly everything. Optional there is a possibility to connect an impulse meter via S0 or a Modbus meter (RS485-TTL Adapter is required) and an RFID reader to detect valid RFID tags.
 
 If you want to support this project, I would be very happy about a donation.
 
@@ -30,8 +35,7 @@ If you want to support this project, I would be very happy about a donation.
 
 If you do not have the time and desire to flash an ESP module and customize the libraries, you can also purchase the already prepared module in the shop with all wires and additional Hardware you need.
 
-[www.evse-wifi.de](https://www.evse-wifi.de/shop/)
-
+[EVSE-WiFi 2.0 Base Module](https://www.evse-wifi.de/produkt/evse-wifi-2-0-base/)
 
 ## Preview
 
@@ -50,6 +54,9 @@ At the users page you can define valid RFID tags that can unlock the EVSE.
 
 
 ## What You Will Need
+
+### Attention:
+This file describes the structure of EVSE-WiFi in version 1.x.x and is only valid for the ESP8266. For the use of EVSE-WiFi 2.0 (based on ESP32) it is recommended to use the dedicated hardware 'EVSE-WiFi 2.0 Base'. You can find further information on www.evse-wifi.de. The EVSE-WiFi 2.0 Base Module can be bought [here](https://www.evse-wifi.de/produkt/evse-wifi-2-0-base/).
 
 ### Hardware
 * A complete Wallbox based on [EVSE Wallbox](https://www.evse-wifi.de/produkt/evse-wallbox-steuereinheit/) or [EVSE DIN](https://www.evse-wifi.de/produkt/evse-din-ladecontroller/) (min. Software revision 8 (2017-10-31) is needed - read the manual there for updating your EVSE software)
@@ -125,10 +132,15 @@ To use EVSE-WiFi, the modbus functionallity of EVSE WB/DIN is needed! By default
 
 ### Software
 
+#### Attention:
+This file describes the structure of EVSE-WiFi in version 1.x.x and is only valid for the ESP8266. For the use of EVSE-WiFi 2.0 (based on ESP32) it is recommended to use the dedicated hardware 'EVSE-WiFi 2.0 Base'. You can find further information on www.evse-wifi.de. The EVSE-WiFi 2.0 Base Module can be bought [here](https://www.evse-wifi.de/produkt/evse-wifi-2-0-base/).
+
 **Attention:** make sure that the EVSE WB/DIN is not connected to the ESP during the flash process via USB. It could cause overheating of the ESP.
 
 #### Use Compiled Binaries
-Compiled firmware binary and flasher tool for Windows PCs are available in directory **/bin**. On Windows you can use **"flash.bat"**, it will ask you which COM port that ESP is connected and then flashes it. You can use any flashing tool and do the flashing manually if you don't want to use the flash.bat.
+Compiled firmware binary and flasher tool for Windows PCs are available in on www.evse-wifi.de. On Windows you can use **"flash.bat"**, it will ask you which COM port that ESP is connected and then flashes it. You can use any flashing tool and do the flashing manually if you don't want to use the flash.bat.
+
+[Download Firmware](https://www.evse-wifi.de/download/)
 
 #### Building From Source
 Please install Arduino IDE if you didn't already, then add ESP8266 Core on top of it. Additional Library download links are listed below:

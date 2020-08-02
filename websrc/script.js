@@ -638,7 +638,7 @@ function listCONF(obj) {
   else {
     document.getElementById("checkboxApi").checked = false;
   }
-  document.getElementById("checkboxResetCurrentAfterCharge").checked = obj.evse[0].resetaftercharge;
+  document.getElementById("checkboxResetCurrentAfterCharge").checked = obj.evse[0].resetcurrentaftercharge;
   //document.getElementById("lp1_install").value = obj.evse[0].maxcurrent; -> prep for dual evse
   document.getElementById("avgconsumption").value = obj.evse[0].avgconsumption;
   document.getElementById("checkboxUseRse").checked = obj.evse[0].rseactive;
