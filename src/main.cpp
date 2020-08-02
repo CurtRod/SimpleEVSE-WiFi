@@ -31,6 +31,7 @@
 #include "esp_wifi.h"
 #include "oled.h"
 
+/*
  #ifdef __cplusplus
   extern "C" {
  #endif
@@ -42,6 +43,7 @@
 #endif
  
 uint8_t temprature_sens_read();
+*/
 
 #endif
 #include <TimeLib.h>                  // Library for converting epochtime to a date
@@ -62,11 +64,10 @@ uint8_t temprature_sens_read();
 #include "rfid.h"
 
 #ifdef ESP8266
-String swVersion = "1.0.1";
+String swVersion = "1.0.2";
 #else
-String swVersion = "2.0.1";
+String swVersion = "2.0.2";
 #endif
-
 
 //////////////////////////////////////////////////////////////////////////////////////////
 ///////       Variables For Whole Scope
@@ -651,7 +652,7 @@ void ICACHE_FLASH_ATTR sendStatus() {
     jsonDoc["netmask"] = WiFi.subnetMask().toString();
   }
   IPAddress gwaddr = WiFi.gatewayIP();
-  jsonDoc["int_temp"] = String(((temprature_sens_read() - 32) / 1.8), 2);
+  //jsonDoc["int_temp"] = String(((temprature_sens_read() - 32) / 1.8), 2);
   #endif
 
   s_addEvseData addEvseData = getAdditionalEVSEData();
@@ -796,7 +797,7 @@ void ICACHE_FLASH_ATTR logLatest(String uid, String username) {
   else {
     if (config.getSystemDebug()) Serial.println("[ SYSTEM ] Cannot create Logfile");
   }
-  delay(70);
+  delay(100);
   fsWorking = false;
   if (config.getSystemDebug()) Serial.println("reactivating SoftSer");
   SoftSer.begin(9600);
@@ -872,7 +873,7 @@ void ICACHE_FLASH_ATTR updateLog(bool e) {
   millisStopCharging = 0;
   meteredKWh = 0.0;
   currentKW = 0.0;
-  delay(70);
+  delay(100);
   fsWorking = false;
   if (config.getSystemDebug()) Serial.println("reactivating SoftSer");
   SoftSer.begin(9600);
@@ -1419,7 +1420,6 @@ void ICACHE_FLASH_ATTR onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient *
     AwsFrameInfo * info = (AwsFrameInfo*)arg;
     if (info->final && info->index == 0 && info->len == len) {
       //the whole message is in a single frame and we got all of it's data
-      //if (config.getSystemDebug())Serial.println("[ Websocket ] single Frame - all data is here!"); ///DEBUG
       for (size_t i = 0; i < info->len; i++) {
         msg += (char) data[i];
       }
@@ -1675,6 +1675,7 @@ bool ICACHE_FLASH_ATTR loadConfiguration(String configString = "") {
     if (!config.loadConfig(configString)) return false;
   }
   config.loadConfiguration();
+
   if (config.getSystemDebug()) Serial.println("[ SYSTEM ] Check for old config version and renew it");
   config.renewConfigFile();
 
@@ -2085,17 +2086,6 @@ void ICACHE_FLASH_ATTR setWebEvents() {
       }
     });
 
-    //RFID Reset
-    server.on("/rfidReset", HTTP_GET, [](AsyncWebServerRequest * request) {
-      if (rfid.reset()) {
-        if (config.getSystemDebug()) Serial.println("[ RFID ] PCD_Init() processed");
-        request->send(200, "text/plain", "OK");
-      }
-      else {
-        request->send(200, "text/plain", "Failed");
-      }
-    });
-
     //setRegister (0,233)
     server.on("/setRegister", HTTP_GET, [](AsyncWebServerRequest * request) {
       awp = request->getParam(0);
@@ -2358,7 +2348,7 @@ void ICACHE_RAM_ATTR loop() {
   }
 
   if (config.getButtonActive(0) && digitalRead(config.getButtonPin(0)) == HIGH && buttonState == LOW) {
-    delay(70);
+    delay(100);
     if (digitalRead(config.getButtonPin(0)) == HIGH) {
       if (config.getSystemDebug()) Serial.println("Button released");
       buttonState = HIGH;
