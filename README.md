@@ -193,6 +193,7 @@ meterReading | actual meter reading in kWh
 currentP1 | actual current in A (phase 1)
 currentP2 | actual current in A (phase 2)
 currentP3 | actual current in A (phase 3)
+useMeter | energy meter is configured in EVSE-WiFi (true/false)
 
 
 #### Example
@@ -218,7 +219,8 @@ currentP3 | actual current in A (phase 3)
     "meterReading": 54.35,
     "currentP1": 8.54,
     "currentP2": 8.54,
-    "currentP3": 8.54
+    "currentP3": 8.54,
+    "useMeter": true
   }]
 }
 ```
