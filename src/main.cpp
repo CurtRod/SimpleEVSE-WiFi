@@ -32,7 +32,6 @@
 #include "esp_spiffs.h"
 #include "esp_wifi.h"
 #include "oled.h"
-#endif
 
 #include <TimeLib.h>                  // Library for converting epochtime to a date
 #include <SPI.h>                      // SPI protocol
@@ -61,7 +60,6 @@ String swVersion = String(sw_maj) + "." + String(sw_min) + "." + String(sw_rev);
 #else
 uint8_t sw_maj = 2; //Firmware Major Version
 String swVersion = String(sw_maj) + "." + String(sw_min) + "." + String(sw_rev);
-#endif
 
 //////////////////////////////////////////////////////////////////////////////////////////
 ///////       Variables For Whole Scope
