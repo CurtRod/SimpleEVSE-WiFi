@@ -13,6 +13,7 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::loadConfig(String givenConfig) {
         jsonString = givenConfig;
     }
     else {
+        //SPIFFS.begin();
         Serial.println("loadConfig: no config string given -> check config file");
         File configFile = SPIFFS.open("/config.json", "r");
         #ifdef ESP8266
@@ -35,6 +36,7 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::loadConfig(String givenConfig) {
                 jsonString += char(configFile.read());
             }
         }
+        //SPIFFS.end();
     }
 
     DynamicJsonDocument jsonDoc(2000);
@@ -122,8 +124,6 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::loadConfig(String givenConfig) {
    // evseConfig
     evseConfig[0].mbid = 1;
     evseConfig[0].alwaysactive = jsonDoc["evse"][0]["alwaysactive"];
-    
-    //evseConfig[0].ledconfig = jsonDoc["evse"][0]["ledconfig"];
 
     evseConfig[0].resetcurrentaftercharge = jsonDoc["evse"][0]["resetcurrentaftercharge"];
     evseConfig[0].maxcurrent =  jsonDoc["evse"][0]["maxinstall"];
@@ -141,6 +141,10 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::loadConfig(String givenConfig) {
     }
     else{
         evseConfig[0].ledconfig = jsonDoc["evse"][0]["ledconfig"];
+    }
+
+    if (jsonDoc["evse"][0].containsKey("drotation")) {
+        evseConfig[0].drotation = jsonDoc["evse"][0]["drotation"];
     }
 
     if (jsonDoc["evse"][0].containsKey("rsevalue")) {
@@ -189,9 +193,13 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::loadConfiguration() {
             Serial.println("Use SDM630");
         }
     }
+
+    
+
     return true;
 }
 bool ICACHE_FLASH_ATTR EvseWiFiConfig::printConfigFile() {
+    //SPIFFS.begin();
     File configFile = SPIFFS.open("/config.json", "r");
     if (!configFile) {
         return false;
@@ -207,6 +215,7 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::printConfigFile() {
     Serial.println(F("[ INFO ] Config File: "));
     serializeJsonPretty(jsonDoc, Serial);
     Serial.println();
+    //SPIFFS.end();
     return true;
 }
 bool ICACHE_FLASH_ATTR EvseWiFiConfig::printConfig() {
@@ -261,6 +270,7 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::printConfig() {
     Serial.println("alwaysactive: " + String(getEvseAlwaysActive(0)));
     Serial.println("remote: " + String(getEvseRemote(0)));
     Serial.println("ledconfig: " + String(getEvseLedConfig(0)));
+    Serial.println("drotation: " + String(getEvseDisplayRotation(0)));
     Serial.println("resetcurrentaftercharge: " + String(getEvseResetCurrentAfterCharge(0)));
     Serial.println("evseinstall: " + String(getEvseMaxCurrent(0)));
     Serial.println("avgconsumption: " + String(getEvseAvgConsumption(0)));
@@ -354,6 +364,7 @@ String ICACHE_FLASH_ATTR EvseWiFiConfig::getConfigJson() {
     evseObject_0["alwaysactive"] = this->getEvseAlwaysActive(0);
     evseObject_0["remote"] = this->getEvseRemote(0);
     evseObject_0["ledconfig"] = this->getEvseLedConfig(0);
+    evseObject_0["drotation"] = this->getEvseDisplayRotation(0);
     evseObject_0["resetcurrentaftercharge"] = this->getEvseResetCurrentAfterCharge(0);
     evseObject_0["evseinstall"] = this->getEvseMaxCurrent(0);
     evseObject_0["avgconsumption"] = this->getEvseAvgConsumption(0);
@@ -377,6 +388,7 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::saveConfigFile(String jsonConfig) {
     DeserializationError error = deserializeJson(jsonDoc, jsonConfig);
     if (error) return false;
 
+    //SPIFFS.begin();
     File configFile = SPIFFS.open("/config.json", "w+");
     if (configFile) {
         if (jsonDoc.containsKey("command")) {
@@ -399,9 +411,11 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::saveConfigFile(String jsonConfig) {
                 Serial.println("[ SYSTEM ] New config file created");
             }
             configFile.close();
+            //SPIFFS.end();
             return true;
         }
     }
+    //SPIFFS.end();
     return false;
 }
 uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getSystemConfigVersion() {
@@ -570,6 +584,9 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseRemote(uint8_t evseId) {
 }
 uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseLedConfig(uint8_t evseId) {
     return evseConfig[evseId].ledconfig;
+}
+uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseDisplayRotation(uint8_t evseId) {
+    return evseConfig[evseId].drotation;
 }
 uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseLedPin(uint8_t evseId) {
     #ifdef ESP8266

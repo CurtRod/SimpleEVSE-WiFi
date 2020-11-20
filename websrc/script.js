@@ -554,6 +554,7 @@ function listCONF(obj) {
     document.getElementById("divRSEValue").style.display = "none";
     document.getElementById("divUseRSE").style.display = "none";
     document.getElementById("divCPInterrupt").style.display = "none";
+    document.getElementById("divDisplayRotation").style.display = "none";
   }
 
   //Load WiFi settings
@@ -631,7 +632,9 @@ function listCONF(obj) {
       document.getElementById("ledconfig").value = 3;
     }
   }
-  
+  if (obj.evse[0].hasOwnProperty("drotation")) {
+    document.getElementById("drotation").value = obj.evse[0].drotation;
+  }
   if (obj.system.hasOwnProperty("api")) {
     document.getElementById("checkboxApi").checked = obj.system.api;
   }
@@ -827,14 +830,20 @@ function handleApi() {
   if (document.getElementById("radioOperatingMode_Remote").checked === true) {
     document.getElementById("checkboxApi").disabled = true;
     document.getElementById("checkboxApi").checked = true;
+    document.getElementById("checkboxResetCurrentAfterCharge").disabled = true;
+    document.getElementById("checkboxResetCurrentAfterCharge").checked = false;
   }
   if (document.getElementById("radioOperatingMode_AlwaysActive").checked === true) {
     document.getElementById("checkboxApi").disabled = false;
     document.getElementById("checkboxApi").checked = false;
+    document.getElementById("checkboxResetCurrentAfterCharge").disabled = false;
+    document.getElementById("checkboxResetCurrentAfterCharge").checked = true;
   }
   if (document.getElementById("radioOperatingMode_Normal").checked === true) {
     document.getElementById("checkboxApi").disabled = false;
     document.getElementById("checkboxApi").checked = false;
+    document.getElementById("checkboxResetCurrentAfterCharge").disabled = false;
+    document.getElementById("checkboxResetCurrentAfterCharge").checked = true;
   }
 }
 
@@ -1001,6 +1010,7 @@ function saveConf() {
     datatosend.evse[0].remote = false;
   }
   datatosend.evse[0].ledconfig = parseInt(document.getElementById("ledconfig").value);
+  datatosend.evse[0].drotation = parseInt(document.getElementById("drotation").value);
   datatosend.evse[0].resetcurrentaftercharge = document.getElementById("checkboxResetCurrentAfterCharge").checked;
   datatosend.evse[0].evseinstall = parseInt(document.getElementById("maxinstall").value);
   datatosend.evse[0].avgconsumption = parseFloat(document.getElementById("avgconsumption").value);

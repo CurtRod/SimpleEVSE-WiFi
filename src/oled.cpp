@@ -2,9 +2,27 @@
 #include "oled.h"
 #include <string>
 
-void EvseWiFiOled::begin(U8G2_SSD1327_WS_128X128_F_4W_HW_SPI* u8) {
+void EvseWiFiOled::begin(U8G2_SSD1327_WS_128X128_F_4W_HW_SPI* u8, uint8_t rotation) {
   this->u8g2 = u8;
   this->u8g2->begin();
+  switch (rotation)
+  {
+  case 0: 
+  this->u8g2->setDisplayRotation(U8G2_R0);
+    break;
+  case 1: //90 degree clockwise rotation
+  this->u8g2->setDisplayRotation(U8G2_R1);
+    break;
+  case 2: //180 degree clockwise rotation
+  this->u8g2->setDisplayRotation(U8G2_R2);
+    break;
+  case 3: //270 degree clockwise rotation
+  this->u8g2->setDisplayRotation(U8G2_R3);
+    break;
+  default: //No rotation
+  this->u8g2->setDisplayRotation(U8G2_R0);
+    break;
+  }
 }
 
 void EvseWiFiOled::clearBuffer() {

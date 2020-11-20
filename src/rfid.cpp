@@ -70,6 +70,7 @@ scanResult ICACHE_FLASH_ATTR EvseWiFiRfid::readPicc() {
     String type = mfrc522.PICC_GetTypeName(piccType);
     res.type = type;
   
+    //SPIFFS.begin();
     int AccType = 0;
     String filename = "/P/";
     filename += res.uid;
@@ -116,7 +117,8 @@ scanResult ICACHE_FLASH_ATTR EvseWiFiRfid::readPicc() {
       if (this->debug) Serial.println(" = unknown PICC");
     }
     rfidFile.close();
-    return res;
+    //SPIFFS.end();
+
  return res;
 }
 
@@ -127,6 +129,7 @@ DynamicJsonDocument ICACHE_FLASH_ATTR EvseWiFiRfid::getUserList(int page) {
   jsonDoc["command"] = "userlist";
   jsonDoc["page"] = page;
   JsonArray users = jsonDoc.createNestedArray("list");
+  //SPIFFS.begin();
   #ifdef ESP8266
   Dir dir = SPIFFS.openDir("/P/");
   #else
@@ -171,6 +174,10 @@ DynamicJsonDocument ICACHE_FLASH_ATTR EvseWiFiRfid::getUserList(int page) {
     file = dir.openNextFile();
     #endif
   }
+  #ifndef ESP8266
+  file.close();
+  #endif
+  //SPIFFS.end();
   serializeJson(jsonDoc, Serial);
   float pages = i / 15.0;
   jsonDoc["haspages"] = ceil(pages);

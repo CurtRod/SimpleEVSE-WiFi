@@ -68,6 +68,7 @@ struct s_evseConfig {
     bool alwaysactive;
     bool remote;
     uint8_t ledconfig;
+    uint8_t drotation;
     bool resetcurrentaftercharge;
     uint8_t maxcurrent;
     float avgconsumption;
@@ -142,6 +143,7 @@ public:
     bool ICACHE_FLASH_ATTR getEvseAlwaysActive(uint8_t evseId);
     bool ICACHE_FLASH_ATTR getEvseRemote(uint8_t evseId);
     uint8_t ICACHE_FLASH_ATTR getEvseLedConfig(uint8_t evseId);
+    uint8_t ICACHE_FLASH_ATTR getEvseDisplayRotation(uint8_t evseId);
     uint8_t ICACHE_FLASH_ATTR getEvseLedPin(uint8_t evseId);
     bool ICACHE_FLASH_ATTR getEvseResetCurrentAfterCharge(uint8_t evseId);
     uint8_t ICACHE_FLASH_ATTR getEvseMaxCurrent(uint8_t evseId);
