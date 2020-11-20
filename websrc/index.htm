@@ -81,13 +81,13 @@
                 <option value="1000">1000: Configured Current</option>
                 <option value="1004">1004: Turn off bit</option>
                 <option value="2000">2000: Current after boot</option>
-                <option value="2001">2001: Modbus Status</option>
+                <!-- <option value="2001">2001: Modbus Status</option> -->
                 <option value="2002">2002: Min. Current Value</option>
-                <option value="2003">2003: Analog Input Config</option>
+                <!-- <option value="2003">2003: Analog Input Config</option>
                 <option value="2004">2004: Amps after boot (evse-button)</option>
                 <option value="2005">2005: Register 2005</option>
                 <option value="2006">2006: Current Sharing Mode</option>
-                <option value="2007">2007: PP-Detection</option>
+                <option value="2007">2007: PP-Detection</option> --> <!-- suppress lay usability -->
               </select>
             </div>
           </div>
@@ -856,6 +856,17 @@
               <option selected="selected" value="1">Disable LED</option>
               <option value="2">Heartbeat and RFID Feedback</option>
               <option value="3">Heartbeat, RFID Feedback and EVSE Status</option>
+            </select>
+          </span>
+        </div>
+        <div id="divDisplayRotation" class="row form-group">
+          <label data-toggle="tooltip" title="Display Rotation" class="col-xs-3">Display Rotation</label>
+          <span class="col-xs-9 col-md-5">
+            <select class="form-control input-sm" id="drotation">
+              <option selected="selected" value="0">0°</option>
+              <option value="1">90°</option>
+              <option value="2">180°</option>
+              <option value="3">270°</option>
             </select>
           </span>
         </div>
