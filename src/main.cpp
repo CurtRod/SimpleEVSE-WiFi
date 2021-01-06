@@ -144,6 +144,7 @@ NtpClient ntp;
 EvseWiFiConfig config = EvseWiFiConfig();
 EvseWiFiRfid rfid;
 
+
 unsigned long lastModbusAction = 0;
 unsigned long evseQueryTimeOut = 0;
 unsigned long buttonTimer = 0;
@@ -901,6 +902,7 @@ void ICACHE_FLASH_ATTR logLatest(String uid, String username) {
   else {
     if (config.getSystemDebug()) Serial.println("[ SYSTEM ] Cannot create Logfile");
   }
+  //SPIFFS.end();
   delay(100);
   fsWorking = false;
 }
@@ -1345,7 +1347,7 @@ bool ICACHE_FLASH_ATTR activateEVSE() {
     startTotal = getS0MeterReading();
     numberOfMeterImps = 0;
   }
-
+  
   toActivateEVSE = false;
   evseActive = true;
   logLatest(lastUID, lastUsername);
@@ -1357,7 +1359,6 @@ bool ICACHE_FLASH_ATTR activateEVSE() {
   oled.showLock(false);
   #endif
   showLedRfidGrant = true;
-
   sendEVSEdata();
   return true;
 }
@@ -2807,7 +2808,6 @@ void ICACHE_RAM_ATTR loop() {
   if (toInitLog) {
     if (initLogFile()) toInitLog = false;
   }
-
   if (currentMillis > (lastModbusAction + 3000) && !updateRunning) { //Update Modbus data every 3000ms and send data to WebUI
     queryEVSE();
     if (evseSessionTimeOut == false) {

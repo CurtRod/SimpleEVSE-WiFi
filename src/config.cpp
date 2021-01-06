@@ -193,6 +193,9 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::loadConfiguration() {
             Serial.println("Use SDM630");
         }
     }
+
+    
+
     return true;
 }
 bool ICACHE_FLASH_ATTR EvseWiFiConfig::printConfigFile() {
