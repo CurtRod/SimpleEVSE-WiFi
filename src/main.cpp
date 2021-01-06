@@ -54,7 +54,7 @@
 
 uint8_t sw_min = 0; //Firmware Minor Version
 uint8_t sw_rev = 6; //Firmware Revision
-String sw_add = "-beta3";
+String sw_add = "";
 
 #ifdef ESP8266
 uint8_t sw_maj = 1; //Firmware Major Version
@@ -68,8 +68,8 @@ String swVersion = String(sw_maj) + "." + String(sw_min) + "." + String(sw_rev) 
 ///////       Variables For Whole Scope
 //////////////////////////////////////////////////////////////////////////////////////////
 //EVSE Variables
-unsigned long millisStartCharging = 0;
-unsigned long millisStopCharging = 0;
+//unsigned long millisStartCharging = 0;
+//unsigned long millisStopCharging = 0;
 uint32_t startChargingTimestamp = 0; 
 uint32_t stopChargingTimestamp = 0;
 bool manualStop = false;
@@ -851,9 +851,9 @@ void ICACHE_FLASH_ATTR logLatest(String uid, String username) {
     logFile.readBytes(buf.get(), size);
     
     #ifndef ESP8266
-    DynamicJsonDocument jsonDoc2(12000);
+    DynamicJsonDocument jsonDoc2(15000);
     #else
-    DynamicJsonDocument jsonDoc2(6000);
+    DynamicJsonDocument jsonDoc2(6500);
     #endif
     DeserializationError error = deserializeJson(jsonDoc2, buf.get());
     JsonArray list = jsonDoc2["list"];
@@ -914,9 +914,9 @@ void ICACHE_FLASH_ATTR readLogAtStartup() {
   std::unique_ptr<char[]> buf (new char[size]);
   logFile.readBytes(buf.get(), size);
   #ifndef ESP8266
-  DynamicJsonDocument jsonDoc(12000);
+  DynamicJsonDocument jsonDoc(15000);
   #else
-  DynamicJsonDocument jsonDoc(6000);
+  DynamicJsonDocument jsonDoc(6500);
   #endif
   DeserializationError error = deserializeJson(jsonDoc, buf.get());
   JsonArray list = jsonDoc["list"];
@@ -950,9 +950,9 @@ void ICACHE_FLASH_ATTR updateLog(bool incomplete) {
   std::unique_ptr<char[]> buf (new char[size]);
   logFile.readBytes(buf.get(), size);
   #ifndef ESP8266
-  DynamicJsonDocument jsonDoc(12000);
+  DynamicJsonDocument jsonDoc(15000);
   #else
-  DynamicJsonDocument jsonDoc(6000);
+  DynamicJsonDocument jsonDoc(6500);
   #endif
   DeserializationError error = deserializeJson(jsonDoc, buf.get());
   JsonArray list = jsonDoc["list"];
@@ -1025,9 +1025,9 @@ float ICACHE_FLASH_ATTR getS0MeterReading() {
     std::unique_ptr<char[]> buf (new char[size]);
     logFile.readBytes(buf.get(), size);
     #ifndef ESP8266
-    DynamicJsonDocument jsonDoc(12000);
+    DynamicJsonDocument jsonDoc(15000);
     #else
-    DynamicJsonDocument jsonDoc(6000);
+    DynamicJsonDocument jsonDoc(6500);
     #endif
     DeserializationError error = deserializeJson(jsonDoc, buf.get());
     JsonArray list = jsonDoc["list"];
@@ -2055,6 +2055,13 @@ bool ICACHE_FLASH_ATTR connectSTA(const char* ssid, const char* password, byte b
 
 bool ICACHE_FLASH_ATTR startAP(const char * ssid, const char * password = NULL) {
   inAPMode = true;
+  
+  #ifdef ESP8266
+  WiFi.hostname(config.getSystemHostname());
+  #else
+  WiFi.setHostname(config.getSystemHostname());
+  #endif
+
   WiFi.mode(WIFI_AP);
   Serial.print(F("[ INFO ] Configuring access point... "));
   bool success = WiFi.softAP(ssid, password);
@@ -2065,6 +2072,11 @@ bool ICACHE_FLASH_ATTR startAP(const char * ssid, const char * password = NULL) 
   Serial.println(myIP);
   Serial.printf("[ INFO ] AP SSID: %s\n", ssid);
   isWifiConnected = success;
+
+  if (!MDNS.begin(config.getSystemHostname())) {
+    Serial.println("[ SYSTEM ] Error setting up MDNS responder!");
+  }
+
   return success;
 }
 
@@ -2090,19 +2102,6 @@ bool ICACHE_FLASH_ATTR loadConfiguration(String configString = "") {
   else {
     Serial.println("[ SYSTEM ] Debug Mode: OFF!");
   }
-
-  byte bssid[6];
-  parseBytes(config.getWifiBssid(), ':', bssid, 6, 16);
-  #ifdef ESP8266
-  WiFi.hostname(config.getSystemHostname());
-  #else
-  WiFi.setHostname(config.getSystemHostname());
-  #endif
-  
-  if (!MDNS.begin(config.getSystemHostname())) {
-    Serial.println("[ SYSTEM ] Error setting up MDNS responder!");
-  }
-  MDNS.addService("http", "tcp", 80);
 
   if (!config.getSystemWsauth()) {
     ws.setAuthentication("admin", config.getSystemPass());
@@ -2157,10 +2156,6 @@ bool ICACHE_FLASH_ATTR loadConfiguration(String configString = "") {
     rfid.begin(config.getRfidPin(), config.getRfidUsePN532(), config.getRfidGain(), &ntp, config.getSystemDebug());
   }
 
-  //deactivateEVSE(false);  //initial deactivation
-  //millisStopCharging = 0;
-  //vehicleCharging = false;
-  
   if (config.getWifiWmode() == 1) {
     if (config.getSystemDebug()) Serial.println(F("[ INFO ] EVSE-WiFi is running in AP Mode "));
     WiFi.disconnect(true);
@@ -2175,14 +2170,13 @@ bool ICACHE_FLASH_ATTR loadConfiguration(String configString = "") {
     }
     else {  // Feature only supported with modbus meter
       deactivateEVSE(false);  //initial deactivation
-      millisStopCharging = 0;
+      stopChargingTimestamp = 0;
       vehicleCharging = false;
     }
     return startAP(config.getWifiSsid(), config.getWifiPass());
   }
-  if (!connectSTA(config.getWifiSsid(), config.getWifiPass(), bssid)) {
-    return false;
-  }
+
+  WiFi.disconnect(true);
 
   if (config.getWifiStaticIp() == true) {
     IPAddress clientip;
@@ -2196,6 +2190,28 @@ bool ICACHE_FLASH_ATTR loadConfiguration(String configString = "") {
     dns.fromString(config.getWiFiDns());
 
     WiFi.config(clientip, gateway, subnet, dns);
+  }
+  else {
+    #ifdef ESP32
+    WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
+    #endif
+  }
+
+  #ifdef ESP32
+  WiFi.setHostname(config.getSystemHostname());
+  #else
+  WiFi.hostname(config.getSystemHostname());
+  #endif
+
+  byte bssid[6];
+  parseBytes(config.getWifiBssid(), ':', bssid, 6, 16);
+
+  if (!connectSTA(config.getWifiSsid(), config.getWifiPass(), bssid)) {
+    return false;
+  }
+
+  if (!MDNS.begin(config.getSystemHostname())) {
+    Serial.println("[ SYSTEM ] Error setting up MDNS responder!");
   }
 
   Serial.println();
@@ -2248,7 +2264,7 @@ bool ICACHE_FLASH_ATTR loadConfiguration(String configString = "") {
     }
     else{ // Feature only supported with modbus meter
       deactivateEVSE(false);  //initial deactivation
-      millisStopCharging = 0;
+      stopChargingTimestamp = 0;
       vehicleCharging = false;
     }
   }
@@ -2375,8 +2391,15 @@ void ICACHE_FLASH_ATTR setWebEvents() {
 
     //getLog 
     server.on("/getLog", HTTP_GET, [](AsyncWebServerRequest * request) {
-      AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/latestlog.json", "application/json");
-      request->send(response);
+      File logFile = SPIFFS.open("/latestlog.json", "r");
+      if (!logFile) {
+        request->send(200, "text/plain", "E0_could not read log file - corrupted data or log file does not exist");
+      }
+      else{
+        AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/latestlog.json", "application/json");
+        request->send(response);
+      }
+      logFile.close();
     }); 
 
     //setCurrent (0,233)
@@ -2736,6 +2759,7 @@ void ICACHE_RAM_ATTR setup() {
   if (config.getSystemDebug()) Serial.println("[ SYSTEM ] End of setup routine");
   if (config.getEvseRemote(0)) sliderStatus = false;
 
+  MDNS.addService("http", "tcp", 80);
   setModbusTCPRegisters();
 }
 
@@ -2836,7 +2860,6 @@ void ICACHE_RAM_ATTR loop() {
         }
         else {
           toActivateEVSE = true;
-          if(config.getSystemDebug()) Serial.println("toActivateEVSE = True --> Loop 2812");
         }
         lastUsername = "Button";
         lastUID = "Button";
@@ -2864,9 +2887,12 @@ void ICACHE_RAM_ATTR loop() {
       if (config.getSystemDebug()) Serial.println("Button pressed...");
     }
   }
-  if (digitalRead(buttonPin) == LOW && (millis() - buttonTimer) > 10000) { //Reboot
-    if (config.getSystemDebug()) Serial.println("Button Pressed > 10 sec -> Reboot");
-    toReboot = true;
+  if (digitalRead(buttonPin) == LOW && (millis() - buttonTimer) > 10000 && buttonState == LOW) { //Reboot
+    delay(70);
+    if (digitalRead(buttonPin) == LOW) {
+      if (config.getSystemDebug()) Serial.println("Button Pressed > 10 sec -> Reboot");
+      toReboot = true;
+    }
   }
   if (toSendStatus == true) {
     sendStatus();
