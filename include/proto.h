@@ -28,7 +28,7 @@ void ICACHE_FLASH_ATTR updateLog(bool);
 float ICACHE_FLASH_ATTR getS0MeterReading();
 bool ICACHE_FLASH_ATTR initLogFile();
 float ICACHE_FLASH_ATTR readMeter(uint16_t);
-bool ICACHE_FLASH_ATTR queryEVSE();
+bool ICACHE_FLASH_ATTR queryEVSE(bool);
 bool ICACHE_FLASH_ATTR activateEVSE();
 bool ICACHE_FLASH_ATTR deactivateEVSE(bool);
 bool ICACHE_FLASH_ATTR setEVSEcurrent();

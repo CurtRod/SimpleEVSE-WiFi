@@ -126,7 +126,7 @@ function listEVSEData(obj) {
   if (obj.evse_slider_status === false) {
     document.getElementById("currentSlider").disabled = true;
     document.getElementById("currentModalSaveButton").disabled = true;
-    document.getElementById("slider_current").innerHTML = obj.evse_current_limit + " A <br><span style=\"color:red\">Manual current specification disabled!</span>";
+    document.getElementById("slider_current").innerHTML = obj.evse_current_limit + " A <br><span style=\"color:red\">Manual current specification in remote mode disabled!</span>";
   } else {
     document.getElementById("currentSlider").disabled = false;
     document.getElementById("currentModalSaveButton").disabled = false;
@@ -639,7 +639,7 @@ function listCONF(obj) {
     document.getElementById("checkboxApi").checked = obj.system.api;
   }
   else {
-    document.getElementById("checkboxApi").checked = false;
+    document.getElementById("checkboxApi").checked = true;
   }
   document.getElementById("checkboxResetCurrentAfterCharge").checked = obj.evse[0].resetcurrentaftercharge;
   //document.getElementById("lp1_install").value = obj.evse[0].maxcurrent; -> prep for dual evse

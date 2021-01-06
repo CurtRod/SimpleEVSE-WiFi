@@ -326,7 +326,7 @@ String ICACHE_FLASH_ATTR EvseWiFiConfig::getConfigJson() {
         meterObject_0["implen"] = 0;
     }
     else {
-        meterObject_0["intpin"] = this->getMeterPin(0);
+        //meterObject_0["intpin"] = this->getMeterPin(0);
         meterObject_0["kwhimp"] = this->getMeterImpKwh(0);
         meterObject_0["implen"] = this->getMeterImpLen(0);
     }
@@ -375,17 +375,46 @@ String ICACHE_FLASH_ATTR EvseWiFiConfig::getConfigJson() {
     serializeJsonPretty(rootDoc, sReturn);
     return sReturn;
 }
-bool ICACHE_FLASH_ATTR EvseWiFiConfig::updateConfig(String jsonConfig) {
-    if(loadConfig(jsonConfig)) {
-        if (saveConfigFile(jsonConfig)) {
+
+bool ICACHE_FLASH_ATTR EvseWiFiConfig::checkUpdateConfig(String jsonString, bool (*setEVSERegister)(uint16_t reg, uint16_t val)) {
+    DynamicJsonDocument jsonDoc(2000);
+    DeserializationError error = deserializeJson(jsonDoc, jsonString);
+    if (error) {
+        Serial.println("parsing config file failed");
+        return false;
+    }
+    bool err = false;
+    if (this->getEvseAlwaysActive(0) == true && jsonDoc["evse"][0]["alwaysactive"] == false) {  // switch from AA/Remote to Normal mode
+        if (this->getSystemDebug()) Serial.println("[ SYSTEM ] Switched from AA/Remote to normal mode -> going to set Register 2005...");
+        for (int i = 0; i < 5; i++) {
+            if (setEVSERegister(2005, 16448)){
+                break;
+            }
+            err = true;
+            delay(150);
+        }
+        if (err) {
+            Serial.println("[ ERROR ] Register 2005 could not be set (switch from AA/Remote to normal mode)");
+            return false;
+        } 
+    }
+    else {
+        if (this->getSystemDebug()) Serial.println("[ SYSTEM ] No Register to Set (switch from AA/Remote to normal mode)");
+    }
+    return true;
+}
+
+bool ICACHE_FLASH_ATTR EvseWiFiConfig::updateConfig(String jsonString) {
+    if(loadConfig(jsonString)) {
+        if (saveConfigFile(jsonString)) {
             return true;
         }
     }
     return false;
 }
-bool ICACHE_FLASH_ATTR EvseWiFiConfig::saveConfigFile(String jsonConfig) {
+bool ICACHE_FLASH_ATTR EvseWiFiConfig::saveConfigFile(String jsonString) {
     DynamicJsonDocument jsonDoc(1800);
-    DeserializationError error = deserializeJson(jsonDoc, jsonConfig);
+    DeserializationError error = deserializeJson(jsonDoc, jsonString);
     if (error) return false;
 
     //SPIFFS.begin();

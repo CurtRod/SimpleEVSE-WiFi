@@ -83,8 +83,10 @@ public:
     bool ICACHE_FLASH_ATTR printConfigFile();
     bool ICACHE_FLASH_ATTR printConfig();
     bool ICACHE_FLASH_ATTR renewConfigFile();
+    bool ICACHE_FLASH_ATTR checkUpdateConfig(String, bool (*setEVSERegister)(uint16_t reg, uint16_t val));
     bool ICACHE_FLASH_ATTR updateConfig(String);
     String ICACHE_FLASH_ATTR getConfigJson();
+    bool ICACHE_FLASH_ATTR saveConfigFile(String jsonConfig);
 
 // wifiConfig
     const char * ICACHE_FLASH_ATTR getWifiBssid();
@@ -164,7 +166,6 @@ private:
 
     bool configLoaded;
     bool pre_0_4_Config;
-    bool ICACHE_FLASH_ATTR saveConfigFile(String jsonConfig);
 
 protected:
 
