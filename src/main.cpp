@@ -54,7 +54,7 @@
 
 uint8_t sw_min = 1; //Firmware Minor Version
 uint8_t sw_rev = 0; //Firmware Revision
-String sw_add = "";
+String sw_add = "beta6";
 
 #ifdef ESP8266
 uint8_t sw_maj = 1; //Firmware Major Version
@@ -202,9 +202,9 @@ String msg = ""; //WS communication
 ///////       Auxiliary Functions
 //////////////////////////////////////////////////////////////////////////////////////////
 
-void ICACHE_FLASH_ATTR turnOnOled(uint32_t ontimesecs = 60) {
+void ICACHE_FLASH_ATTR turnOnOled(uint32_t ontimesecs = 120) {
   #ifdef ESP32
-  millisOnTimeOled = millis() + ontimesecs * 1000; // DBG DBUG Debug
+  millisOnTimeOled = millis() + ontimesecs * 1000; 
   oled.turnOn();
   Serial.println("Display turned on");
   #endif
@@ -547,26 +547,36 @@ void ICACHE_FLASH_ATTR rfidloop() {
   scanResult scan = rfid.readPicc();
   
   if (scan.read) {
-    turnOnOled();
-    Serial.print("UID: ");
-    Serial.println(scan.uid);
-    Serial.print("User: ");
-    Serial.println(scan.user);
-    Serial.print("Type: ");
-    Serial.println(scan.type);
-    Serial.print("Known: ");
-    Serial.println(scan.known);
-    Serial.print("Valid: ");
-    Serial.println(scan.valid);
+    if (config.getSystemDebug()) {
+      Serial.print("UID: ");
+      Serial.println(scan.uid);
+      Serial.print("User: ");
+      Serial.println(scan.user);
+      Serial.print("Type: ");
+      Serial.println(scan.type);
+      Serial.print("Known: ");
+      Serial.println(scan.known);
+      Serial.print("Valid: ");
+      Serial.println(scan.valid);
+    }
 
     StaticJsonDocument<230> jsonDoc;
     jsonDoc["command"] = "piccscan";
     jsonDoc["uid"] = scan.uid;
     jsonDoc["type"] = scan.type;
     
-    if (config.getEvseAlwaysActive(0)) {
+    if (config.getEvseAlwaysActive(0)) {    // In AA/Remote just turnOnOled and leave
+      turnOnOled();
       return;
     }
+
+    #ifdef ESP32
+    if (!config.getEvseAlwaysActive(0) &&   // If oLED is turned off, just turn it on and leave
+      millisOnTimeOled < millis()) {        // To activate EVSE, a second RFID read is necessary
+        turnOnOled();
+        return;
+    }
+    #endif
 
     lastUID = scan.uid;
     if (scan.known) { // PICC known
@@ -2935,19 +2945,25 @@ void ICACHE_RAM_ATTR loop() {
       if (config.getSystemDebug()) Serial.println("Button released");
       buttonState = HIGH;
       if (!config.getEvseAlwaysActive(0)) {
-        if (evseActive) {
-          toDeactivateEVSE = true;
+        #ifdef ESP32
+        if (millisOnTimeOled < millis()) { // oLED is off
+          turnOnOled();
         }
         else {
-          toActivateEVSE = true;
+        #endif
+          if (evseActive) {
+            toDeactivateEVSE = true;
+          }
+          else {
+            toActivateEVSE = true;
+          }
+          lastUsername = "Button";
+          lastUID = "Button";
+        #ifdef ESP32
+          oled.showCheck(true, 1);
         }
-        lastUsername = "Button";
-        lastUID = "Button";
+        #endif
       }
-      #ifdef ESP32
-      turnOnOled();
-      oled.showCheck(true, 1);
-      #endif
     }
   }
 
@@ -2968,7 +2984,7 @@ void ICACHE_RAM_ATTR loop() {
       if (digitalRead(buttonPin) != buttonState) {
       buttonState = digitalRead(buttonPin);
       buttonTimer = millis();
-      turnOnOled();
+      //turnOnOled();
       if (config.getSystemDebug()) Serial.println("Button pressed...");
     }
   }
