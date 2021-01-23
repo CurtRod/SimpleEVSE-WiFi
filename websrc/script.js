@@ -5,6 +5,7 @@ var sw_rev = ""
 var hw_rev = "";
 var timeoutInterval;
 var inApMode = false;
+var timerRefreshStats;
 
 //EVSE Control
 var pp_limit;
@@ -35,9 +36,15 @@ var haspages;
 var file = {};
 var completed = false;
 var wsUri;
+var wifiSsidBackupAP = "";
+var wifiPassBackupAP = "";
+var wifiSsidBackupSTA = "";
+var wifiPassBackupSTA = "";
+
+//Status
+var refreshSeconds;
 
 window.onload = function () {
-
 
 }
 
@@ -47,8 +54,10 @@ function loadEVSEControl() {
   document.getElementById("evseContent").style.display = "block";
   document.getElementById("usersContent").style.display = "none";
   document.getElementById("settingsContent").style.display = "none";
+  document.getElementById("statusContent").style.display = "none";
   document.getElementById("logContent").style.display = "none";
   document.getElementById("loginContent").style.display = "none";
+  clearInterval(timerRefreshStats);
   closeNav();
 }
 function listEVSEData(obj) {
@@ -188,8 +197,10 @@ function loadUsers() {
   document.getElementById("evseContent").style.display = "none";
   document.getElementById("usersContent").style.display = "block";
   document.getElementById("settingsContent").style.display = "none";
+  document.getElementById("statusContent").style.display = "none";
   document.getElementById("logContent").style.display = "none";
   closeNav();
+  clearInterval(timerRefreshStats);
 
   userdata = [];
   var commandtosend = {};
@@ -436,7 +447,9 @@ function loadLog() {
   document.getElementById("evseContent").style.display = "none";
   document.getElementById("usersContent").style.display = "none";
   document.getElementById("settingsContent").style.display = "none";
+  document.getElementById("statusContent").style.display = "none";
   document.getElementById("logContent").style.display = "block";
+  clearInterval(timerRefreshStats);
   closeNav();
 
   var commandtosend = {};
@@ -530,13 +543,14 @@ function initLogTable() {
   logtable = true;
 }
 
-
 //Script for Settings
 function loadSettings() {
   document.getElementById("evseContent").style.display = "none";
   document.getElementById("usersContent").style.display = "none";
   document.getElementById("settingsContent").style.display = "block";
+  document.getElementById("statusContent").style.display = "none";
   document.getElementById("logContent").style.display = "none";
+  clearInterval(timerRefreshStats);
   closeNav();
 
   websock.send("{\"command\":\"getconf\"}");
@@ -555,10 +569,14 @@ function listCONF(obj) {
     document.getElementById("divUseRSE").style.display = "none";
     document.getElementById("divCPInterrupt").style.display = "none";
     document.getElementById("divDisplayRotation").style.display = "none";
+    document.getElementById("textDownloadFwVersion").innerHTML = "Download <a href=\"https://github.com/CurtRod/SimpleEVSE-WiFi/releases\" target=\"_blank\">latest version</a> from GitHub.";
+  }
+  else {
+    document.getElementById("textDownloadFwVersion").innerHTML = "Download <a href=\"https://www.evse-wifi.de/download/\" target=\"_blank\">latest version</a>.";
   }
 
   //Load WiFi settings
-  document.getElementById("inputtohide").value = obj.wifi.ssid;
+  document.getElementById("ssid").value = obj.wifi.ssid;
   document.getElementById("wifipass").value = obj.wifi.pswd;
   document.getElementById("wifibssid").value = obj.wifi.bssid;
   document.getElementById("checkboxStaticIP").checked = obj.wifi.staticip;
@@ -693,23 +711,6 @@ var t = setInterval(browserTime, 1000);
 var tt = setInterval(deviceTime, 1000);
 var ttt = setInterval(chargingTime, 1000);
 
-function setEVSERegister() {
-  var datatosend = {};
-  datatosend.command = "setevsereg";
-  datatosend.register = document.getElementById("evseRegToSet").value;
-  datatosend.value = document.getElementById("evseRegValue").value;
-  websock.send(JSON.stringify(datatosend));
-  document.getElementById("buttonsetregister").disabled = true;
-  $("#loadersetevsereg").removeClass('hidden');
-  
-  setTimeout(function () {
-    refreshStats();
-    $("#evseRegModal").modal("hide");
-    document.getElementById("buttonsetregister").disabled = false;
-    $("#loadersetevsereg").addClass('hidden');
-  }, 3000);
-}
-
 function syncBrowserTime(reload) {
   var d = new Date();
   var timestamp = Math.floor((d.getTime() / 1000) + ((d.getTimezoneOffset() * 60) * -1));
@@ -723,13 +724,29 @@ function syncBrowserTime(reload) {
 }
 
 function handleAP() {
-  document.getElementById("hideBSSID").style.display = "none";
+  document.getElementById("bssid").style.display = "none";
   document.getElementById("scanb").style.display = "none";
 }
 
 function handleSTA() {
-  document.getElementById("hideBSSID").style.display = "block";
+  document.getElementById("bssid").style.display = "block";
   document.getElementById("scanb").style.display = "block";
+}
+
+function handleAPClick() {
+  handleAP();
+  wifiSsidBackupSTA = document.getElementById("ssid").value
+  document.getElementById("ssid").value = wifiSsidBackupAP;
+  wifiPassBackupSTA = document.getElementById("wifipass").value;
+  document.getElementById("wifipass").value = wifiPassBackupAP;
+}
+
+function handleSTAClick() {
+  handleSTA();
+  wifiSsidBackupAP = document.getElementById("ssid").value
+  document.getElementById("ssid").value = wifiSsidBackupSTA;
+  wifiPassBackupAP = document.getElementById("wifipass").value;
+  document.getElementById("wifipass").value = wifiPassBackupSTA;
 }
 
 function handleStaticIP() {
@@ -859,12 +876,14 @@ function shWifi() {
 }
 function shAdmin() {
   var x = document.getElementById("adminpwd");
-  if (x.type === "password") {
-    x.type = "text";
-    document.getElementById("shadmin").innerHTML = "hide";
-  } else {
-    x.type = "password";
-    document.getElementById("shadmin").innerHTML = "show";
+  if (x.value != "") {
+    if (x.type === "password") {
+      x.type = "text";
+      document.getElementById("shadmin").innerHTML = "hide";
+    } else {
+      x.type = "password";
+      document.getElementById("shadmin").innerHTML = "show";
+    }
   }
 }
 
@@ -874,7 +893,7 @@ function interruptCp() {
 
 function listSSID(obj) {
   obj.list.sort(function (a, b) { return a.rssi <= b.rssi });
-  var select = document.getElementById("ssid");
+  var select = document.getElementById("ssidList");
   for (var i = 0; i < obj.list.length; i++) {
     var opt = document.createElement("option");
     opt.value = obj.list[i].ssid;
@@ -887,15 +906,15 @@ function listSSID(obj) {
 }
 
 function listBSSID(obj) {
-  var select = document.getElementById("ssid");
+  var select = document.getElementById("ssidList");
   document.getElementById("wifibssid").value = select.options[select.selectedIndex].bssidvalue;
 }
 
 function scanWifi() {
   websock.send("{\"command\":\"scan\"}");
   document.getElementById("scanb").innerHTML = "...";
-  document.getElementById("inputtohide").style.display = "none";
-  var node = document.getElementById("ssid");
+  document.getElementById("ssid").style.display = "none";
+  var node = document.getElementById("ssidList");
   node.style.display = "inline";
   while (node.hasChildNodes()) {
     node.removeChild(node.lastChild);
@@ -919,11 +938,11 @@ function saveConf() {
   }
 
   var ssid;
-  if (document.getElementById("inputtohide").style.display === "none") {
-    var b = document.getElementById("ssid");
+  if (document.getElementById("ssid").style.display === "none") {
+    var b = document.getElementById("ssidList");
     ssid = b.options[b.selectedIndex].value;
   } else {
-    ssid = document.getElementById("inputtohide").value;
+    ssid = document.getElementById("ssid").value;
   }
   var datatosend = {};
   datatosend.command = "configfile";
@@ -1172,10 +1191,10 @@ function resetFactoryReset() {
   }
 }
 
-var FWUpdatePerc = 0;
-
-function firwareUpdate() {
-  $("#updatemodal").modal();
+function firmwareUpdate() {
+  if (document.getElementById("fwUpdateFile").value != "") {
+    $("#updatemodal").modal();
+  }
 }
 
 function colorStatusbar(ref) {
@@ -1185,8 +1204,41 @@ function colorStatusbar(ref) {
   else ref.class = "progress-bar progress-bar-danger";
 }
 
+// Script data for Status
+function loadStatus() {
+  document.getElementById("evseContent").style.display = "none";
+  document.getElementById("usersContent").style.display = "none";
+  document.getElementById("settingsContent").style.display = "none";
+  document.getElementById("statusContent").style.display = "block";
+  document.getElementById("logContent").style.display = "none";
+  clearInterval(timerRefreshStats);
+  closeNav();
+  
+  refreshStats();
+  timerRefreshStats = setInterval(refreshStatsCountdown, 1000);
+  refreshSeconds = 10;
+
+  websock.send("{\"command\":\"getconf\"}");
+  handleRFID();
+  handleMeter();
+  handleMeterType();
+  handleStaticIP();
+  handleApi();
+}
+
 function refreshStats() {
   websock.send("{\"command\":\"status\"}");
+}
+
+function refreshStatsCountdown() {
+  document.getElementById("refreshSeconds").innerHTML = refreshSeconds;
+  if (refreshSeconds === 0) {
+    refreshStats();
+    refreshSeconds = 10;
+  }
+  else {
+    refreshSeconds -= 1;
+  }
 }
 
 function listStats(obj) {
@@ -1260,6 +1312,23 @@ function listStats(obj) {
   }
 }
 
+function setEVSERegister() {
+  var datatosend = {};
+  datatosend.command = "setevsereg";
+  datatosend.register = document.getElementById("evseRegToSet").value;
+  datatosend.value = document.getElementById("evseRegValue").value;
+  websock.send(JSON.stringify(datatosend));
+  document.getElementById("buttonsetregister").disabled = true;
+  $("#loadersetevsereg").removeClass('hidden');
+  
+  setTimeout(function () {
+    refreshStats();
+    $("#evseRegModal").modal("hide");
+    document.getElementById("buttonsetregister").disabled = false;
+    $("#loadersetevsereg").addClass('hidden');
+  }, 3000);
+}
+
 //General functions
 function round(x) {
   var k = (Math.round(x * 100) / 100).toString();
@@ -1285,6 +1354,10 @@ function closeNav() {
 function showCurrentModal() {
   $("#currentModal").modal();
   currentModalOpen = true;
+}
+
+function showInfoModal() {
+  $("#infoModal").modal();
 }
 
 function showEvseRegModal() {
@@ -1458,5 +1531,6 @@ function start() {
   document.getElementById("evseContent").style.display = "none";
   document.getElementById("usersContent").style.display = "none";
   document.getElementById("settingsContent").style.display = "none";
+  document.getElementById("statusContent").style.display = "none";
   document.getElementById("logContent").style.display = "none";
 }

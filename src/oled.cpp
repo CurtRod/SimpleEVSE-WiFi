@@ -33,80 +33,125 @@ void EvseWiFiOled::sendBuffer() {
     this->u8g2->sendBuffer();
 }
 
-void EvseWiFiOled::showDemo(uint8_t evseStatus, unsigned long chargingTime, uint8_t current, uint8_t maxcurrent, float power, float energy, time_t time, String* version) {
-  this->u8g2->firstPage();
-
-  String head;
-  if (hour(time) < 10) {
-    head += ("0" + (String)hour(time));
+void EvseWiFiOled::oledLoop() {
+  if (this->millisRandOffset < millis()) {
+    srand (millis());
+    this->offsetX = (rand()%3);
+    srand (millis()-123);
+    this->offsetY = (rand()%3);
+    this->millisRandOffset = millis() + 60000;  // new offset in 60s
   }
-  else {
-    head += (String)hour(time);
-  }
-  head += ":";
-  if (minute(time) < 10) {
-    head += ("0" + (String)minute(time));
-  }
-  else {
-    head += (String)minute(time);
-  }
-
-String _date = ((String)year(time) + "-");
-if (month(time) < 10) {_date += ("0" + (String)month(time));}
-else {_date += (String)month(time);}
-_date += "-";
-if (day(time) < 10) {_date += ("0" + (String)day(time));}
-else {_date += (String)day(time);}
-
-String _weekday;
-
-// Day of the week
-switch (weekday(time))
-{
-case 1:
-  _weekday = "Sunday";
-  break;
-case 2:
-  _weekday = "Monday";
-  break;
-case 3:
-  _weekday = "Tuesday";
-  break;
-case 4:
-  _weekday = "Wednesday";
-  break;
-case 5:
-  _weekday = "Thursday";
-  break;
-case 6:
-  _weekday = "Friday";
-  break;
-case 7:
-  _weekday = "Saturday";
-  break;
-default:
-  _weekday = "";
-  break;
 }
 
+void EvseWiFiOled::turnOff() {
+  this->u8g2->setPowerSave(1);
+  this->displayOn = false;
+}
+
+void EvseWiFiOled::turnOn() {
+  this->u8g2->setPowerSave(0);
+  this->displayOn = true;
+}
+
+void EvseWiFiOled::showDemo(uint8_t evseStatus, unsigned long chargingTime, uint8_t current, uint8_t maxcurrent, float power, float energy, time_t time, String* version, bool active) {
+  this->u8g2->firstPage();
+
+  String _time;
+  if (hour(time) < 10) {
+    _time += ("0" + (String)hour(time));
+  }
+  else {
+    _time += (String)hour(time);
+  }
+  _time += ":";
+  if (minute(time) < 10) {
+    _time += ("0" + (String)minute(time));
+  }
+  else {
+    _time += (String)minute(time);
+  }
+
+  String _date = ((String)year(time) + "-");
+  if (month(time) < 10) {_date += ("0" + (String)month(time));}
+  else {_date += (String)month(time);}
+  _date += "-";
+  if (day(time) < 10) {_date += ("0" + (String)day(time));}
+  else {_date += (String)day(time);}
+
+  String _weekday;
+
+  // Day of the week
+  switch (weekday(time))
+  {
+  case 1:
+    _weekday = "Sunday";
+    break;
+  case 2:
+    _weekday = "Monday";
+    break;
+  case 3:
+    _weekday = "Tuesday";
+    break;
+  case 4:
+    _weekday = "Wednesday";
+    break;
+  case 5:
+    _weekday = "Thursday";
+    break;
+  case 6:
+    _weekday = "Friday";
+    break;
+  case 7:
+    _weekday = "Saturday";
+    break;
+  default:
+    _weekday = "";
+    break;
+  } 
+
+  String strDuration = "";
   chargingTime = chargingTime / 1000;
+  uint8_t chargingTimeH = chargingTime / 3600;
+  uint8_t chargingTimeM = chargingTime / 60 % 60;
+  if (chargingTimeH == 0) {
+    strDuration = "00";
+  }
+  else if (chargingTimeH < 10) {
+    strDuration = "0" + (String)chargingTimeH;
+  }
+  else {
+    strDuration = (String)chargingTimeH;
+  }
+  if (chargingTimeM == 0) {
+    strDuration += ":00";
+  }
+  else if (chargingTimeM < 10) {
+    strDuration += ":0" + (String)chargingTimeM;
+  }
+  else {
+    strDuration += ":" + (String)chargingTimeM;
+  }
+
   String strCurrent = (String)current + " / " + maxcurrent + " A";
   String strPower = (String)power + " kW";
   String strEnergy = (String)energy + " kWh";
   String strSwVersion = "v" + *version;
 
-uint8_t val_x = 0;
-uint8_t val_y = 20;
+  uint8_t val_x = 0 + this->offsetX;
+  uint8_t val_y = 20 + this->offsetY;
+  uint8_t val_x_date = val_x + 52;
+  uint8_t val_y_date1 = val_y - 8;
+  uint8_t val_y_date2 = val_y + 5;
 
   do {
     this->u8g2->setFont(u8g2_font_helvR14_tr);
-    this->u8g2->drawStr(val_x,val_y, head.c_str());
+    this->u8g2->drawStr(val_x,val_y, _time.c_str());
     val_y += 9;
 
     this->u8g2->setFont(u8g2_font_helvR10_tr);
-    this->u8g2->drawStr(52,12, _weekday.c_str());
+    this->u8g2->drawStr(val_x_date,val_y_date1, _weekday.c_str());
     this->u8g2->setFont(u8g2_font_helvR08_tr);
-    this->u8g2->drawStr(52,25, _date.c_str());
+    this->u8g2->drawStr(val_x_date,val_y_date2, _date.c_str());
     
     this->u8g2->setFont(u8g2_font_helvR12_tr);
     this->u8g2->drawHLine(val_x,val_y, 122);
@@ -132,39 +177,89 @@ uint8_t val_y = 20;
       break;
     }
 
-    this->u8g2->drawStr(val_x,val_y, strStatus.c_str());
+    if (active) {
+      this->u8g2->drawXBMP(val_x, val_y-12, 12, 12, xbm_unlocked);
+    }
+    else {
+      this->u8g2->drawXBMP(val_x, val_y-12, 12, 12, xbm_locked);
+    }
+    this->u8g2->drawStr(val_x + 17,val_y, strStatus.c_str());
     val_y += 16;
-    this->u8g2->drawStr(val_x,val_y, strCurrent.c_str());
+    
+    this->u8g2->drawXBMP(val_x, val_y-12, 12, 12, xbm_flash);
+    this->u8g2->drawStr(val_x + 17,val_y, strCurrent.c_str());
     val_y += 16;
-    this->u8g2->drawStr(val_x,val_y, strPower.c_str());
+
+    this->u8g2->drawXBMP(val_x, val_y-12, 12, 12, xbm_power);
+    this->u8g2->drawStr(val_x + 17,val_y, strPower.c_str());
     val_y += 16;
-    this->u8g2->drawStr(val_x,val_y, strEnergy.c_str());
-    this->u8g2->setFont(u8g2_font_helvR08_tr);
-    this->u8g2->drawStr(95,128, strSwVersion.c_str());
+
+    this->u8g2->drawXBMP(val_x, val_y-12, 12, 12, xbm_time);
+    this->u8g2->drawStr(val_x + 17,val_y, strDuration.c_str());
+    val_y += 16;
+    
+    this->u8g2->drawXBMP(val_x, val_y-12, 12, 12, xbm_energy);
+    this->u8g2->drawStr(val_x + 17,val_y, strEnergy.c_str());
   } while ( this->u8g2->nextPage() );
   delay(100);
 }
 
-void EvseWiFiOled::drawLock() {
+void EvseWiFiOled::showSplash(String text) {
   this->u8g2->firstPage();
   do {
-    this->u8g2->drawXBMP( 0, 0, 128, 128, xbm_locked_bits);
+    this->u8g2->drawXBMP(32, 15, 64, 64, xbm_splash);
+    this->u8g2->setFont(u8g2_font_helvR10_tr);
+    this->u8g2->drawStr(35 + this->offsetX, 100 + this->offsetY, "Loading...");
+    this->u8g2->drawStr(this->offsetX, 120 + this->offsetY, text.c_str());
   } while(this->u8g2->nextPage());
 }
 
-void EvseWiFiOled::drawUnlock() {
+void EvseWiFiOled::drawCheck(uint8_t textId) {
+  /*
+    textID 0 => "RFID tag valid"
+    textID 1 => "Button input"
+  */
+  String text = "";
+  uint8_t val_x_text = this->offsetX;
+  uint8_t val_y_text = this->offsetY;
+  switch (textId)
+  {
+  case 0:
+    text = "RFID tag valid";
+    val_x_text += 10;
+    val_y_text += 110;
+    break;
+  case 1:
+    text = "Button input";
+    val_x_text += 20;
+    val_y_text += 110;
+  default:
+    break;
+  }
   this->u8g2->firstPage();
   do {
-    this->u8g2->drawXBMP( 0, 0, 128, 128, xbm_unlocked_bits);
+    this->u8g2->drawXBMP( 27 + this->offsetX, 25 + this->offsetY, xbm_checked_width, xbm_checked_height, xbm_checked);
+    this->u8g2->setFont(u8g2_font_helvR12_tr);
+    this->u8g2->drawStr(val_x_text, val_y_text, text.c_str());
   } while(this->u8g2->nextPage());
 }
 
-void EvseWiFiOled::showLock(bool locked) {
-  if (locked) {
-    drawLock();
+void EvseWiFiOled::drawUncheck() {
+  String text = "RFID tag invalid!";
+  this->u8g2->firstPage();
+  do {
+    this->u8g2->drawXBMP( 32 + this->offsetX, 25 + this->offsetY, xbm_unchecked_width, xbm_unchecked_height, xbm_unchecked);
+    this->u8g2->setFont(u8g2_font_helvR12_tr);
+    this->u8g2->drawStr(10 + this->offsetX, 110 + this->offsetY, text.c_str());
+  } while(this->u8g2->nextPage());
+}
+
+void EvseWiFiOled::showCheck(bool checked, uint8_t textID) {
+  if (checked) {
+    drawCheck(textID);
   }
   else {
-    drawUnlock();
+    drawUncheck();
   }
 }
 #endif

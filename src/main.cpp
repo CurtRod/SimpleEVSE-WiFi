@@ -52,8 +52,8 @@
 #include "templates.h"
 #include "rfid.h"
 
-uint8_t sw_min = 0; //Firmware Minor Version
-uint8_t sw_rev = 6; //Firmware Revision
+uint8_t sw_min = 1; //Firmware Minor Version
+uint8_t sw_rev = 0; //Firmware Revision
 String sw_add = "";
 
 #ifdef ESP8266
@@ -68,8 +68,6 @@ String swVersion = String(sw_maj) + "." + String(sw_min) + "." + String(sw_rev) 
 ///////       Variables For Whole Scope
 //////////////////////////////////////////////////////////////////////////////////////////
 //EVSE Variables
-//unsigned long millisStartCharging = 0;
-//unsigned long millisStopCharging = 0;
 uint32_t startChargingTimestamp = 0; 
 uint32_t stopChargingTimestamp = 0;
 bool manualStop = false;
@@ -134,6 +132,8 @@ unsigned long millisUpdateOled = 0;
 U8G2_SSD1327_WS_128X128_F_4W_HW_SPI u8g2(U8G2_R0, /* cs=*/ 12, /* dc=*/ 13, /* reset=*/ 33);
 EvseWiFiOled oled;
 #endif
+
+unsigned long millisOnTimeOled = 0;
 
 ModbusMaster evseNode;
 ModbusMaster meterNode;
@@ -201,6 +201,14 @@ String msg = ""; //WS communication
 //////////////////////////////////////////////////////////////////////////////////////////
 ///////       Auxiliary Functions
 //////////////////////////////////////////////////////////////////////////////////////////
+
+void ICACHE_FLASH_ATTR turnOnOled(uint32_t ontimesecs = 60) {
+  #ifdef ESP32
+  millisOnTimeOled = millis() + ontimesecs * 1000; // DBG DBUG Debug
+  oled.turnOn();
+  Serial.println("Display turned on");
+  #endif
+}
 
 #ifndef ESP8266
 void ICACHE_FLASH_ATTR handleRse() {
@@ -539,6 +547,7 @@ void ICACHE_FLASH_ATTR rfidloop() {
   scanResult scan = rfid.readPicc();
   
   if (scan.read) {
+    turnOnOled();
     Serial.print("UID: ");
     Serial.println(scan.uid);
     Serial.print("User: ");
@@ -555,6 +564,10 @@ void ICACHE_FLASH_ATTR rfidloop() {
     jsonDoc["uid"] = scan.uid;
     jsonDoc["type"] = scan.type;
     
+    if (config.getEvseAlwaysActive(0)) {
+      return;
+    }
+
     lastUID = scan.uid;
     if (scan.known) { // PICC known
       Serial.println("PICC known");
@@ -577,14 +590,14 @@ void ICACHE_FLASH_ATTR rfidloop() {
       }
       #ifndef ESP8266
       millisUpdateOled = millis() + 3000;
-      oled.showLock(false);
+      oled.showCheck(true, 0);
       #endif
       showLedRfidGrant = true;
     }
     else {
       #ifndef ESP8266
       millisUpdateOled = millis() + 3000;
-      oled.showLock(true);
+      oled.showCheck(false, 0);
       #endif
       showLedRfidDecline = true;
       changeLedTimes(70, 70);
@@ -872,8 +885,14 @@ void ICACHE_FLASH_ATTR logLatest(String uid, String username) {
       }
       logFile = SPIFFS.open("/latestlog.json", "w");
       StaticJsonDocument<200> jsonDoc3;
-      jsonDoc3["uid"] = uid;
-      jsonDoc3["username"] = username;
+      if (config.getEvseRemote(0)){
+        jsonDoc3["uid"] = "remote";
+        jsonDoc3["username"] = "remote";
+      }
+      else {
+        jsonDoc3["uid"] = uid;
+        jsonDoc3["username"] = username;
+      }
       jsonDoc3["timestamp"] = ntp.getUtcTimeNow();
       jsonDoc3["duration"] = 0;
       jsonDoc3["energy"] = 0;
@@ -970,7 +989,7 @@ void ICACHE_FLASH_ATTR updateLog(bool incomplete) {
     const char* username = list[(list.size()-1)]["username"];
     long timestamp = (long)list[(list.size()-1)]["timestamp"];
     list.remove(list.size() - 1); // delete newest log
-
+   
     StaticJsonDocument<270> jsonDoc2;
     jsonDoc2["uid"] = uid;
     jsonDoc2["username"] = username;
@@ -1179,6 +1198,9 @@ bool ICACHE_FLASH_ATTR queryEVSE(bool startup = false) {
       if (evseVehicleState == 2 ||
           evseVehicleState == 3 ||
           evseVehicleState == 4) {
+        if (evseStatus != 2){
+          turnOnOled();
+        }
         evseStatus = 2; //vehicle detected
         if (config.getEvseLedConfig(0) == 3) changeLedTimes(300, 2000);
       }
@@ -1186,7 +1208,7 @@ bool ICACHE_FLASH_ATTR queryEVSE(bool startup = false) {
         evseStatus = 1; // EVSE deactivated
       }
       if (vehicleCharging == true && manualStop == false) {   //vehicle interrupted charging
-        //millisStopCharging = millis();
+        turnOnOled();
         stopChargingTimestamp = ntp.getUtcTimeNow();
         vehicleCharging = false;
         if (config.getSystemDebug()) Serial.println("[ SYSTEM ] Vehicle interrupted charging");
@@ -1197,9 +1219,15 @@ bool ICACHE_FLASH_ATTR queryEVSE(bool startup = false) {
     }
 
     if (evseVehicleState == 1) {
+      if (evseStatus != 1){
+        turnOnOled();
+      } 
       evseStatus = 1;  // ready
     }
     else if (evseVehicleState == 2) {
+      if (evseStatus != 2){
+        turnOnOled();
+      } 
       evseStatus = 2; //vehicle detected
       if (config.getEvseLedConfig(0) == 3) changeLedTimes(300, 2000);
     }
@@ -1220,7 +1248,6 @@ bool ICACHE_FLASH_ATTR queryEVSE(bool startup = false) {
     }
     if (evseEvseState == 1) { // Steady 12V
       if (vehicleCharging) { // EV interrupted charging
-        //millisStopCharging = millis();
         stopChargingTimestamp = ntp.getUtcTimeNow();
         vehicleCharging = false;
         toDeactivateEVSE = true;
@@ -1228,19 +1255,24 @@ bool ICACHE_FLASH_ATTR queryEVSE(bool startup = false) {
         lastUsername = "vehicle";
         if (config.getSystemDebug()) Serial.println("[ SYSTEM ] Vehicle interrupted charging");
       }
+      if (evseStatus != 1) {
+        turnOnOled();
+      }
       evseStatus = 1; // ready
       evseActive = true;
     }
     else if (evseEvseState == 2) { // PWM is being generated
       if (evseVehicleState == 2) { // EV is present
         if (vehicleCharging) {  // EV interrupted charging
-          //millisStopCharging = millis();
           stopChargingTimestamp = ntp.getUtcTimeNow();
           vehicleCharging = false;
           toDeactivateEVSE = true;
           lastUID = "vehicle";
           lastUsername = "vehicle";
           if (config.getSystemDebug()) Serial.println("[ SYSTEM ] Vehicle interrupted charging");
+        }
+        if (evseStatus != 2){
+          turnOnOled();
         }
         evseStatus = 2; //vehicle detected
         evseActive = true;
@@ -1250,8 +1282,8 @@ bool ICACHE_FLASH_ATTR queryEVSE(bool startup = false) {
         if (!vehicleCharging) { // EV starts charging
           if (!startup) {
             toActivateEVSE = true;
-          } 
-          //millisStartCharging = millis();
+          }
+          turnOnOled();
           startChargingTimestamp = ntp.getUtcTimeNow();
           meteredKWh = 0.0;
           vehicleCharging = true;
@@ -1268,6 +1300,9 @@ bool ICACHE_FLASH_ATTR queryEVSE(bool startup = false) {
       if (evseVehicleState == 2 ||
           evseVehicleState == 3 ||
           evseVehicleState == 4) {
+        if (evseStatus != 2){
+          turnOnOled();
+        }
         evseStatus = 2; //vehicle detected
         if (config.getEvseLedConfig(0) == 3) changeLedTimes(300, 2000);
         if (vehicleCharging && evseAmpsConfig == 0) { //Current Set to 0 - deactivate
@@ -1281,6 +1316,9 @@ bool ICACHE_FLASH_ATTR queryEVSE(bool startup = false) {
         }
       }
       else {
+        if (evseStatus != 1){
+          turnOnOled();
+        } 
         evseStatus = 1; // EVSE deactivated
       }
       if (vehicleCharging == true && manualStop == false) {   //vehicle interrupted charging
@@ -1302,7 +1340,7 @@ bool ICACHE_FLASH_ATTR queryEVSE(bool startup = false) {
 bool ICACHE_FLASH_ATTR activateEVSE() {
   if (!config.getEvseAlwaysActive(0)) {
     static uint16_t iTransmit;
-
+    turnOnOled();
     if (config.useMMeter) {
       if (millisUpdateMMeter - millis() < 50) {
         delay(50);
@@ -1356,7 +1394,7 @@ bool ICACHE_FLASH_ATTR activateEVSE() {
 
   #ifndef ESP8266
   millisUpdateOled = millis() + 3000;
-  oled.showLock(false);
+  //oled.showCheck(false);
   #endif
   showLedRfidGrant = true;
   sendEVSEdata();
@@ -1364,6 +1402,7 @@ bool ICACHE_FLASH_ATTR activateEVSE() {
 }
 
 bool ICACHE_FLASH_ATTR deactivateEVSE(bool logUpdate) {
+  turnOnOled();
   if (!config.getEvseAlwaysActive(0)) {
     //New ModBus Master Library
     static uint16_t iTransmit = 16384;  // deactivate evse
@@ -1394,7 +1433,6 @@ bool ICACHE_FLASH_ATTR deactivateEVSE(bool logUpdate) {
     // register successfully written
     if (config.getSystemDebug()) Serial.println("[ ModBus ] EVSE successfully deactivated");
     evseActive = false;
-    //millisStopCharging = millis();
     stopChargingTimestamp = ntp.getUtcTimeNow();
   }
   manualStop = true;
@@ -1423,6 +1461,17 @@ bool ICACHE_FLASH_ATTR deactivateEVSE(bool logUpdate) {
 bool ICACHE_FLASH_ATTR setEVSEcurrent() {  // telegram 1: write EVSE current
   //New ModBus Master Library
   uint8_t result;
+
+  if (config.getEvseRemote(0)) {
+    toSetEVSEcurrent = false;
+    if (currentToSet == evseAmpsConfig) return true; // no oLED action
+    turnOnOled(5);
+  }
+  else {
+    turnOnOled();
+    toSetEVSEcurrent = false;
+    if (currentToSet == evseAmpsConfig) return true; // oLED action but register is already set
+  }
 
   if (config.useMMeter) {
     if (millisUpdateMMeter - millis() < 50) {
@@ -2084,6 +2133,9 @@ bool ICACHE_FLASH_ATTR startAP(const char * ssid, const char * password = NULL) 
 bool ICACHE_FLASH_ATTR loadConfiguration(String configString = "") {
 
   Serial.println("[ SYSTEM ] Loading Config File on Startup...");
+  #ifdef ESP32
+  oled.showSplash("Config File...");
+  #endif
   if (configString == "") {
     if (!config.loadConfig()) return false;
   }
@@ -2112,6 +2164,10 @@ bool ICACHE_FLASH_ATTR loadConfiguration(String configString = "") {
   server.addHandler(new SPIFFSEditor("admin", config.getSystemPass()));
   #else
   server.addHandler(new SPIFFSEditor(SPIFFS, "admin", config.getSystemPass()));
+  #endif
+
+  #ifdef ESP32
+  oled.showSplash("EVSE Controller...");
   #endif
 
   queryEVSE(true);
@@ -2152,11 +2208,14 @@ bool ICACHE_FLASH_ATTR loadConfiguration(String configString = "") {
     if (config.getSystemDebug()) Serial.println(F("[ INFO ] EVSE-WiFi runs in always active mode"));
   }
 
-  if (config.getRfidActive() == true && config.getEvseAlwaysActive(0) == false) {
+  if (config.getRfidActive() == true ) { //&& config.getEvseAlwaysActive(0) == false) {
     if (config.getSystemDebug()) Serial.println(F("[ INFO ] Trying to setup RFID hardware"));
     rfid.begin(config.getRfidPin(), config.getRfidUsePN532(), config.getRfidGain(), &ntp, config.getSystemDebug());
   }
 
+  #ifdef ESP32
+  oled.showSplash("Connecting WiFi...");
+  #endif
   if (config.getWifiWmode() == 1) {
     if (config.getSystemDebug()) Serial.println(F("[ INFO ] EVSE-WiFi is running in AP Mode "));
     WiFi.disconnect(true);
@@ -2210,7 +2269,6 @@ bool ICACHE_FLASH_ATTR loadConfiguration(String configString = "") {
   if (!connectSTA(config.getWifiSsid(), config.getWifiPass(), bssid)) {
     return false;
   }
-
   if (!MDNS.begin(config.getSystemHostname())) {
     Serial.println("[ SYSTEM ] Error setting up MDNS responder!");
   }
@@ -2232,12 +2290,12 @@ bool ICACHE_FLASH_ATTR loadConfiguration(String configString = "") {
     tz = tz + 1;
     if (config.getSystemDebug()) Serial.print("[ NTP ] Timezone:");
     if (config.getSystemDebug()) Serial.println(tz);
-    if (config.getSystemDebug()) Serial.println("[ NTP ] Using DST");
+    if (config.getSystemDebug()) Serial.println("[ NTP ] DST on");
   }
   else {
     if (config.getSystemDebug()) Serial.print("Timezone :");
     if (config.getSystemDebug()) Serial.println(tz);
-    if (config.getSystemDebug()) Serial.println("[ NTP ] No DST");
+    if (config.getSystemDebug()) Serial.println("[ NTP ] DST off");
   }
   ntp.Ntp(config.getNtpIp(), tz, 3600);   //use NTP Server, timeZone, update every x sec
   
@@ -2248,20 +2306,6 @@ bool ICACHE_FLASH_ATTR loadConfiguration(String configString = "") {
     if(config.getSystemDebug()) Serial.println("Vehicle is charging at startup");
     if (config.useMMeter){
       readLogAtStartup();
-      /*if(config.getSystemDebug()){
-        Serial.print("UTCnow: ");
-        Serial.println(ntp.getUtcTimeNow());
-        Serial.print("TimeStampStartCharging: ");
-        Serial.println(startChargingTimestamp);
-        Serial.print("UID: ");
-        Serial.println(lastUID);
-        Serial.print("Username: ");
-        Serial.println(lastUsername);
-        Serial.print("vehicleCharging: ");
-        Serial.println(vehicleCharging);
-        Serial.print("startTotal: ");
-        Serial.println(startTotal);
-      }*/
     }
     else{ // Feature only supported with modbus meter
       deactivateEVSE(false);  //initial deactivation
@@ -2326,6 +2370,18 @@ void ICACHE_FLASH_ATTR setWebEvents() {
 
   server.on("/status_ready.svg", HTTP_GET, [](AsyncWebServerRequest * request) {
     AsyncWebServerResponse * response = request->beginResponse_P(200, "image/svg+xml", WEBSRC_STATUS_READY_SVG, WEBSRC_STATUS_READY_SVG_LEN);
+    response->addHeader("Content-Encoding", "gzip");
+    request->send(response);
+  });
+
+  server.on("/favicon.ico", HTTP_GET, [](AsyncWebServerRequest * request) {
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "image/x-icon", WEBSRC_FAVICON_ICO, WEBSRC_FAVICON_ICO_LEN);
+    response->addHeader("Content-Encoding", "gzip");
+    request->send(response);
+  });
+
+  server.on("/smartwb_grey.svg", HTTP_GET, [](AsyncWebServerRequest * request) {
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "image/svg+xml", WEBSRC_SMARTWB_GREY_SVG, WEBSRC_SMARTWB_GREY_SVG_LEN);
     response->addHeader("Content-Encoding", "gzip");
     request->send(response);
   });
@@ -2687,7 +2743,8 @@ void ICACHE_FLASH_ATTR startWebserver() {
 void ICACHE_RAM_ATTR setup() {
   Serial.begin(9600);
   if (config.getSystemDebug()) Serial.println();
-  if (config.getSystemDebug()) Serial.println("[ INFO ] SimpleEVSE WiFi");
+  if (config.getSystemDebug()) Serial.print("[ INFO ] EVSE-WiFi - version ");
+  if (config.getSystemDebug()) Serial.print(swVersion);
   delay(500);
 
   SPI.begin();
@@ -2702,7 +2759,24 @@ void ICACHE_RAM_ATTR setup() {
   
   evseNode.begin(1, SecondSer);
 
+  #ifdef ESP32
+  oled.begin(&u8g2, config.getEvseDisplayRotation(0));
+  Serial.println("[ SYSTEM ] OLED started");
+  turnOnOled(120);
+  oled.showSplash();
+  #endif
+
   if (!loadConfiguration()) {
+    #ifdef ESP32
+    oled.showSplash("WARNING!");
+    delay(500);
+    oled.showSplash("Fallback Mode!");
+    delay(500);
+    oled.showSplash("WARNING!");
+    delay(500);
+    oled.showSplash("Fallback Mode!");
+    delay(2000);
+    #endif
     Serial.println("[ WARNING ] Going to fallback mode!");
     fallbacktoAPMode();
   }
@@ -2723,12 +2797,18 @@ void ICACHE_RAM_ATTR setup() {
   if (digitalRead(config.getButtonPin(0)) == LOW) {
     pinMode(config.getEvseLedPin(0), OUTPUT);
     if (config.getSystemDebug()) Serial.println("Button Pressed while boot!");
+    #ifdef ESP32
+    oled.showSplash("FactoryReset in 20s");
+    #endif
     digitalWrite(config.getEvseLedPin(0), HIGH);
     unsigned long millisBefore = millis();
     int button = config.getButtonPin(0);
     while (digitalRead(button) == LOW) {  
       if (millis() > (millisBefore + 20000)) {
         factoryReset();
+        #ifdef ESP32
+        oled.showSplash("Factory Reset done!");
+        #endif
         Serial.println("[ SYSTEM ] System has been reset to factory settings!");
         digitalWrite(config.getEvseLedPin(0), LOW);
       }
@@ -2749,13 +2829,13 @@ void ICACHE_RAM_ATTR setup() {
   pinMode(config.getEvseRsePin(0), INPUT_PULLUP);
   if (config.getSystemDebug()) Serial.print("[ SYSTEM ] Use RSE GPIO ");
   if (config.getSystemDebug()) Serial.println(config.getEvseRsePin(0));
-
   pinMode(config.getEvseCpIntPin(0), OUTPUT);
-  if (config.getSystemDebug()) Serial.println("[ SYSTEM ] OLED started");
-  oled.begin(&u8g2, config.getEvseDisplayRotation(0));
   delay(100);
 #endif
   now();
+  #ifdef ESP32
+  oled.showSplash("Starting webserver...");
+  #endif
   startWebserver();
   if (config.getSystemDebug()) Serial.println("[ SYSTEM ] End of setup routine");
   if (config.getEvseRemote(0)) sliderStatus = false;
@@ -2864,6 +2944,10 @@ void ICACHE_RAM_ATTR loop() {
         lastUsername = "Button";
         lastUID = "Button";
       }
+      #ifdef ESP32
+      turnOnOled();
+      oled.showCheck(true, 1);
+      #endif
     }
   }
 
@@ -2884,6 +2968,7 @@ void ICACHE_RAM_ATTR loop() {
       if (digitalRead(buttonPin) != buttonState) {
       buttonState = digitalRead(buttonPin);
       buttonTimer = millis();
+      turnOnOled();
       if (config.getSystemDebug()) Serial.println("Button pressed...");
     }
   }
@@ -2904,10 +2989,16 @@ void ICACHE_RAM_ATTR loop() {
   }
 
 #ifndef ESP8266
+  oled.oledLoop();
   if (millisUpdateOled < millis()) {
     delay(5);
-    oled.showDemo(evseStatus, getChargingTime(), evseAmpsConfig, maxCurrent, currentKW, meteredKWh, ntp.getUtcTimeNow(), &swVersion);
+    oled.showDemo(evseStatus, getChargingTime(), evseAmpsConfig, maxCurrent, currentKW, meteredKWh, ntp.getUtcTimeNow(), &swVersion, evseActive);
     millisUpdateOled = millis() + 3000;
+  }
+
+  if (millisOnTimeOled < millis() && oled.displayOn == true){
+    oled.turnOff();
+    Serial.println("Display turned off"); ///DBG DBUG DEBUG
   }
 
   if (doCpInterruptCp) {

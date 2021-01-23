@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html>
-
 <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -11,6 +10,7 @@
   <title>EVSE-WiFi</title>
   <script src="/required/required.js" type="text/javascript"></script>
   <link href="/required/required.css" rel="stylesheet">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <style>
   </style>
 </head>
@@ -27,10 +27,33 @@
     <a href="#" onclick="loadSettings()">
       <nobr><span class="glyphicon glyphicon-cog"></span>&nbsp;&nbsp;Settings</nobr>
     </a>
+    <a href="#" onclick="loadStatus()">
+      <nobr><span class="glyphicon glyphicon-time"></span>&nbsp;&nbsp;Status</nobr>
+    </a>
     <a href="#" onclick="loadLog()">
       <nobr><span class="glyphicon glyphicon-list-alt"></span>&nbsp;&nbsp;Log</nobr>
     </a>
     <div style="position: fixed; bottom: 0px; padding: 10px 10px 10px 10px"><object class="fw_version"></object></div>
+  </div>
+  <!-- Info Modal -->
+  <div class="modal fade" id="infotModal" tabindex="-1" role="dialog" aria-labelledby="infoModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content form-horizontal" id="info-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+              aria-hidden="true">&times;</span></button>
+          <h4 class="modal-title" id="current-title">Info</h4>
+        </div>
+        <div class="modal-body">
+          <div id="infoModalBody">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Abort</button>
+        </div>
+      </div>
+    </div>
   </div>
   <!-- Current Modal -->
   <div class="modal fade" id="currentModal" tabindex="-1" role="dialog" aria-labelledby="currentModalLabel"
@@ -51,7 +74,8 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" onclick="abortCurrentModal()"
             data-dismiss="modal">Abort</button>
-          <button type="submit" id="currentModalSaveButton" class="btn btn-primary" onclick="setEVSECurrent()">Save</button>
+          <button type="submit" id="currentModalSaveButton" class="btn btn-primary"
+            onclick="setEVSECurrent()">Save</button>
         </div>
       </div>
     </div>
@@ -81,13 +105,7 @@
                 <option value="1000">1000: Configured Current</option>
                 <option value="1004">1004: Turn off bit</option>
                 <option value="2000">2000: Current after boot</option>
-                <!-- <option value="2001">2001: Modbus Status</option> -->
                 <option value="2002">2002: Min. Current Value</option>
-                <!-- <option value="2003">2003: Analog Input Config</option>
-                <option value="2004">2004: Amps after boot (evse-button)</option>
-                <option value="2005">2005: Register 2005</option>
-                <option value="2006">2006: Current Sharing Mode</option>
-                <option value="2007">2007: PP-Detection</option> --> <!-- suppress lay usability -->
               </select>
             </div>
           </div>
@@ -100,9 +118,12 @@
           </div>
         </div>
         <div class="modal-footer">
-          <div id="loadersetevsereg" class="hidden"> <div class="loader"></div> </div>
+          <div id="loadersetevsereg" class="hidden">
+            <div class="loader"></div>
+          </div>
           <button type="button" class="btn btn-secondary" data-dismiss="modal">Abort</button>
-          <button id="buttonsetregister" type="submit" class="btn btn-primary" onclick="setEVSERegister()">Set Register</button>
+          <button id="buttonsetregister" type="submit" class="btn btn-primary" onclick="setEVSERegister()">Set
+            Register</button>
         </div>
       </div>
     </div>
@@ -127,7 +148,7 @@
       </div>
     </div>
   </div>
-  <!-- EVSE Container -->
+  <!-- EVSE Control Container -->
   <div class="container" id="evseContent" style="display: none">
     <div class="header clearfix">
       <nav>
@@ -191,6 +212,7 @@
   </div>
   <div class="container" id="mainContent">
   </div>
+
   <!-- Users Container -->
   <div class="container" id="usersContent" style="display: none">
     <div class="header clearfix">
@@ -201,12 +223,7 @@
       </nav>
       <h3 class="text-muted">Users</h3>
     </div>
-    <div class="overlay">
-      <div>
-        <h5>You can add new users by either scanning a RFID Tag or by clicking on "New User" button.</h5>
-      </div>
-      <br>
-    </div>
+    <div class="alert alert-info">You can add new users by either scanning a RFID Tag or by clicking on "New User" button.</div>
     <div class="panel panel-default">
       <table id="usertable" class="table" data-paging="true" data-filtering="true" data-sorting="true"
         data-editing="true" data-state="true"></table>
@@ -309,212 +326,6 @@
     </div>
     <div class="alert alert-warning"><strong>Warning!</strong> Settings will take effect when the device is rebooted.
     </div>
-    <div>
-      <button data-toggle="collapse" data-target="#status" id="refstat" onclick="refreshStats()"
-        class="btn btn-link btn-sm">Show Device Status</button>
-    </div>
-    <div id="status" class="row collapse">
-      <div class="col-sm-6">
-        <div class="panel panel-default table-responsive">
-          <table class="table table-hover table-striped">
-            <caption>Device</caption>
-            <tr>
-              <th>Chip ID</th>
-              <td id="chip"></td>
-            </tr>
-            <tr>
-              <th>CPU Clock</th>
-              <td id="cpu"></td>
-            </tr>
-            <tr>
-              <th>Uptime</th>
-              <td id="uptime"></td>
-            </tr> <!--
-            <tr id="divintTemp">
-              <th>Internal Temp</th>
-              <td id="int_temp"></td>
-            </tr>-->
-            <tr>
-              <th>Free Heap</th>
-              <td>
-                <div class="progress" style="margin-bottom: 0 !important;">
-                  <div id="heap" class="progress-bar progress-bar-primary" role="progressbar">
-                    Progress
-                  </div>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <th>Free Flash</th>
-              <td>
-                <div class='progress' style="margin-bottom: 0 !important;">
-                  <div id="flash" class="progress-bar progress-bar-primary" role="progressbar">
-                    Progress
-                  </div>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <th>Free SPIFFS</th>
-              <td>
-                <div class='progress' style="margin-bottom: 0 !important;">
-                  <div id="spiffs" class="progress-bar progress-bar-primary" role="progressbar">
-                    Progress
-                  </div>
-                </div>
-              </td>
-            </tr>
-          </table>
-        </div>
-      </div>
-      <div class="col-sm-6">
-        <div class="panel panel-default table-responsive">
-          <table class="table table-hover table-striped">
-            <caption>Network</caption>
-            <tr>
-              <th>SSID</th>
-              <td id="ssidstat"></td>
-            </tr>
-            <tr>
-              <th>IP</th>
-              <td id="ip"></td>
-            </tr>
-            <tr>
-              <th>Gateway</th>
-              <td id="gate"></td>
-            </tr>
-            <tr>
-              <th>Mask</th>
-              <td id="mask"></td>
-            </tr>
-            <tr>
-              <th>DNS</th>
-              <td id="dns"></td>
-            </tr>
-            <tr>
-              <th>MAC</th>
-              <td id="mac"></td>
-            </tr><!--
-            <tr>
-              <th>*</th>
-              <td>*</td>
-            </tr>-->
-          </table>
-        </div>
-      </div>
-      <div class="col-sm-6">
-        <div class="panel panel-default table-responsive">
-          <table class="table table-hover table-striped">
-            <caption>
-              <span style="float: left">EVSE Registers</span>
-              <span style="float: right" class="glyphicon glyphicon-pencil" onclick="showEvseRegModal()"></span>
-            </caption>
-            <tr>
-              <th>1000: Configured Current</th>
-              <td id="amps_conf"></td>
-            </tr>
-            <tr>
-              <th>1001: Actual Current</th>
-              <td id="amps_out"></td>
-            </tr>
-            <tr>
-              <th>1002: Vehicle Status</th>
-              <td id="vehicle_status"></td>
-            </tr>
-            <tr>
-              <th>1003: PP-Limit</th>
-              <td id="amps_pp"></td>
-            </tr>
-            <tr>
-              <th>1004: Turn off bit</th>
-              <td id="amps_turn_off"></td>
-            </tr>
-            <tr>
-              <th>1005: Firmware Version</th>
-              <td id="evse_version"></td>
-            </tr>
-            <tr>
-              <th>1006: EVSE Status</th>
-              <td id="evse_status"></td>
-            </tr>
-            <!--<tr>
-              <th>1007: RCD Status</th>
-              <td id="evse_rcd"></td>
-            </tr>-->
-            <tr>
-              <th>2000: Current after boot</th>
-              <td id="amps_boot"></td>
-            </tr>
-            <tr>
-              <th>2001: Modbus Status</th>
-              <td id="evse_modbus"></td>
-            </tr>
-            <tr>
-              <th>2002: Min. Current Value</th>
-              <td id="amps_min"></td>
-            </tr>
-            <tr>
-              <th>2003: Analog Input Config</th>
-              <td id="evse_analog_in"></td>
-            </tr>
-            <tr>
-              <th>2004: Amps after boot (evse-button)</th>
-              <td id="amps_power_on"></td>
-            </tr>
-            <tr>
-              <th>2005: Register 2005</th>
-              <td id="evse_2005"></td>
-            </tr>
-            <tr>
-              <th>2006: Current Sharing Mode</th>
-              <td id="evse_sharing_mode"></td>
-            </tr>
-            <tr>
-              <th>2007: PP-Detection</th>
-              <td id="pp_detection"></td>
-            </tr>
-          </table>
-        </div>
-      </div>
-
-      <div id="meterRegisters" class="col-sm-6">
-        <div class="panel panel-default table-responsive">
-          <table class="table table-hover table-striped">
-            <caption>Meter Registers</caption>
-            <tr>
-              <th>Total active energy </th>
-              <td id="meter_total"></td>
-            </tr>
-            <tr>
-              <th>Current P1 </th>
-              <td id="meter_p1"></td>
-            </tr>
-            <tr>
-              <th>Current P2 </th>
-              <td id="meter_p2"></td>
-            </tr>
-            <tr>
-              <th>Current P3 </th>
-              <td id="meter_p3"></td>
-            </tr>
-            <tr>
-              <th>Voltage P1 </th>
-              <td id="meter_p1_v"></td>
-            </tr>
-            <tr>
-              <th>Voltage P2 </th>
-              <td id="meter_p2_v"></td>
-            </tr>
-            <tr>
-              <th>Voltage P3 </th>
-              <td id="meter_p3_v"></td>
-            </tr>
-            
-          </table>
-        </div>
-      </div>
-
-    </div>
     <br>
     <div class="row">
       <div class="col-sm-6">
@@ -527,23 +338,23 @@
           <div class="col-xs-9">
             <form>
               <label class="radio-inline"><input type="radio" value="1" name="wmode" id="wmodeap"
-                  onclick="handleAP();">Access Point </label>
+                  onclick="handleAPClick();">Access Point </label>
               <label class="radio-inline"><input type="radio" value="0" name="wmode" id="wmodesta"
-                  onclick="handleSTA();">Client</label>
+                  onclick="handleSTAClick();">Client</label>
             </form>
           </div>
         </div>
         <div class="row form-group">
           <label data-toggle="tooltip" title="Wi-Fi Network's Name" class="col-xs-3">SSID</label>
           <span class="col-xs-6 col-md-5">
-            <input class="form-control input-sm" id="inputtohide" type="text" name="ap_ssid">
-            <select class="form-control input-sm" style="display:none;" id="ssid" onchange="listBSSID();"></select>
+            <input class="form-control input-sm" id="ssid" type="text" name="ap_ssid">
+            <select class="form-control input-sm" style="display:none;" id="ssidList" onchange="listBSSID();"></select>
           </span>
           <span class="col-xs-3">
             <button id="scanb" type="button" class="btn btn-primary btn-xs" onclick="scanWifi()">Scan</button>
           </span>
         </div>
-        <div class="row form-group" style="display:none" id="hideBSSID">
+        <div class="row form-group" style="display:none" id="bssid">
           <label data-toggle="tooltip"
             title="If you have two Wi-Fi networks with the same SSID you may want to choose the specific one by BSSID"
             class="col-xs-3">BSSID</label>
@@ -562,7 +373,8 @@
           </span>
         </div>
         <div class="row form-group">
-          <label data-toggle="tooltip" title="Use a static IP Address instead of DHCP" class="col-xs-3">Use Static IP</label>
+          <label data-toggle="tooltip" title="Use a static IP Address instead of DHCP" class="col-xs-3">Use Static
+            IP</label>
           <div class="col-xs-9">
             <form>
               <label class="checkbox-inline"><input type="checkbox" id="checkboxStaticIP" value=""
@@ -598,9 +410,6 @@
       </div>
       <div class="col-sm-6">
         <legend>RFID Hardware Settings</legend>
-        <h6 class="text-muted">Please refer the <a
-            href="https://github.com/CurtRod/SimpleEVSE-WiFi#wiring-wemos-d1-mini-nodemcu">documentation</a> for pin
-          configuration.</h6>
         <div class="row form-group">
           <label data-toggle="tooltip"
             title="When you want to use a RC522 RFID Hardware to activate your EVSE, please activate this option."
@@ -715,8 +524,8 @@
         </div>
         <div class="row form-group">
           <label data-toggle="tooltip"
-            title="If you want to activate your EVSE via button, please activate this option."
-            class="col-xs-3">Use Button to Activate EVSE</label>
+            title="If you want to activate your EVSE via button, please activate this option." class="col-xs-3">Use
+            Button to Activate EVSE</label>
           <div class="col-xs-9">
             <form>
               <label class="checkbox-inline"><input type="checkbox" id="checkboxButtonActive" value=""
@@ -724,34 +533,35 @@
             </form>
           </div>
         </div>
-        <!-- <div class="row form-group">
-          <label data-toggle="tooltip" title="If you want to keep your EVSE always active, please activate this option."
-            class="col-xs-3">Use always active mode</label>
+        <div class="row form-group">
+          <label data-toggle="tooltip" title="Select the operating mode" class="col-xs-3">Operating Mode</label>
           <div class="col-xs-9">
             <form>
-              <label class="checkbox-inline"><input type="checkbox" id="checkboxAlwaysActive" value=""
-                  name="checkboxalwaysactive"></label>
+              <fieldset id="radioOperatingMode">
+                <input type="radio" id="radioOperatingMode_Normal" name="radioOperatingMode" onchange="handleApi();"
+                  value="n">
+                <label class="radio-inline" for="radioOperatingMode_Normal">Normal Mode</label>&nbsp;<span
+                  data-toggle="tooltip"
+                  title="Standalone - Normal: Uses EVSE register 1000 for current specification and Register 2005 for activating/deactivating"
+                  class="glyphicon glyphicon-question-sign"></span><br>
+                <input type="radio" id="radioOperatingMode_AlwaysActive" name="radioOperatingMode"
+                  onchange="handleApi();" value="a">
+                <label class="radio-inline" for="radioOperatingMode_AlwaysActive">Always Active
+                  Mode</label>&nbsp;<span data-toggle="tooltip"
+                  title="Standalone - Always Active: Uses only EVSE register 1000 for current specification - activating/deactivating via RFID or button is NOT possible"
+                  class="glyphicon glyphicon-question-sign"></span><br>
+                <input type="radio" id="radioOperatingMode_Remote" name="radioOperatingMode" onchange="handleApi();"
+                  value="r">
+                <label class="radio-inline" for="radioOperatingMode_Remote">Remote Controlled</label>&nbsp;<span
+                  data-toggle="tooltip"
+                  title="Remote Controlled: Uses only EVSE register 1000 for current specification - to deactivate EVSE set current to 0 (recommended to use with openWB)"
+                  class="glyphicon glyphicon-question-sign"></span>
+              </fieldset>
             </form>
-          </div>
-        </div> -->
-        <div class="row form-group">
-          <label data-toggle="tooltip" title="Select the operating mode"
-            class="col-xs-3">Operating Mode</label>
-          <div class="col-xs-9">
-            <form><fieldset id="radioOperatingMode">
-              <input type="radio" id="radioOperatingMode_Normal" name="radioOperatingMode" onchange="handleApi();" value="n">
-              <label class="radio-inline" for="radioOperatingMode_Normal">Normal Mode</label>&nbsp;<span data-toggle="tooltip" title="Standalone - Normal: Uses EVSE register 1000 for current specification and Register 2005 for activating/deactivating" class="glyphicon glyphicon-question-sign"></span><br>
-              <input type="radio" id="radioOperatingMode_AlwaysActive" name="radioOperatingMode" onchange="handleApi();" value="a">
-              <label class="radio-inline" for="radioOperatingMode_AlwaysActive">Always Active Mode</label>&nbsp;<span data-toggle="tooltip" title="Standalone - Always Active: Uses only EVSE register 1000 for current specification - activating/deactivating via RFID or button is NOT possible" class="glyphicon glyphicon-question-sign"></span><br>
-              <input type="radio" id="radioOperatingMode_Remote"  name="radioOperatingMode" onchange="handleApi();" value="r">
-              <label class="radio-inline" for="radioOperatingMode_Remote">Remote Controlled</label>&nbsp;<span data-toggle="tooltip" title="Remote Controlled: Uses only EVSE register 1000 for current specification - to deactivate EVSE set current to 0 (recommended to use with openWB)" class="glyphicon glyphicon-question-sign"></span>
-            </fieldset></form>
           </div>
         </div>
         <div class="row form-group">
-          <label data-toggle="tooltip"
-            title="Enables the HTTP-Rest-API"
-            class="col-xs-3">Enable API</label>
+          <label data-toggle="tooltip" title="Enables the HTTP-Rest-API" class="col-xs-3">Enable API</label>
           <div class="col-xs-9">
             <form>
               <label class="checkbox-inline"><input type="checkbox" id="checkboxApi" value=""
@@ -771,12 +581,12 @@
           </div>
         </div>
         <div class="row form-group" id="divCPInterrupt">
-          <label data-toggle="tooltip"
-            title="Interrupt CP signal (briefly switches a relay connected to GPIO4)"
+          <label data-toggle="tooltip" title="Interrupt CP signal (briefly switches a relay connected to GPIO4)"
             class="col-xs-3">CP interrupt</label>
           <div class="col-xs-9">
             <span class="col-xs-3">
-              <button id="interruptcpbutton" type="button" class="btn btn-primary btn-xs" onclick="interruptCp()">Int CP</button>
+              <button id="interruptcpbutton" type="button" class="btn btn-primary btn-xs" onclick="interruptCp()">Int
+                CP</button>
             </span>
           </div>
         </div>
@@ -786,19 +596,19 @@
             class="col-xs-3">Use RSE Hardware</label>
           <div class="col-xs-9">
             <form>
-              <label class="checkbox-inline"><input type="checkbox" id="checkboxUseRse" value=""
-                  name="checkboxUseRse" onclick="handleUseRse();" ></label>
+              <label class="checkbox-inline"><input type="checkbox" id="checkboxUseRse" value="" name="checkboxUseRse"
+                  onclick="handleUseRse();"></label>
             </form>
           </div>
         </div>
         <div class="row form-group" id="divRSEValue">
           <label data-toggle="tooltip"
-            title="Maximum value with which the vehicle is charged when the RSE is triggered (%)"
-            class="col-xs-3">RSE Value</label>
-            <span class="col-xs-9 col-md-5">
-              <input class="form-control input-sm" value="100" placeholder="%" id="rsevalue" type="number" 
-              name="rsevalue" min="0" max="100">
-            </span>
+            title="Maximum value with which the vehicle is charged when the RSE is triggered (%)" class="col-xs-3">RSE
+            Value</label>
+          <span class="col-xs-9 col-md-5">
+            <input class="form-control input-sm" value="100" placeholder="%" id="rsevalue" type="number" name="rsevalue"
+              min="0" max="100">
+          </span>
         </div>
         <br>
       </div>
@@ -889,7 +699,8 @@
           </span>
         </div>
         <div class="row form-group">
-          <label data-toggle="tooltip" title="Enables the logging of EV charging processes" class="col-xs-3">Enable Logging</label>
+          <label data-toggle="tooltip" title="Enables the logging of EV charging processes" class="col-xs-3">Enable
+            Logging</label>
           <span class="col-xs-9 col-md-5">
             <form>
               <label class="checkbox-inline"><input type="checkbox" id="checkboxEnableLogging" value=""></label>
@@ -963,7 +774,8 @@
           </span>
         </div>
         <div class="row form-group">
-          <label data-toggle="tooltip" title="Use Daylight Saving Time (+1 h)" class="col-xs-3">Daylight Saving Time</label>
+          <label data-toggle="tooltip" title="Use Daylight Saving Time (+1 h)" class="col-xs-3">Daylight Saving
+            Time</label>
           <span class="col-xs-9 col-md-5">
             <form>
               <label class="checkbox-inline"><input type="checkbox" id="checkboxDst" value=""></label>
@@ -1015,7 +827,8 @@
                 </div>
                 <div class="modal-body">
                   <div id="pbar" class="progress">
-                    <div id="dynamic" class="progress-bar progress-bar-primary progress-bar-striped active">Restoring...
+                    <div id="dynamic" class="progress-bar progress-bar-primary progress-bar-striped active">
+                      Restoring...
                     </div>
                   </div>
                 </div>
@@ -1055,13 +868,12 @@
             <legend>Update Firmware</legend>
             <h6 class="text-muted">Current Firmware Version:&nbsp;<object class="fw_version"></object></h6>
             <h6 class="text-muted">Current Config Version:&nbsp;<object id="configversion"></object></h6>
-            <h6 class="text-muted">Download <a href="https://github.com/CurtRod/SimpleEVSE-WiFi/releases"
-                target="_blank">latest version</a> from GitHub.</h6>
+            <h6 class="text-muted"><object id="textDownloadFwVersion"></object></h6>
             <form class="form-inline" method="POST" action="/update" enctype="multipart/form-data">
               <div class="form-group">
-                <input type="file" name="update">
+                <input type="file" id="fwUpdateFile" name="update" required>
               </div>
-              <button type="submit" onclick="firwareUpdate()" class="btn btn-primary btn-sm">Upload</button>
+              <button type="submit" onclick="firmwareUpdate()" class="btn btn-primary btn-sm">Upload</button>
             </form>
           </div>
         </div>
@@ -1072,7 +884,218 @@
       <h6 class="text-muted"><a href="https://www.evse-wifi.de" target="_blank">EVSE WiFi</a></h6>
     </footer>
   </div>
+
+  <!--- Status Container -->
+  <div class="container" id="statusContent" style="display: none">
+    <div class="header clearfix">
+      <nav>
+        <ul class="nav pull-right" style="padding:10px">
+          <span class="text-muted" style="font-size:30px;cursor:pointer" onclick="openNav()">&#9776;</span>
+        </ul>
+      </nav>
+      <h3 class="text-muted">Status</h3>
+    </div>
+    <div class="alert alert-info">Values will be refreshed in <object id="refreshSeconds"></object> seconds.</div>
+    <div id="status" class="row">
+      <div class="col-sm-6">
+        <div class="panel panel-default table-responsive">
+          <table class="table table-hover table-striped">
+            <caption>Device</caption>
+            <tr>
+              <th>Chip ID</th>
+              <td id="chip"></td>
+            </tr>
+            <tr>
+              <th>CPU Clock</th>
+              <td id="cpu"></td>
+            </tr>
+            <tr>
+              <th>Uptime</th>
+              <td id="uptime"></td>
+            </tr>
+            <!--
+          <tr id="divintTemp">
+            <th>Internal Temp</th>
+            <td id="int_temp"></td>
+          </tr>-->
+            <tr>
+              <th>Free Heap</th>
+              <td>
+                <div class="progress" style="margin-bottom: 0 !important;">
+                  <div id="heap" class="progress-bar progress-bar-primary" role="progressbar">
+                    Progress
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <th>Free Flash</th>
+              <td>
+                <div class='progress' style="margin-bottom: 0 !important;">
+                  <div id="flash" class="progress-bar progress-bar-primary" role="progressbar">
+                    Progress
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <th>Free SPIFFS</th>
+              <td>
+                <div class='progress' style="margin-bottom: 0 !important;">
+                  <div id="spiffs" class="progress-bar progress-bar-primary" role="progressbar">
+                    Progress
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+      <div class="col-sm-6">
+        <div class="panel panel-default table-responsive">
+          <table class="table table-hover table-striped">
+            <caption>Network</caption>
+            <tr>
+              <th>SSID</th>
+              <td id="ssidstat"></td>
+            </tr>
+            <tr>
+              <th>IP</th>
+              <td id="ip"></td>
+            </tr>
+            <tr>
+              <th>Gateway</th>
+              <td id="gate"></td>
+            </tr>
+            <tr>
+              <th>Mask</th>
+              <td id="mask"></td>
+            </tr>
+            <tr>
+              <th>DNS</th>
+              <td id="dns"></td>
+            </tr>
+            <tr>
+              <th>MAC</th>
+              <td id="mac"></td>
+            </tr>
+          </table>
+        </div>
+      </div>
+      <div class="col-sm-6">
+        <div class="panel panel-default table-responsive">
+          <table class="table table-hover table-striped">
+            <caption>
+              <span style="float: left">EVSE Registers</span>
+              <span style="float: right" class="glyphicon glyphicon-pencil" onclick="showEvseRegModal()"></span>
+            </caption>
+            <tr>
+              <th>1000: Configured Current</th>
+              <td id="amps_conf"></td>
+            </tr>
+            <tr>
+              <th>1001: Actual Current</th>
+              <td id="amps_out"></td>
+            </tr>
+            <tr>
+              <th>1002: Vehicle Status</th>
+              <td id="vehicle_status"></td>
+            </tr>
+            <tr>
+              <th>1003: PP-Limit</th>
+              <td id="amps_pp"></td>
+            </tr>
+            <tr>
+              <th>1004: Turn off bit</th>
+              <td id="amps_turn_off"></td>
+            </tr>
+            <tr>
+              <th>1005: Firmware Version</th>
+              <td id="evse_version"></td>
+            </tr>
+            <tr>
+              <th>1006: EVSE Status</th>
+              <td id="evse_status"></td>
+            </tr>
+            <tr>
+              <th>2000: Current after boot</th>
+              <td id="amps_boot"></td>
+            </tr>
+            <tr>
+              <th>2001: Modbus Status</th>
+              <td id="evse_modbus"></td>
+            </tr>
+            <tr>
+              <th>2002: Min. Current Value</th>
+              <td id="amps_min"></td>
+            </tr>
+            <tr>
+              <th>2003: Analog Input Config</th>
+              <td id="evse_analog_in"></td>
+            </tr>
+            <tr>
+              <th>2004: Amps after boot (evse-button)</th>
+              <td id="amps_power_on"></td>
+            </tr>
+            <tr>
+              <th>2005: Register 2005</th>
+              <td id="evse_2005"></td>
+            </tr>
+            <tr>
+              <th>2006: Current Sharing Mode</th>
+              <td id="evse_sharing_mode"></td>
+            </tr>
+            <tr>
+              <th>2007: PP-Detection</th>
+              <td id="pp_detection"></td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+      <div id="meterRegisters" class="col-sm-6">
+        <div class="panel panel-default table-responsive">
+          <table class="table table-hover table-striped">
+            <caption>Meter Registers</caption>
+            <tr>
+              <th>Total active energy </th>
+              <td id="meter_total"></td>
+            </tr>
+            <tr>
+              <th>Current P1 </th>
+              <td id="meter_p1"></td>
+            </tr>
+            <tr>
+              <th>Current P2 </th>
+              <td id="meter_p2"></td>
+            </tr>
+            <tr>
+              <th>Current P3 </th>
+              <td id="meter_p3"></td>
+            </tr>
+            <tr>
+              <th>Voltage P1 </th>
+              <td id="meter_p1_v"></td>
+            </tr>
+            <tr>
+              <th>Voltage P2 </th>
+              <td id="meter_p2_v"></td>
+            </tr>
+            <tr>
+              <th>Voltage P3 </th>
+              <td id="meter_p3_v"></td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </div>
+    <hr>
+    <footer class="footer">
+      <h6 class="text-muted"><a href="https://www.evse-wifi.de" target="_blank">EVSE WiFi</a></h6>
+    </footer>
+  </div>
   <script src="script.js" type="text/javascript"></script>
+  </div>
 </body>
 
 </html>
