@@ -142,7 +142,7 @@ Compiled firmware binary and flasher tool for Windows PCs are available in on ww
 
 [Download Firmware](https://www.evse-wifi.de/download/)
 
-#### Building From Source
+#### Building From Source using Arduino
 Please install Arduino IDE if you didn't already, then add ESP8266 Core on top of it. Additional Library download links are listed below:
 
 * [Arduino IDE](http://www.arduino.cc) - The development IDE
@@ -163,6 +163,14 @@ You also need to upload web files to your ESP with ESP8266FS Uploader.
 * [ESP8266FS Uploader](https://github.com/esp8266/arduino-esp8266fs-plugin) - Arduino ESP8266 filesystem uploader
 
 Unlisted libraries are part of [ESP8266](https://github.com/esp8266/Arduino) Core for Arduino IDE, so you don't need to download them, but check that at least you have v2.4.0 or above installed.
+
+#### Building from source using vscode
+Install VSCode and install platformio plugin in vscode (plugins|recommended plugins). Open the project in VSCode, select the platformio extension on the left, and in project tasks select your board to build, upload etc.
+When building, all required libraries will be downloaded automatically.
+
+* [vscode](https://code.visualstudio.com/) - visual studio code
+
+**Windows platform for ESP32:** there is a flaw in AsyncWebserver building on Windows. To fix this, after first build (which fails) go to `.pio/libdeps/<your platform>/Time` and rename the `Time.h` to `_Time.h`. You need to repeat this whenever you downloaded this library again.
 
 ## First boot
 When SimpleEVSE-WiFi starts for the first time it sets up a WiFi access point called 'evse-wifi'. You can connect without a password. To connect, open http://192.168.4.1 in your browser. The initial password is 'adminadmin'. You should first check the Settings to bring the ESP in Client mode and connect it to your local WiFi network. The ESP will be restarted afterwards. If it doesn't restart, press the 'RST' button once. Sometimes the ESP must first be manually reset (this only has to happen after flashing a new firmware).
