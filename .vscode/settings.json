@@ -38,6 +38,14 @@
         "typeinfo": "cpp",
         "map": "cpp",
         "unordered_set": "cpp",
-        "regex": "cpp"
-    }
+        "regex": "cpp",
+        "bitset": "cpp",
+        "cstddef": "cpp",
+        "cstring": "cpp",
+        "random": "cpp",
+        "memory": "cpp",
+        "system_error": "cpp",
+        "iostream": "cpp"
+    },
+    "C_Cpp.dimInactiveRegions": true
 }

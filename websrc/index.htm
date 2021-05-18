@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -26,6 +27,9 @@
     </a>
     <a href="#" onclick="loadSettings()">
       <nobr><span class="glyphicon glyphicon-cog"></span>&nbsp;&nbsp;Settings</nobr>
+    </a>
+    <a id="timerLink" href="#" onclick="loadTimer()">
+      <nobr><span class="glyphicon glyphicon-time"></span>&nbsp;&nbsp;Timer</nobr>
     </a>
     <a href="#" onclick="loadStatus()">
       <nobr><span class="glyphicon glyphicon-time"></span>&nbsp;&nbsp;Status</nobr>
@@ -140,7 +144,7 @@
             <div class="form-group">
               <label for="password" class="control-label">Password</label>
               <input type="password" class="form-control" id="password" name="password" value="" required=""
-                title="Please enter your password">
+                title="Please enter your password" style="font-size:16px">
             </div>
             <button type="submit" class="btn btn-success btn-sm">Login</button>
           </form>
@@ -158,6 +162,8 @@
       </nav>
       <h3 class="text-muted">EVSE Control</h3>
     </div>
+    <div id="dangerRemoteHeartbeat" class="alert alert-danger" style="display: none;"><strong>Warning!</strong> Charging was canceled because there is no connection to a remote system.</div>
+    <div id="successRemoteHeartbeat" class="alert alert-success" style="display: none;">Remote system connected</div>
     <div class="hidden" id="carStatusReady" align=center>
       <img id="statusImg" src="/status_ready.svg">
     </div>
@@ -223,7 +229,8 @@
       </nav>
       <h3 class="text-muted">Users</h3>
     </div>
-    <div class="alert alert-info">You can add new users by either scanning a RFID Tag or by clicking on "New User" button.</div>
+    <div class="alert alert-info">You can add new users by either scanning a RFID Tag or by clicking on "New User"
+      button.</div>
     <div class="panel panel-default">
       <table id="usertable" class="table" data-paging="true" data-filtering="true" data-sorting="true"
         data-editing="true" data-state="true"></table>
@@ -294,26 +301,6 @@
     </footer>
   </div>
 
-  <!-- Log Container -->
-  <div class="container" id="logContent" style="display: none">
-    <div class="header clearfix">
-      <nav>
-        <ul class="nav pull-right" style="padding:10px">
-          <span class="text-muted" style="font-size:30px;cursor:pointer" onclick="openNav()">&#9776;</span>
-        </ul>
-      </nav>
-      <h3 class="text-muted">Log</h3>
-      <div class="alert alert-warning" id="textlimitlogfile"></div>
-    </div>
-    <div class="panel panel-default">
-      <table id="latestlogtable" class="table" data-paging="false" data-filtering="true" data-sorting="true"
-        data-editing="false" data-state="true" data-show-footer="true"></table>
-    </div>
-    <hr>
-    <footer class="footer">
-      <h6 class="text-muted"><a href="https://www.evse-wifi.de" target="_blank">EVSE WiFi</a></h6>
-    </footer>
-  </div>
   <!-- Settings Container -->
   <div class="container" id="settingsContent" style="display: none">
     <div class="header clearfix">
@@ -699,8 +686,7 @@
           </span>
         </div>
         <div class="row form-group">
-          <label data-toggle="tooltip" title="Enables the logging of EV charging processes" class="col-xs-3">Enable
-            Logging</label>
+          <label data-toggle="tooltip" title="Enables the logging of EV charging processes" class="col-xs-3">Enable Logging</label>
           <span class="col-xs-9 col-md-5">
             <form>
               <label class="checkbox-inline"><input type="checkbox" id="checkboxEnableLogging" value=""></label>
@@ -710,7 +696,17 @@
         <br>
       </div>
       <div class="col-sm-6">
-        <legend>Time Settings</legend>
+        <legend>Time and local Settings</legend>
+        <!--<div class="row form-group">
+          <label data-toggle="tooltip" title="Choose a language for the web interface" class="col-xs-3">Language
+          </label>
+          <span class="col-xs-9 col-md-5">
+            <select class="form-control input-sm" name="DropDownLanguage" id="DropDownLanguage">
+              <option value="en">English</option>
+              <option value="de">German</option>
+            </select>
+          </span>
+        </div>-->
         <div class="row form-group">
           <label data-toggle="tooltip" title="Choose an NTP Server (recommended: pool.ntp.org)" class="col-xs-3">NTP
             Server</label>
@@ -843,14 +839,42 @@
             <div class="modal-dialog">
               <div class="modal-content">
                 <div class="modal-header">
-                  <h4 class="modal-title">Please wait while uploading...</h4>
+                  <h4 id="h4UpdateModal" class="modal-title">Please wait while uploading...</h4>
                 </div>
-                <div class="modal-body">
+                <div id="bodyUpdateModal" class="modal-body">
                   <div class="loader"></div>
                 </div>
                 <div class="modal-footer">
-                  <button type="button" id="restoreclose" style="display:none;" class="btn btn-default"
-                    data-dismiss="modal">Close</button>
+                  <button id="reloadUpdateModal" type="submit" class="btn btn-primary" style="display:none;" data-dismiss="modal" onclick="location.reload()">Refresh</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="checkUpdatemodal" class="modal fade" role="dialog">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h4 class="modal-title">Please select the firmware you want to install</h4>
+                </div>
+                <div class="modal-body">
+                  <h5 class="text">Current Firmware Version:&nbsp;<b><object class="fw_version"></object></b></h5>
+                  <input class="form-check form-switch" type="checkbox" id="updateShowBetaVersions" onchange="checkFirmwareUpdate()">
+                  <label for="updateShowBetaVersions">Show Beta Software</label>
+                  <div class="row">
+                    <div class="col-sm-6">
+                      <h3>Select Version</h3>
+                      <select id="updateSelectContent" class="form-select" onchange="onChangeSelectionUpdate(this)" size="5" style="width:100%; font-size:16px">
+                      </select>
+                    </div>
+                    <div class="col-sm-6">
+                      <h3>Description</h3>
+                      <span id="selectedUpdateDescription"></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-dismiss="modal">Abort</button>
+                  <button type="submit" class="btn btn-primary" onclick="updateSelectedFirmware()">Update</button>
                 </div>
               </div>
             </div>
@@ -866,6 +890,7 @@
           </div>
           <div>
             <legend>Update Firmware</legend>
+            <button type="submit" onclick="checkFirmwareUpdate()" class="btn btn-primary btn-sm">Check for Update</button>
             <h6 class="text-muted">Current Firmware Version:&nbsp;<object class="fw_version"></object></h6>
             <h6 class="text-muted">Current Config Version:&nbsp;<object id="configversion"></object></h6>
             <h6 class="text-muted"><object id="textDownloadFwVersion"></object></h6>
@@ -873,11 +898,295 @@
               <div class="form-group">
                 <input type="file" id="fwUpdateFile" name="update" required>
               </div>
-              <button type="submit" onclick="firmwareUpdate()" class="btn btn-primary btn-sm">Upload</button>
+              <button type="submit" onclick="showFwUpdateModal()" class="btn btn-primary btn-sm">Upload</button>
             </form>
           </div>
         </div>
       </div>
+    </div>
+    <hr>
+    <footer class="footer">
+      <h6 class="text-muted"><a href="https://www.evse-wifi.de" target="_blank">EVSE WiFi</a></h6>
+    </footer>
+  </div>
+
+  <!-- Timer Container -->
+  <div class="container" id="timerContent" style="display: none">
+    <div class="header clearfix">
+      <nav>
+        <ul class="nav pull-right" style="padding:10px">
+          <span class="text-muted" style="font-size:30px;cursor:pointer" onclick="openNav()">&#9776;</span>
+        </ul>
+      </nav>
+      <h3 class="text-muted">Timer Control</h3>
+    </div>
+    <div>
+      <label for="timer_active">Activate Timer</label>
+      <input class="form-check form-switch" type="checkbox" value="" id="timer_active" onchange="handleTimerActivate()">
+    </div>
+    <div class="panel panel-default table-responsive">
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Active</th>
+            <th scope="col">From</th>
+            <th scope="col">To</th>
+            <th scope="col">Weekdays</th>
+            <th scope="col">Preset Current (A)</th>
+          </tr>
+        </thead>
+        <tbody style="transition:0.5s">
+          <tr>
+            <td style="vertical-align:middle">1</td>
+            <td style="vertical-align:middle"><input class="form-check form-switch" type="checkbox" value=""
+                id="timer1_active"></td>
+            <td style="vertical-align:middle">
+              <table>
+                <tr>
+                  <td><input class="form-control input-sm" type="number" id="timer1_fromH" min="0" max="23"
+                      maxlength="2" size="2" style="min-width:3em"></td>
+                  <td><input class="form-control input-sm" type="number" id="timer1_fromM" min="0" max="59"
+                      maxlength="2" size="2" style="min-width:3em"></td>
+                </tr>
+              </table>
+            </td>
+            <td style="vertical-align:middle">
+              <table>
+                <tr>
+                  <td><input class="form-control input-sm" type="number" id="timer1_toH" min="0" max="23" maxlength="2"
+                      size="2" style="min-width:3em"></td>
+                  <td><input class="form-control input-sm" type="number" id="timer1_toM" min="0" max="59" maxlength="2"
+                      size="2" style="min-width:3em"></td>
+                </tr>
+              </table>
+            <td>
+              <div class="btn-group" role="group">
+                <table>
+                  <tr align="center">
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer1_mo">Mon</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer1_tu">Tue</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer1_we">Wed</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer1_th">Thu</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer1_fr">Fri</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer1_sa">Sat</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer1_su">Sun</label></td>
+                  </tr>
+                  <tr align="center">
+                    <td><input type="checkbox" class="btn-check" id="timer1_mo" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer1_tu" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer1_we" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer1_th" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer1_fr" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer1_sa" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer1_su" autocomplete="off"></td>
+                  </tr>
+                </table>
+              </div>
+            </td>
+            <td style="vertical-align:middle"><input class="form-control input-sm" type="number" id="timer1_current" min="6" max="32" maxlength="2" size="2" style="min-width:3em"></td>
+          </tr>
+          <tr>
+            <td style="vertical-align:middle">2</td>
+            <td style="vertical-align:middle"><input class="form-check form-switch" type="checkbox" value=""
+                id="timer2_active"></td>
+            <td style="vertical-align:middle">
+              <table>
+                <tr>
+                  <td><input class="form-control input-sm" type="number" id="timer2_fromH" min="0" max="23"
+                      maxlength="2" size="2" style="min-width:3em"></td>
+                  <td><input class="form-control input-sm" type="number" id="timer2_fromM" min="0" max="59"
+                      maxlength="2" size="2" style="min-width:3em"></td>
+                </tr>
+              </table>
+            </td>
+            <td style="vertical-align:middle">
+              <table>
+                <tr>
+                  <td><input class="form-control input-sm" type="number" id="timer2_toH" min="0" max="23" maxlength="2"
+                      size="2" style="min-width:3em"></td>
+                  <td><input class="form-control input-sm" type="number" id="timer2_toM" min="0" max="59" maxlength="2"
+                      size="2" style="min-width:3em"></td>
+                </tr>
+              </table>
+            <td>
+              <div class="btn-group" role="group">
+                <table>
+                  <tr align="center">
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer2_mo">Mon</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer2_tu">Tue</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer2_we">Wed</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer2_th">Thu</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer2_fr">Fri</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer2_sa">Sat</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer2_su">Sun</label></td>
+                  </tr>
+                  <tr align="center">
+                    <td><input type="checkbox" class="btn-check" id="timer2_mo" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer2_tu" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer2_we" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer2_th" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer2_fr" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer2_sa" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer2_su" autocomplete="off"></td>
+                  </tr>
+                </table>
+              </div>
+            </td>
+            <td style="vertical-align:middle"><input class="form-control input-sm" type="number" id="timer2_current" min="6" max="32" maxlength="2" size="2" style="min-width:3em"></td>
+          </tr>
+          <tr>
+            <td style="vertical-align:middle">3</td>
+            <td style="vertical-align:middle"><input class="form-check form-switch" type="checkbox" value=""
+                id="timer3_active"></td>
+            <td style="vertical-align:middle">
+              <table>
+                <tr>
+                  <td><input class="form-control input-sm" type="number" id="timer3_fromH" min="0" max="23"
+                      maxlength="2" size="2" style="min-width:3em"></td>
+                  <td><input class="form-control input-sm" type="number" id="timer3_fromM" min="0" max="59"
+                      maxlength="2" size="2" style="min-width:3em"></td>
+                </tr>
+              </table>
+            </td>
+            <td style="vertical-align:middle">
+              <table>
+                <tr>
+                  <td><input class="form-control input-sm" type="number" id="timer3_toH" min="0" max="23" maxlength="2"
+                      size="2" style="min-width:3em"></td>
+                  <td><input class="form-control input-sm" type="number" id="timer3_toM" min="0" max="59" maxlength="2"
+                      size="2" style="min-width:3em"></td>
+                </tr>
+              </table>
+            <td>
+              <div class="btn-group" role="group">
+                <table>
+                  <tr align="center">
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer3_mo">Mon</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer3_tu">Tue</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer3_we">Wed</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer3_th">Thu</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer3_fr">Fri</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer3_sa">Sat</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer3_su">Sun</label></td>
+                  </tr>
+                  <tr align="center">
+                    <td><input type="checkbox" class="btn-check" id="timer3_mo" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer3_tu" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer3_we" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer3_th" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer3_fr" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer3_sa" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer3_su" autocomplete="off"></td>
+                  </tr>
+                </table>
+              </div>
+            </td>
+            <td style="vertical-align:middle"><input class="form-control input-sm" type="number" id="timer3_current" min="6" max="32" maxlength="2" size="2" style="min-width:3em"></td>
+          </tr>
+          <tr>
+            <td style="vertical-align:middle">4</td>
+            <td style="vertical-align:middle"><input class="form-check form-switch" type="checkbox" value=""
+                id="timer4_active"></td>
+            <td style="vertical-align:middle">
+              <table>
+                <tr>
+                  <td><input class="form-control input-sm" type="number" id="timer4_fromH" min="0" max="23"
+                      maxlength="2" size="2" style="min-width:3em"></td>
+                  <td><input class="form-control input-sm" type="number" id="timer4_fromM" min="0" max="59"
+                      maxlength="2" size="2" style="min-width:3em"></td>
+                </tr>
+              </table>
+            </td>
+            <td style="vertical-align:middle">
+              <table>
+                <tr>
+                  <td><input class="form-control input-sm" type="number" id="timer4_toH" min="0" max="23" maxlength="2"
+                      size="2" style="min-width:3em"></td>
+                  <td><input class="form-control input-sm" type="number" id="timer4_toM" min="0" max="59" maxlength="2"
+                      size="2" style="min-width:3em"></td>
+                </tr>
+              </table>
+            <td>
+              <div class="btn-group" role="group">
+                <table>
+                  <tr align="center">
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer4_mo">Mon</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer4_tu">Tue</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer4_we">Wed</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer4_th">Thu</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer4_fr">Fri</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer4_sa">Sat</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer4_su">Sun</label></td>
+                  </tr>
+                  <tr align="center">
+                    <td><input type="checkbox" class="btn-check" id="timer4_mo" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer4_tu" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer4_we" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer4_th" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer4_fr" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer4_sa" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer4_su" autocomplete="off"></td>
+                  </tr>
+                </table>
+              </div>
+            </td>
+            <td style="vertical-align:middle"><input class="form-control input-sm" type="number" id="timer4_current" min="6" max="32" maxlength="2" size="2" style="min-width:3em"></td>
+          </tr>
+          <tr>
+            <td style="vertical-align:middle">5</td>
+            <td style="vertical-align:middle"><input class="form-check form-switch" type="checkbox" value=""
+                id="timer5_active"></td>
+            <td style="vertical-align:middle">
+              <table>
+                <tr>
+                  <td><input class="form-control input-sm" type="number" id="timer5_fromH" min="0" max="23"
+                      maxlength="2" size="2" style="min-width:3em"></td>
+                  <td><input class="form-control input-sm" type="number" id="timer5_fromM" min="0" max="59"
+                      maxlength="2" size="2" style="min-width:3em"></td>
+                </tr>
+              </table>
+            </td>
+            <td style="vertical-align:middle">
+              <table>
+                <tr>
+                  <td><input class="form-control input-sm" type="number" id="timer5_toH" min="0" max="23" maxlength="2"
+                      size="2" style="min-width:3em"></td>
+                  <td><input class="form-control input-sm" type="number" id="timer5_toM" min="0" max="59" maxlength="2"
+                      size="2" style="min-width:3em"></td>
+                </tr>
+              </table>
+            <td>
+              <div class="btn-group" role="group">
+                <table>
+                  <tr align="center">
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer5_mo">Mon</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer5_tu">Tue</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer5_we">Wed</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer5_th">Thu</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer5_fr">Fri</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer5_sa">Sat</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer5_su">Sun</label></td>
+                  </tr>
+                  <tr align="center">
+                    <td><input type="checkbox" class="btn-check" id="timer5_mo" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer5_tu" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer5_we" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer5_th" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer5_fr" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer5_sa" autocomplete="off"></td>
+                    <td><input type="checkbox" class="btn-check" id="timer5_su" autocomplete="off"></td>
+                  </tr>
+                </table>
+              </div>
+            </td>
+            <td style="vertical-align:middle"><input class="form-control input-sm" type="number" id="timer5_current" min="6" max="32" maxlength="2" size="2" style="min-width:3em"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <button onclick="saveTimer()" class="btn btn-primary btn-sm pull-right">Save Timer</button> <br>
     </div>
     <hr>
     <footer class="footer">
@@ -913,6 +1222,14 @@
               <th>Uptime</th>
               <td id="uptime"></td>
             </tr>
+            <tr>
+              <th>Device Time</th>
+              <td id="devicetime"></td>
+            </tr>
+            <tr>
+              <th>Firmware</th>
+              <td><object class="fw_version"></object></td>
+            </tr>
             <!--
           <tr id="divintTemp">
             <th>Internal Temp</th>
@@ -939,7 +1256,7 @@
               </td>
             </tr>
             <tr>
-              <th>Free SPIFFS</th>
+              <th>Free FS</th>
               <td>
                 <div class='progress' style="margin-bottom: 0 !important;">
                   <div id="spiffs" class="progress-bar progress-bar-primary" role="progressbar">
@@ -979,9 +1296,15 @@
               <th>MAC</th>
               <td id="mac"></td>
             </tr>
+            <tr>
+              <th>Hostname</th>
+              <td id="host"></td>
+            </tr>
           </table>
         </div>
       </div>
+    </div>
+    <div class="row">
       <div class="col-sm-6">
         <div class="panel panel-default table-responsive">
           <table class="table table-hover table-striped">
@@ -1058,35 +1381,72 @@
           <table class="table table-hover table-striped">
             <caption>Meter Registers</caption>
             <tr>
-              <th>Total active energy </th>
+              <th>Total active energy (kWh)</th>
               <td id="meter_total"></td>
             </tr>
             <tr>
-              <th>Current P1 </th>
+              <th>Current P1 (A)</th>
               <td id="meter_p1"></td>
             </tr>
             <tr>
-              <th>Current P2 </th>
+              <th>Current P2 (A)</th>
               <td id="meter_p2"></td>
             </tr>
             <tr>
-              <th>Current P3 </th>
+              <th>Current P3 (A)</th>
               <td id="meter_p3"></td>
             </tr>
             <tr>
-              <th>Voltage P1 </th>
+              <th>Voltage P1 (V)</th>
               <td id="meter_p1_v"></td>
             </tr>
             <tr>
-              <th>Voltage P2 </th>
+              <th>Voltage P2 (V)</th>
               <td id="meter_p2_v"></td>
             </tr>
             <tr>
-              <th>Voltage P3 </th>
+              <th>Voltage P3 (V)</th>
               <td id="meter_p3_v"></td>
             </tr>
           </table>
         </div>
+      </div>
+    </div>
+    <hr>
+    <footer class="footer">
+      <h6 class="text-muted"><a href="https://www.evse-wifi.de" target="_blank">EVSE WiFi</a></h6>
+    </footer>
+  </div>
+
+  <!-- Log Container -->
+  <div class="container" id="logContent" style="display: none">
+    <div class="header clearfix">
+      <nav>
+        <ul class="nav pull-right" style="padding:10px">
+          <span class="text-muted" style="font-size:30px;cursor:pointer" onclick="openNav()">&#9776;</span>
+        </ul>
+      </nav>
+      <h3 class="text-muted">Log</h3>
+      <div class="alert alert-warning" id="textlimitlogfile"></div>
+      <div class="alert alert-warning" id="textlimitlogfile2"></div>
+    </div>
+    <div class="panel panel-default">
+      <table id="latestlogtable" class="table" data-paging="false" data-filtering="true" data-sorting="true"
+        data-editing="false" data-state="true" data-show-footer="true"></table>
+    </div>
+    <div>
+      <div class="row form-group">
+        <span class="col-6 col-sm-2">
+          <button id="btnExportLogCsv" type="button" class="btn btn-primary btn-xs" onclick="exportLogCsv()">Export
+            .csv</button>
+        </span>
+        <label data-toggle="tooltip" title="Choose the separator for csv file" class="col-6 col-sm-2">Separator</label>
+        <span class="col-6 col-sm-2">
+          <select class="form-control input-sm" id="csvSeparator">
+            <option value=";">Semicolon (;)</option>
+            <option value=",">Comma (,)</option>
+          </select>
+        </span>
       </div>
     </div>
     <hr>

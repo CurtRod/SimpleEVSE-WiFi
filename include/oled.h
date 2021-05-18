@@ -15,7 +15,7 @@ public:
     void oledLoop();
     void turnOff();
     void turnOn();
-    void showDemo(uint8_t evseStatus, unsigned long chargingTime, uint8_t current, uint8_t maxcurrent, float power, float energy, time_t time, String* version, bool active);
+    void showDemo(uint8_t evseStatus, unsigned long chargingTime, uint16_t current, uint8_t maxcurrent, float power, float energy, time_t time, String* version, bool active, bool timerActive);
     void showCheck(bool, uint8_t);
     void showSplash(String text = "Loading...");
 

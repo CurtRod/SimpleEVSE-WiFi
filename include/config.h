@@ -52,6 +52,7 @@ struct s_buttonConfig {
 
 struct s_systemConfig {
     const char* hostnm;
+    const char* language;
     const char* adminpwd;
     bool wsauth;
     bool debug;
@@ -74,6 +75,10 @@ struct s_evseConfig {
     float avgconsumption;
     bool rseActive;
     uint8_t rseValue;
+    bool reg1000;
+    bool reg2000;
+    unsigned long updateInterval;
+    uint8_t currentAfterBoot;   // Not in config.json - just for runtime
 };
 
 class EvseWiFiConfig {
@@ -105,7 +110,7 @@ public:
     float ICACHE_FLASH_ATTR getMeterEnergyPrice(uint8_t meterId);
     uint8_t ICACHE_FLASH_ATTR getMeterPin(uint8_t meterId);
     uint16_t ICACHE_FLASH_ATTR getMeterImpKwh(uint8_t meterId);
-    uint16_t ICACHE_FLASH_ATTR getMeterImpLen(uint8_t meterId);
+    uint16_t ICACHE_RAM_ATTR getMeterImpLen(uint8_t meterId);
     uint8_t ICACHE_FLASH_ATTR getMeterPhaseCount(uint8_t meterId);
     uint8_t ICACHE_FLASH_ATTR getMeterFactor(uint8_t meterId);
     bool useSMeter;
@@ -130,6 +135,7 @@ public:
 
 // systemConfig
     const char * ICACHE_FLASH_ATTR getSystemHostname();
+    const char * ICACHE_FLASH_ATTR getSystemLanguage();
     const char * ICACHE_FLASH_ATTR getSystemPass();
     bool ICACHE_FLASH_ATTR getSystemWsauth();
     bool ICACHE_FLASH_ATTR getSystemDebug();
@@ -140,9 +146,10 @@ public:
     bool ICACHE_FLASH_ATTR getSystemLogging();
     bool ICACHE_FLASH_ATTR getSystemApi();
 
-// evseConfig
+// evrialConfig
     uint8_t ICACHE_FLASH_ATTR getEvseMbid(uint8_t evseId);
     bool ICACHE_FLASH_ATTR getEvseAlwaysActive(uint8_t evseId);
+    bool ICACHE_FLASH_ATTR setEvseAlwaysActive(uint8_t evseId, bool aa);
     bool ICACHE_FLASH_ATTR getEvseRemote(uint8_t evseId);
     uint8_t ICACHE_FLASH_ATTR getEvseLedConfig(uint8_t evseId);
     uint8_t ICACHE_FLASH_ATTR getEvseDisplayRotation(uint8_t evseId);
@@ -154,6 +161,13 @@ public:
     bool ICACHE_FLASH_ATTR getEvseRseActive(uint8_t evseId);
     uint8_t ICACHE_FLASH_ATTR getEvseRsePin(uint8_t evseId);
     uint8_t ICACHE_FLASH_ATTR getEvseRseValue(uint8_t evseId);
+
+    bool ICACHE_FLASH_ATTR getEvseReg1000(uint8_t evseId);
+    bool ICACHE_FLASH_ATTR getEvseReg2000(uint8_t evseId);
+    unsigned long ICACHE_FLASH_ATTR getEvseUpdateInterval(uint8_t evseId);
+
+    uint16_t ICACHE_FLASH_ATTR getEvseCurrentAfterBoot(uint8_t evseId);
+    bool ICACHE_FLASH_ATTR setEvseCurrentAfterBoot(uint8_t evseId, uint16_t current);
 
 private:
     s_wifiConfig wifiConfig;

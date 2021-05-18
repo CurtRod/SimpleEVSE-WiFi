@@ -53,7 +53,7 @@ void EvseWiFiOled::turnOn() {
   this->displayOn = true;
 }
 
-void EvseWiFiOled::showDemo(uint8_t evseStatus, unsigned long chargingTime, uint8_t current, uint8_t maxcurrent, float power, float energy, time_t time, String* version, bool active) {
+void EvseWiFiOled::showDemo(uint8_t evseStatus, unsigned long chargingTime, uint16_t current, uint8_t maxcurrent, float power, float energy, time_t time, String* version, bool active, bool timerActive) {
   this->u8g2->firstPage();
 
   String _time;
@@ -132,7 +132,16 @@ void EvseWiFiOled::showDemo(uint8_t evseStatus, unsigned long chargingTime, uint
     strDuration += ":" + (String)chargingTimeM;
   }
 
-  String strCurrent = (String)current + " / " + maxcurrent + " A";
+  String strCurrent = "";
+  if (current > 64) {
+    strCurrent = (String)(current / 100.0);
+    strCurrent = strCurrent.substring(0, strCurrent.length()-1);
+  }
+  else {
+    strCurrent = (String)current; 
+  }
+  strCurrent += + " / " + (String)maxcurrent + " A";
+  
   String strPower = (String)power + " kW";
   String strEnergy = (String)energy + " kWh";
   String strSwVersion = "v" + *version;
@@ -185,6 +194,10 @@ void EvseWiFiOled::showDemo(uint8_t evseStatus, unsigned long chargingTime, uint
     }
     this->u8g2->drawStr(val_x + 17,val_y, strStatus.c_str());
     val_y += 16;
+
+    if (timerActive) {
+      this->u8g2->drawXBMP(val_x + 110, val_y-28, 12, 12, xbm_time);
+    }
     
     this->u8g2->drawXBMP(val_x, val_y-12, 12, 12, xbm_flash);
     this->u8g2->drawStr(val_x + 17,val_y, strCurrent.c_str());

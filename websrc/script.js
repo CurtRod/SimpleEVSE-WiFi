@@ -3,9 +3,11 @@ var websock = null;
 var wsUri;
 var sw_rev = ""
 var hw_rev = "";
+var language = "";
 var timeoutInterval;
 var inApMode = false;
 var timerRefreshStats;
+var highResolution = false;
 
 //EVSE Control
 var pp_limit;
@@ -22,9 +24,11 @@ var userdata = [];
 var page = 1;
 var haspages;
 var usertable = false;
+var editoropen = false;
 
 //Log
 var logdata;
+var logdataraw;
 var logtable = false;
 
 //Settings
@@ -40,6 +44,8 @@ var wifiSsidBackupAP = "";
 var wifiPassBackupAP = "";
 var wifiSsidBackupSTA = "";
 var wifiPassBackupSTA = "";
+var jsonUpdateList;
+var fwUpdateIndex = 0;
 
 //Status
 var refreshSeconds;
@@ -48,17 +54,24 @@ window.onload = function () {
 
 }
 
-// Script data for EVSE Control
+//Script data for EVSE Control
 function loadEVSEControl() {
-  websock.send("{\"command\":\"getevsedata\"}");
+  getEvseData();
   document.getElementById("evseContent").style.display = "block";
   document.getElementById("usersContent").style.display = "none";
   document.getElementById("settingsContent").style.display = "none";
+  document.getElementById("timerContent").style.display = "none";
   document.getElementById("statusContent").style.display = "none";
   document.getElementById("logContent").style.display = "none";
   document.getElementById("loginContent").style.display = "none";
   clearInterval(timerRefreshStats);
   closeNav();
+  timerRefreshEvseData = setInterval(getEvseData, 2000);
+}
+
+function getEvseData() {
+  websock.send("{\"command\":\"getevsedata\"}");
+  return;
 }
 function listEVSEData(obj) {
   chargingTime = obj.evse_charging_time;
@@ -83,11 +96,10 @@ function listEVSEData(obj) {
     $("#evseNotActive").addClass('hidden');
     $("#evseActive").removeClass('hidden');
   }
-  if (obj.evse_always_active) { //Always Active Mode
+  if (obj.evse_always_active || obj.evse_timer_active) { //Always Active Mode
     $("#evseNotActive").addClass('hidden');
     $("#evseActive").addClass('hidden');
   }
-
   if (obj.evse_vehicle_state === 0) {	//modbus error
     vehicleCharging = false;
     $("#carStatusDetected").addClass('hidden');
@@ -116,6 +128,9 @@ function listEVSEData(obj) {
     $("#carStatusCharging").removeClass('hidden');
     document.getElementById("evse_vehicle_state").innerHTML = "Charging...";
   }
+  if (obj.evse_timer_active === true) {  //Timer Symbol
+    document.getElementById("evse_vehicle_state").innerHTML += "&nbsp;<span class=\"glyphicon glyphicon-time\" style=\"color:green\"></span>";
+  }
   document.getElementById("evse_charging_time").innerHTML = getTimeFormat(obj.evse_charging_time);
   if (obj.ap_mode === true) {
     syncBrowserTime(false);
@@ -141,12 +156,32 @@ function listEVSEData(obj) {
     document.getElementById("currentModalSaveButton").disabled = false;
   }
 
+  if (obj.evse_remote_controlled) {
+    if (obj.evse_disabled_by_remote_hearbeat === true) {
+      document.getElementById("dangerRemoteHeartbeat").style.display = "block";
+      document.getElementById("successRemoteHeartbeat").style.display = "none";
+    }
+    else {
+      document.getElementById("dangerRemoteHeartbeat").style.display = "none";
+      document.getElementById("successRemoteHeartbeat").style.display = "block";
+    }
+  }
+
 }
 function handleSlider(value) {
-  document.getElementById("slider_current").innerHTML = value + " A";
+  if (highResolution) {
+    document.getElementById("slider_current").innerHTML = parseFloat(value).toFixed(1) + " A";
+  }
+  else {
+    document.getElementById("slider_current").innerHTML = parseFloat(value) + " A";
+  }
+  
 }
 function setEVSECurrent() {
   var currentToSet = document.getElementById("currentSlider").value;
+  if (highResolution) {
+    currentToSet = parseFloat(currentToSet) * 100.0;
+  }
   websock.send("{\"command\":\"setcurrent\", \"current\":" + currentToSet + "}");
   $("#currentModal").modal("hide");
   currentModalOpen = false;
@@ -187,23 +222,19 @@ function getTimeFormat(millisec) {
   return minutes + ":" + seconds;
 }
 
-function sessionTimeOut() {
-  websock.send("{\"command\":\"getevsedata\"}");
-  return;
-}
-
 //Script data for Users
 function loadUsers() {
   document.getElementById("evseContent").style.display = "none";
   document.getElementById("usersContent").style.display = "block";
   document.getElementById("settingsContent").style.display = "none";
+  document.getElementById("timerContent").style.display = "none";
   document.getElementById("statusContent").style.display = "none";
   document.getElementById("logContent").style.display = "none";
   closeNav();
   clearInterval(timerRefreshStats);
+  clearInterval(timerRefreshEvseData);
 
   userdata = [];
-  var commandtosend = {};
   websock.send("{\"command\":\"userlist\", \"page\":" + page + "}");
 }
 function listSCAN(obj) {
@@ -237,10 +268,10 @@ function builduserdata(obj) {
 
 function initUserTable() {
   jQuery(function ($) {
-    var $modal = $('#editor-modal'),
-      $editor = $('#editor'),
-      $editorTitle = $('#editor-title'),
-      ft = FooTable.init('#usertable', {
+    var $modal = $("#editor-modal"),
+      $editor = $("#editor"),
+      $editorTitle = $("#editor-title"),
+      ft = window.FooTable.init("#usertable", {
         columns: [{
           "name": "uid",
           "title": "UID",
@@ -259,9 +290,10 @@ function initUserTable() {
               return "Active";
             } else if (value === 99) {
               return "Admin";
-            } else {
+            } else if (value === 0) {
               return "Disabled";
             }
+            return value;
           },
         },
         {
@@ -269,40 +301,44 @@ function initUserTable() {
           "title": "Valid Until",
           "breakpoints": "xs sm",
           "parser": function (value) {
+            var comp = new Date();
+            value = Math.floor(value + ((comp.getTimezoneOffset() * 60) * -1));
             var vuepoch = new Date(value * 1000);
-            var formatted = vuepoch.getFullYear()
-              + '-' + twoDigits(vuepoch.getMonth() + 1)
-              + '-' + twoDigits(vuepoch.getDate());
+            var formatted = vuepoch.getFullYear() +
+              "-" + twoDigits(vuepoch.getMonth() + 1) +
+              "-" + twoDigits(vuepoch.getDate());
             return formatted;
           },
         }
         ],
         rows: userdata,
         editing: {
+          showText: "<span class=\"fooicon fooicon-pencil\" aria-hidden=\"true\"></span> Edit Users",
+          addText: "New User",
           addRow: function () {
             $editor[0].reset();
-            $editorTitle.text('Add a new User');
-            $modal.modal('show');
+            $editorTitle.text("Add a new User");
+            editoropen = true;
+            $modal.modal("show");
           },
           editRow: function (row) {
             var acctypefinder;
             var values = row.val();
             if (values.acctype === "Active") {
               acctypefinder = 1;
-            }
-            else if (values.acctype === "Admin") {
+            } else if (values.acctype === "Admin") {
               acctypefinder = 99;
-            }
-            else if (values.acctype === "Disabled") {
+            } else if (values.acctype === "Disabled") {
               acctypefinder = 0;
             }
-            $editor.find('#uid').val(values.uid);
-            $editor.find('#username').val(values.username);
-            $editor.find('#acctype').val(acctypefinder);
-            $editor.find('#validuntil').val(values.validuntil);
-            $modal.data('row', row);
-            $editorTitle.text('Edit User # ' + values.username);
-            $modal.modal('show');
+            $editor.find("#uid").val(values.uid);
+            $editor.find("#username").val(values.username);
+            $editor.find("#acctype").val(acctypefinder);
+            $editor.find("#validuntil").val(values.validuntil);
+            $modal.data("row", row);
+            $editorTitle.text("Edit User # " + values.username);
+            editoropen = true;
+            $modal.modal("show");
           },
           deleteRow: function (row) {
             var uid = row.value.uid;
@@ -315,17 +351,16 @@ function initUserTable() {
           }
         },
         components: {
-          filtering: FooTable.MyFiltering
+          filtering: window.FooTable.MyFiltering
         }
       }),
       uid = 10001;
-    $editor.on('submit', function (e) {
+    $editor.on("submit", function (e) {
       if (this.checkValidity && !this.checkValidity()) {
         return;
       }
       e.preventDefault();
-      var row = null;
-      row = $modal.data("row"),
+      var row = $modal.data("row"),
         values = {
           uid: $editor.find("#uid").val(),
           username: $editor.find("#username").val(),
@@ -335,6 +370,10 @@ function initUserTable() {
       if (row instanceof FooTable.Row) {
         row.val(values);
       } else {
+        values.id = uid++;
+        ft.rows.add(values);
+      }
+      if (editoropen === true) {
         var datatosend = {};
         datatosend.command = "userfile";
         datatosend.uid = $editor.find("#uid").val();
@@ -344,15 +383,12 @@ function initUserTable() {
         var vuepoch = (new Date(validuntil).getTime() / 1000);
         datatosend.validuntil = vuepoch;
         websock.send(JSON.stringify(datatosend));
+        editoropen = false;
         $modal.modal("hide");
-        values.id = uid++;
-        ft.rows.add(values);
-        return;
+        loadUsers();
       }
-
     });
   });
-  usertable = true;
 }
 
 function acctypefinder() {
@@ -381,9 +417,9 @@ function acctypeparser() {
 FooTable.MyFiltering = FooTable.Filtering.extend({
   construct: function (instance) {
     this._super(instance);
-    this.acctypes = ['1', '99', '0'];
-    this.acctypesstr = ['Active', 'Admin', 'Disabled'];
-    this.def = 'Access Type';
+    this.acctypes = ['1', '0'];
+    this.acctypesstr = ['Active', 'Disabled'];
+    this.def = 'All';
     this.$acctype = null;
   },
   $create: function () {
@@ -434,9 +470,8 @@ FooTable.MyFiltering = FooTable.Filtering.extend({
   }
 });
 
-//Functions for Log
+//Script data for Log
 function loadLog() {
-
   if (hw_rev === "ESP8266") {
     document.getElementById("textlimitlogfile").innerHTML = "The log file is limited to 50 entries (LIFO principle)";
   }
@@ -447,6 +482,7 @@ function loadLog() {
   document.getElementById("evseContent").style.display = "none";
   document.getElementById("usersContent").style.display = "none";
   document.getElementById("settingsContent").style.display = "none";
+  document.getElementById("timerContent").style.display = "none";
   document.getElementById("statusContent").style.display = "none";
   document.getElementById("logContent").style.display = "block";
   clearInterval(timerRefreshStats);
@@ -458,7 +494,6 @@ function loadLog() {
   commandtosend = {};
   commandtosend.command = "gettime";
   websock.send(JSON.stringify(commandtosend));
-
 }
 
 function initLogTable() {
@@ -543,14 +578,65 @@ function initLogTable() {
   logtable = true;
 }
 
-//Script for Settings
+function exportLogCsv() {
+  sep = document.getElementById("csvSeparator").value;
+  JsonFields = ["Date", "Duration", "Energy", "Price", "Costs", "StartReading", "UID", "Username"]
+  var csvStr = JsonFields.join(sep) + "\n";
+  logdataraw.forEach(element => {
+    var ts = new Date(element.timestamp * 1000);
+    StartDate = ts.getFullYear() + '-' + (ts.getMonth() + 1) + '-' + ts.getDate() + ' ' + ts.getUTCHours() + ':' + ts.getMinutes() + ':' + ts.getSeconds();
+
+    var dur = new Date(0);
+    dur.setUTCSeconds(element.duration / 1000);
+    Duration = dur.getUTCHours() + ':' + dur.getUTCMinutes() + ':' + dur.getUTCSeconds();
+
+    if (sep === ",") {
+      Energy = element.energy;
+      Price = element.price;
+      Costs = (element.energy * element.price / 100.0);
+      if (element.hasOwnProperty('reading')) {
+        StartReading = element.reading;
+      }
+      else {
+        StartReading = 0;
+      }
+      UID = element.uid;
+      Username = element.username;
+    }
+    else if (sep === ";") {
+      Energy = element.energy.toString().replace(".", ",");
+      Price = element.price.toString().replace(".", ",");
+      Costs = (element.energy * element.price / 100.0).toString().replace(".", ",")
+      if (element.hasOwnProperty('reading')) {
+        StartReading = element.reading.toString().replace(".", ",");
+      }
+      else {
+        StartReading = 0;
+      }
+      UID = element.uid;
+      Username = element.username;
+    }
+
+    csvStr += StartDate + sep + Duration + sep + Energy + sep + Price + sep + Costs + sep + StartReading + sep + UID + sep + Username + "\n";
+  })
+  var hiddenElement = document.createElement('a');
+  var dn = new Date();
+  hiddenElement.href = 'data:text/csv;charset=utf-8,' + encodeURI(csvStr);
+  hiddenElement.target = '_blank';
+  hiddenElement.download = dn.getFullYear() + '' + dn.getMonth() + '' + dn.getDate() + '_' + dn.getHours() + dn.getMinutes() + dn.getSeconds() + 'evse_wifi_log.csv';
+  hiddenElement.click();
+}
+
+//Script data for Settings
 function loadSettings() {
   document.getElementById("evseContent").style.display = "none";
   document.getElementById("usersContent").style.display = "none";
   document.getElementById("settingsContent").style.display = "block";
+  document.getElementById("timerContent").style.display = "none";
   document.getElementById("statusContent").style.display = "none";
   document.getElementById("logContent").style.display = "none";
   clearInterval(timerRefreshStats);
+  clearInterval(timerRefreshEvseData);
   closeNav();
 
   websock.send("{\"command\":\"getconf\"}");
@@ -560,6 +646,76 @@ function loadSettings() {
   handleStaticIP();
   handleApi();
 }
+
+function updateFinished() {
+  document.getElementById("h4UpdateModal").innerHTML = "System is rebooting..."
+  setTimeout(() => { 
+    document.getElementById("h4UpdateModal").innerHTML = "Update finished!"
+    document.getElementById("bodyUpdateModal").innerHTML = "Update process finished. Please click 'Refresh' to login."
+    document.getElementById("reloadUpdateModal").style.display = "block";
+  }, 15000);
+}
+
+function onChangeSelectionUpdate(s) {
+  fwUpdateIndex = parseInt(s.selectedOptions[0].id);
+  document.getElementById("selectedUpdateDescription").innerHTML = jsonUpdateList.versions[fwUpdateIndex].desEN;
+  
+}
+
+function checkFirmwareUpdate() {
+  var selection = document.getElementById("updateSelectContent");
+  for (var i = 0; selection.length; i++) {
+    selection.remove(selection.i);
+  }
+  var betaversions = document.getElementById("updateShowBetaVersions").checked;
+  jsonUpdateList = null;
+  var url = "https://update.evse-wifi.de/update.json"
+  var xhrCheck = new XMLHttpRequest();
+  xhrCheck.overrideMimeType("application/json");
+  xhrCheck.open('GET', url, true);
+  xhrCheck.onload  = function() {
+    var sel = false;
+    jsonUpdateList = JSON.parse(xhrCheck.responseText);
+    for (var i = 0; i < jsonUpdateList.versions.length; i++) {
+      if (jsonUpdateList.versions[i].hw === hw_rev &&
+          ((betaversions === false && jsonUpdateList.versions[i].beta === false) || (betaversions === true))) {
+        var option = document.createElement("option");
+        option.id = i;
+        option.text = "Version " + jsonUpdateList.versions[i].version;
+        if (sel === false) {
+          option.selected = true;
+          document.getElementById("selectedUpdateDescription").innerHTML = jsonUpdateList.versions[i].desEN;
+          fwUpdateIndex = i;
+          sel = true;
+        }
+        selection.add(option);
+      }
+    }
+  };
+  xhrCheck.send(null);
+  $("#checkUpdatemodal").modal();
+}
+
+function updateSelectedFirmware() {
+  var xhrGetFirmware = new XMLHttpRequest();
+  xhrGetFirmware.open("GET", jsonUpdateList.versions[fwUpdateIndex].url , true);
+  xhrGetFirmware.responseType = "blob";
+  xhrGetFirmware.onload = function () {
+    if (xhrGetFirmware.status === 200) {
+      var xhrPushFirmware = new XMLHttpRequest();
+      var url = "http://" + window.location.hostname + "/update"
+      var formData = new FormData();
+      var file = new File([xhrGetFirmware.response], "firmware.bin", { lastModified: new Date().getTime() });
+      formData.append("firmware.bin", file);
+      xhrPushFirmware.open("POST", url, true);
+      xhrPushFirmware.send(formData);
+      $("#checkUpdatemodal").modal("hide");
+      showFwUpdateModal();
+    }
+  }
+  xhrGetFirmware.send();
+}
+
 function listCONF(obj) {
   document.getElementById("configversion").innerHTML = obj.configversion;
 
@@ -697,6 +853,7 @@ function deviceTime() {
     document.getElementById("checkboxDst").disabled = false;
   }
   document.getElementById("utc").innerHTML = t.toUTCString().slice(0, -3);
+  document.getElementById("devicetime").innerHTML = t.toUTCString().slice(0, -3);
   utcSeconds = utcSeconds + 1;
 }
 
@@ -1012,6 +1169,7 @@ function saveConf() {
   //datatosend.button[0].buttonpin = parseInt(document.getElementById("gpiobutton").value);
 
   datatosend.system.hostnm = document.getElementById("hostname").value;
+  //datatosend.system.language = document.getElementById("DropDownLanguage").value;
   datatosend.system.adminpwd = a;
   datatosend.system.wsauth = document.getElementById("checkboxSafari").checked;
   datatosend.system.debug = document.getElementById("checkboxDebug").checked;
@@ -1191,10 +1349,8 @@ function resetFactoryReset() {
   }
 }
 
-function firmwareUpdate() {
-  if (document.getElementById("fwUpdateFile").value != "") {
-    $("#updatemodal").modal();
-  }
+function showFwUpdateModal() {
+  $("#updatemodal").modal();
 }
 
 function colorStatusbar(ref) {
@@ -1204,14 +1360,194 @@ function colorStatusbar(ref) {
   else ref.class = "progress-bar progress-bar-danger";
 }
 
-// Script data for Status
+//Script data for Timer
+function loadTimer() {
+  document.getElementById("evseContent").style.display = "none";
+  document.getElementById("usersContent").style.display = "none";
+  document.getElementById("settingsContent").style.display = "none";
+  document.getElementById("timerContent").style.display = "block";
+  document.getElementById("statusContent").style.display = "none";
+  document.getElementById("logContent").style.display = "none";
+  clearInterval(timerRefreshStats);
+  clearInterval(timerRefreshEvseData);
+  closeNav();
+  websock.send("{\"command\":\"getevsetimer\"}");
+}
+
+function listTimer(obj) {
+  if (obj.hasOwnProperty("active")) {
+    document.getElementById("timer_active").checked = obj.active;
+  }
+  else {
+    document.getElementById("timer_active").checked = true;
+  }
+  handleTimerActivate();
+  for (var i = 0; i < obj.list.length; i++) {
+    var j = i + 1;
+    var secsFrom = obj.list[i].from;
+    var fromH = Math.floor(secsFrom / 3600);
+    secsFrom %= 3600;
+    var fromM = Math.floor(secsFrom / 60);
+  
+    var secsTo = obj.list[i].to;
+    var toH = Math.floor(secsTo / 3600);
+    secsTo %= 3600;
+    var toM = Math.floor(secsTo / 60);
+
+    document.getElementById("timer" + j + "_active").checked = obj.list[i].active;
+    document.getElementById("timer" + j + "_fromH").value = fromH;
+    document.getElementById("timer" + j + "_fromM").value = fromM;
+    document.getElementById("timer" + j + "_toH").value = toH;
+    document.getElementById("timer" + j + "_toM").value = toM;
+    if (obj.list[i].hasOwnProperty("current")) {
+      if (obj.list[i].current > 64) {
+        document.getElementById("timer" + j + "_current").value = obj.list[i].current / 100.0;
+      }
+      else {
+        document.getElementById("timer" + j + "_current").value = obj.list[i].current;
+      }
+    }
+    else {
+      document.getElementById("timer" + j + "_current").value = null;
+    }
+
+    if (obj.list[i].days.includes(2)) { //Monday
+      document.getElementById("timer" + j + "_mo").checked = true;
+    }
+    else {
+      document.getElementById("timer" + j + "_mo").checked = false;
+    }
+    if (obj.list[i].days.includes(3)) { //Tuesday
+      document.getElementById("timer" + j + "_tu").checked = true;
+    }
+    else {
+      document.getElementById("timer" + j + "_tu").checked = false;
+    }
+    if (obj.list[i].days.includes(4)) { //Wednesday
+      document.getElementById("timer" + j + "_we").checked = true;
+    }
+    else {
+      document.getElementById("timer" + j + "_we").checked = false;
+    }
+    if (obj.list[i].days.includes(5)) { //Thursday
+      document.getElementById("timer" + j + "_th").checked = true;
+    }
+    else {
+      document.getElementById("timer" + j + "_th").checked = false;
+    }
+    if (obj.list[i].days.includes(6)) { //Friday
+      document.getElementById("timer" + j + "_fr").checked = true;
+    }
+    else {
+      document.getElementById("timer" + j + "_fr").checked = false;
+    }
+    if (obj.list[i].days.includes(7)) { //Saturday
+      document.getElementById("timer" + j + "_sa").checked = true;
+    }
+    else {
+      document.getElementById("timer" + j + "_sa").checked = false;
+    }
+    if (obj.list[i].days.includes(1)) { //Sunday
+      document.getElementById("timer" + j + "_su").checked = true;
+    }
+    else {
+      document.getElementById("timer" + j + "_su").checked = false;
+    }
+  }
+}
+
+function saveTimer() {
+  var datatosend = {};
+  datatosend.command = "timer";
+  datatosend.list = [];
+  
+  datatosend.active = document.getElementById("timer_active").checked;
+
+  for (var i = 0; i < 5; i++) {
+    var j = i + 1;
+    var days = "";
+    if (document.getElementById("timer" + j + "_su").checked === true) {
+      days += "1";
+    }
+    if (document.getElementById("timer" + j + "_mo").checked === true) {
+      days += "2";
+    }
+    if (document.getElementById("timer" + j + "_tu").checked === true) {
+      days += "3";
+    }
+    if (document.getElementById("timer" + j + "_we").checked === true) {
+      days += "4";
+    }
+    if (document.getElementById("timer" + j + "_th").checked === true) {
+      days += "5";
+    }
+    if (document.getElementById("timer" + j + "_fr").checked === true) {
+      days += "6";
+    }
+    if (document.getElementById("timer" + j + "_sa").checked === true) {
+      days += "7";
+    }
+
+    var eActive = document.getElementById("timer" + j + "_active").checked;
+    var eFrom = (document.getElementById("timer" + j + "_fromH").value * 3600 + document.getElementById("timer" + j + "_fromM").value * 60);
+    var eTo = (document.getElementById("timer" + j + "_toH").value * 3600 + document.getElementById("timer" + j + "_toM").value * 60);
+    if (highResolution) {
+      var eCurrent = parseFloat(document.getElementById("timer" + j + "_current").value) * 100.0;
+    }
+    else {
+      var eCurrent = parseInt(document.getElementById("timer" + j + "_current").value);
+    }
+    if (eCurrent < 6) {
+      eCurrent = 0;
+    }
+    
+    var eDays = days;
+
+    datatosend.list.push({
+      "active" : eActive,
+      "from"   : eFrom,
+      "to"     : eTo,
+      "days"   : eDays,
+      "current": eCurrent
+    })
+  }
+  websock.send(JSON.stringify(datatosend));
+  alert("Timer settings saved");
+  loadTimer();
+}
+
+function handleTimerActivate() {
+  var tf = true;
+  if (document.getElementById("timer_active").checked) {
+    tf = false;
+  }
+  for (var i = 1; i < 6; i++) {
+    document.getElementById("timer" + i + "_active").disabled = tf;
+    document.getElementById("timer" + i + "_fromH").disabled = tf;
+    document.getElementById("timer" + i + "_fromM").disabled = tf;
+    document.getElementById("timer" + i + "_toH").disabled = tf;
+    document.getElementById("timer" + i + "_toM").disabled = tf;
+    document.getElementById("timer" + i + "_mo").disabled = tf;
+    document.getElementById("timer" + i + "_tu").disabled = tf;
+    document.getElementById("timer" + i + "_we").disabled = tf;
+    document.getElementById("timer" + i + "_th").disabled = tf;
+    document.getElementById("timer" + i + "_fr").disabled = tf;
+    document.getElementById("timer" + i + "_sa").disabled = tf;
+    document.getElementById("timer" + i + "_su").disabled = tf;
+    document.getElementById("timer" + i + "_current").disabled = tf;
+  }
+}
+
+//Script data for Status
 function loadStatus() {
   document.getElementById("evseContent").style.display = "none";
   document.getElementById("usersContent").style.display = "none";
   document.getElementById("settingsContent").style.display = "none";
+  document.getElementById("timerContent").style.display = "none";
   document.getElementById("statusContent").style.display = "block";
   document.getElementById("logContent").style.display = "none";
   clearInterval(timerRefreshStats);
+  clearInterval(timerRefreshEvseData);
   closeNav();
   
   refreshStats();
@@ -1256,7 +1592,8 @@ function listStats(obj) {
   }
   colorStatusbar(document.getElementById("heap"));
   document.getElementById("flash").innerHTML = Math.round((obj.availsize / 1024) * 10) / 10 + " kB";
-  document.getElementById("flash").style.width = (obj.availsize * 100) / (4194304 - obj.spiffssize) + "%";
+  //document.getElementById("flash").style.width = (obj.availsize * 100) / (4194304 - obj.spiffssize) + "%";
+  document.getElementById("flash").style.width = (obj.availsize * 100) / (obj.flashsize - obj.spiffssize) + "%";
   colorStatusbar(document.getElementById("flash"));
   document.getElementById("spiffs").innerHTML = Math.round((obj.availspiffs / 1024) * 10) / 10 + " kB";
   document.getElementById("spiffs").style.width = (obj.availspiffs * 100) / obj.spiffssize + "%";
@@ -1267,6 +1604,7 @@ function listStats(obj) {
   document.getElementById("mask").innerHTML = obj.netmask;
   document.getElementById("dns").innerHTML = obj.dns;
   document.getElementById("mac").innerHTML = obj.mac;
+  document.getElementById("host").innerHTML = obj.hostname;
   document.getElementById("amps_conf").innerHTML = obj.evse_amps_conf;			//1000
   document.getElementById("amps_out").innerHTML = obj.evse_amps_out;			//1001
   document.getElementById("vehicle_status").innerHTML = obj.evse_vehicle_state;	//1002
@@ -1373,11 +1711,6 @@ function socketMessageListener(evt) {
   if (obj.command === "getevsedata") {
     listEVSEData(obj);
   }
-  else if (obj.command === "sessiontimeout") {
-    if (document.getElementById("evseContent").style.display !== "none") {
-      sessionTimeOut();
-    }
-  }
   else if (obj.command === "piccscan") {
     if (document.getElementById("usersContent").style.display === "block") {
       listSCAN(obj);
@@ -1431,9 +1764,27 @@ function socketMessageListener(evt) {
     hw_rev = obj.hw_rev;
     sw_rev = obj.sw_rev;
     pp_limit = obj.pp_limit;
+    language = obj.language;
+    opmode = obj.opmode;
+    highResolution = obj.highResolution;
+
+    if (highResolution) {
+      document.getElementById("currentSlider").setAttribute("step", "0.5");
+      document.getElementById("timer1_current").setAttribute("step", "0.5");
+      document.getElementById("timer2_current").setAttribute("step", "0.5");
+      document.getElementById("timer3_current").setAttribute("step", "0.5");
+      document.getElementById("timer4_current").setAttribute("step", "0.5");
+      document.getElementById("timer5_current").setAttribute("step", "0.5");
+    }
     
     const fw = document.getElementsByClassName("fw_version")
     for (let i of fw) { i.innerHTML = sw_rev; }
+    if (opmode === 0) {
+      document.getElementById("timerLink").style.display = "block";
+    }
+    else {
+      document.getElementById("timerLink").style.display = "none";
+    }
   }
   else if (typeof obj.configversion !== "undefined") {
     listCONF(obj);
@@ -1446,7 +1797,14 @@ function socketMessageListener(evt) {
   else if (obj.command === "status") {
     listStats(obj);
   }
+  else if (obj.command === "timer") {
+    listTimer(obj);
+  }
+  else if (obj.command === "updateFinished") {
+    updateFinished();
+  }
   if (obj.type === "latestlog") {
+    logdataraw = obj.list
     logdata = obj.list;
     for (i in logdata) {
       if (logdata[i].price === "e") {
@@ -1460,7 +1818,11 @@ function socketMessageListener(evt) {
       document.getElementById("latestlogtable").innerHTML = null;
       initLogTable();
     }
+    if (logdata.length > 0) {
+      document.getElementById("textlimitlogfile2").innerHTML = "Currently " + logdata.length + " entries in log file. ";
+    }
   }
+
 }
 
 function socketCloseListener(evt) {
@@ -1531,6 +1893,7 @@ function start() {
   document.getElementById("evseContent").style.display = "none";
   document.getElementById("usersContent").style.display = "none";
   document.getElementById("settingsContent").style.display = "none";
+  document.getElementById("timerContent").style.display = "none";
   document.getElementById("statusContent").style.display = "none";
   document.getElementById("logContent").style.display = "none";
 }

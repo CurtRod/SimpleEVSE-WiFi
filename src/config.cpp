@@ -101,6 +101,12 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::loadConfig(String givenConfig) {
 
     // systemConfig
     systemConfig.hostnm = strdup(jsonDoc["system"]["hostnm"]);
+    if (jsonDoc["system"].containsKey("language")) {
+        systemConfig.language = strdup(jsonDoc["system"]["language"]);
+    }
+    else {
+        systemConfig.language = "en";
+    }
     systemConfig.adminpwd = strdup(jsonDoc["system"]["adminpwd"]);
     systemConfig.wsauth = jsonDoc["system"]["wsauth"];
     systemConfig.debug = jsonDoc["system"]["debug"];
@@ -165,6 +171,28 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::loadConfig(String givenConfig) {
     else {
         evseConfig[0].remote = false;
     }
+
+    // Testing RS485
+    if (jsonDoc["evse"][0].containsKey("reg1000")) {
+        evseConfig[0].reg1000 = jsonDoc["evse"][0]["reg1000"];
+    }
+    else {
+        evseConfig[0].reg1000 = true;
+    }
+    if (jsonDoc["evse"][0].containsKey("reg2000")) {
+        evseConfig[0].reg2000 = jsonDoc["evse"][0]["reg2000"];
+    }
+    else {
+        evseConfig[0].reg2000 = true;
+    }
+    if (jsonDoc["evse"][0].containsKey("updateInterval")) {
+        evseConfig[0].updateInterval = jsonDoc["evse"][0]["updateInterval"];
+    }
+    else {
+        evseConfig[0].updateInterval = 2000;
+    }
+    // End Testing RS485
+
     Serial.println("EVSE loaded");
     Serial.println("loadConfig.. Check!");
     configLoaded = true;
@@ -193,9 +221,6 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::loadConfiguration() {
             Serial.println("Use SDM630");
         }
     }
-
-    
-
     return true;
 }
 bool ICACHE_FLASH_ATTR EvseWiFiConfig::printConfigFile() {
@@ -257,6 +282,7 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::printConfig() {
     Serial.println();
     Serial.println("// System Config");
     Serial.println("hostnm: " + String(getSystemHostname()));
+    Serial.println("language: " + String(getSystemLanguage()));
     Serial.println("adminpwd: " + String(getSystemPass()));
     Serial.println("wsauth: " + String(getSystemWsauth()));
     Serial.println("debug: " + String(getSystemDebug()));
@@ -276,6 +302,9 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::printConfig() {
     Serial.println("avgconsumption: " + String(getEvseAvgConsumption(0)));
     Serial.println("rseactive: " + String(getEvseRseActive(0)));
     Serial.println("rsevalue: " + String(getEvseRseValue(0)));
+    Serial.println("reg1000: " + String(getEvseReg1000(0)));
+    Serial.println("reg2000: " + String(getEvseReg2000(0)));
+    Serial.println("updateInterval: " + String(getEvseUpdateInterval(0)));
     Serial.println("--- End of Config...");
     return true;
 }
@@ -350,6 +379,7 @@ String ICACHE_FLASH_ATTR EvseWiFiConfig::getConfigJson() {
 
     JsonObject systemItem = rootDoc.createNestedObject("system");
     systemItem["hostnm"] = this->getSystemHostname();
+    systemItem["language"] = this->getSystemLanguage();
     systemItem["adminpwd"] = this->getSystemPass();
     systemItem["wsauth"] = this->getSystemWsauth();
     systemItem["debug"] = this->getSystemDebug();
@@ -370,6 +400,9 @@ String ICACHE_FLASH_ATTR EvseWiFiConfig::getConfigJson() {
     evseObject_0["avgconsumption"] = this->getEvseAvgConsumption(0);
     evseObject_0["rseactive"] = this->getEvseRseActive(0);
     evseObject_0["rsevalue"] = this->getEvseRseValue(0);
+    evseObject_0["reg1000"] = this->getEvseReg1000(0);
+    evseObject_0["reg2000"] = this->getEvseReg2000(0);
+    evseObject_0["updateInterval"] = this->getEvseUpdateInterval(0);
     
     String sReturn;
     serializeJsonPretty(rootDoc, sReturn);
@@ -384,10 +417,21 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::checkUpdateConfig(String jsonString, bool
         return false;
     }
     bool err = false;
-    if (this->getEvseAlwaysActive(0) == true && jsonDoc["evse"][0]["alwaysactive"] == false) {  // switch from AA/Remote to Normal mode
+
+    // switch to Normal mode
+    if (jsonDoc["evse"][0]["alwaysactive"] == false) {
         if (this->getSystemDebug()) Serial.println("[ SYSTEM ] Switched from AA/Remote to normal mode -> going to set Register 2005...");
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 5; i++) {               // Set reg 2005
             if (setEVSERegister(2005, 16448)){
+                err = false;
+                break;
+            }
+            err = true;
+            delay(150);
+        }
+        for (int i = 0; i < 5; i++) {               // Set reg 1000
+            if (setEVSERegister(1000, this->getEvseCurrentAfterBoot(0))){
+                err = false;
                 break;
             }
             err = true;
@@ -398,8 +442,47 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::checkUpdateConfig(String jsonString, bool
             return false;
         } 
     }
+    else if (jsonDoc["evse"][0]["alwaysactive"] == true) { //Switch to AA
+        bool updateTimerFile = false;
+        File timerFile = SPIFFS.open("/timer.json", "r");
+        if (!timerFile) {
+            if(this->getSystemDebug()) Serial.println("[ ERR ] Timer File does not exist");
+        }
+        else {
+            size_t size = timerFile.size();
+            std::unique_ptr<char[]> buf(new char[size]);
+            timerFile.readBytes(buf.get(), size);
+            DynamicJsonDocument jsonDoc(1800);
+            DeserializationError error = deserializeJson(jsonDoc, buf.get());
+            if (error) {
+                if(this->getSystemDebug()) Serial.println("[ ERR ] Cannot deserialize timer file");
+            }
+            timerFile.close();
+
+            JsonArray timerArray = jsonDoc["list"];
+            for (size_t i = 0; i < timerArray.size(); i++) {
+                JsonObject tObj = timerArray[i];
+                if (tObj["active"] == true) { //timer is active
+                    jsonDoc["list"][i]["active"] = false;
+                    updateTimerFile = true;
+                }
+            }
+            if (updateTimerFile) {
+                SPIFFS.remove("/timer.json");
+                File timerFile2 = SPIFFS.open("/timer.json", "w");
+                if (!timerFile2) {
+                    if(this->getSystemDebug()) Serial.println("[ ERR ] Cannot write timer file");
+                    return false;
+                }
+                if (serializeJson(jsonDoc, timerFile2) == 0) {
+                    if(this->getSystemDebug()) Serial.println("[ ERR ] Cannot write timer file");
+                }
+                timerFile2.close();
+            }
+        }
+    }
     else {
-        if (this->getSystemDebug()) Serial.println("[ SYSTEM ] No Register to Set (switch from AA/Remote to normal mode)");
+        if (this->getSystemDebug()) Serial.println("[ SYSTEM ] No Register to Set (not switched from AA/Remote to normal mode)");
     }
     return true;
 }
@@ -512,7 +595,7 @@ uint16_t ICACHE_FLASH_ATTR EvseWiFiConfig::getMeterImpKwh(uint8_t meterId) {
     if (meterConfig[meterId].kwhimp) return meterConfig[meterId].kwhimp;
     return 1000;
 }
-uint16_t ICACHE_FLASH_ATTR EvseWiFiConfig::getMeterImpLen(uint8_t meterId) {
+uint16_t ICACHE_RAM_ATTR EvseWiFiConfig::getMeterImpLen(uint8_t meterId) {
     if (meterConfig[meterId].implen) return (meterConfig[meterId].implen);
     return 30;
 }
@@ -577,6 +660,10 @@ const char * ICACHE_FLASH_ATTR EvseWiFiConfig::getSystemHostname() {
     if (systemConfig.hostnm) return systemConfig.hostnm;
     return "evse-wifi";
 }
+const char * ICACHE_FLASH_ATTR EvseWiFiConfig::getSystemLanguage() {
+    if (systemConfig.language) return systemConfig.language;
+    return "en";
+}
 const char * ICACHE_FLASH_ATTR EvseWiFiConfig::getSystemPass() {
     if (systemConfig.adminpwd) return systemConfig.adminpwd;
     return "adminadmin";
@@ -607,6 +694,10 @@ uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseMbid(uint8_t evseId) {
 }
 bool ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseAlwaysActive(uint8_t evseId) {
     return evseConfig[evseId].alwaysactive;
+}
+bool ICACHE_FLASH_ATTR EvseWiFiConfig::setEvseAlwaysActive(uint8_t evseId, bool aa) {
+    evseConfig[evseId].alwaysactive = aa;
+    return true;
 }
 bool ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseRemote(uint8_t evseId) {
     return evseConfig[evseId].remote;
@@ -645,4 +736,25 @@ uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseRsePin(uint8_t evseId) {
 }
 uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseRseValue(uint8_t evseId) {
     return evseConfig[evseId].rseValue;
+}
+
+// Testing RS485
+bool ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseReg1000(uint8_t evseId) {
+    return evseConfig[evseId].reg1000;
+}
+bool ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseReg2000(uint8_t evseId) {
+    return evseConfig[evseId].reg2000;
+}
+unsigned long ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseUpdateInterval(uint8_t evseId) {
+    return evseConfig[evseId].updateInterval;
+}
+// End Testing RS485
+
+uint16_t ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseCurrentAfterBoot(uint8_t evseId) {
+    return evseConfig[evseId].currentAfterBoot;
+}
+
+bool ICACHE_FLASH_ATTR EvseWiFiConfig::setEvseCurrentAfterBoot(uint8_t evseId, uint16_t current) {
+    evseConfig[evseId].currentAfterBoot = current;
+    return true;
 }

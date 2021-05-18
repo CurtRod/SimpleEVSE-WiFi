@@ -64,6 +64,7 @@ scanResult ICACHE_FLASH_ATTR EvseWiFiRfid::readPicc() {
     for (int i = 0; i < mfrc522.uid.size; ++i) {
       uid += String(mfrc522.uid.uidByte[i], HEX);
     }
+    
     res.uid = uid;
     if (this->debug) Serial.print(uid);
     MFRC522::PICC_Type piccType = mfrc522.PICC_GetType(mfrc522.uid.sak);
