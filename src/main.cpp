@@ -48,14 +48,19 @@
 #include <iostream>
 #include "proto.h"
 #include "ntp.h"
-#include "websrc.h"
+#ifdef ESP32_DEVKIT
+  #include "websrcembed.h"
+#else
+  #include "websrc.h"
+#endif
 #include "config.h"
 #include "templates.h"
 #include "rfid.h"
 
+
 uint8_t sw_min = 2; //Firmware Minor Version
 uint8_t sw_rev = 2; //Firmware Revision
-String sw_add = "-beta2";
+String sw_add = "-deti";
 
 #ifdef ESP8266
 uint8_t sw_maj = 1; //Firmware Major Version
@@ -100,6 +105,10 @@ unsigned long millisInterruptCp = 0;
 bool rseActive = false;
 uint8_t currentBeforeRse = 0;
 #endif
+#ifdef ESP32_DEVKIT
+SemaphoreHandle_t CPMutex;
+uint8_t numPhasesState = 0;
+#endif
 
 //RFID
 bool showLedRfidDecline = false;
@@ -139,10 +148,12 @@ float voltageP3 = 0.0;
 SoftwareSerial SecondSer(D1, D2); //SoftwareSerial object (RX, TX)
 #else
 HardwareSerial SecondSer(2);
+#ifdef OLED
 //oLED
 unsigned long millisUpdateOled = 0;
 U8G2_SSD1327_WS_128X128_F_4W_HW_SPI u8g2(U8G2_R0, /* cs=*/ 12, /* dc=*/ 13, /* reset=*/ 33);
 EvseWiFiOled oled;
+#endif
 #endif
 
 unsigned long millisOnTimeOled = 0;
@@ -343,14 +354,13 @@ void ICACHE_FLASH_ATTR timerDeactivateMatch() {
   }
 }
 
-
+#ifdef OLED
 void ICACHE_FLASH_ATTR turnOnOled(uint32_t ontimesecs = 120) {
-  #ifdef ESP32
   millisOnTimeOled = millis() + ontimesecs * 1000; 
   oled.turnOn();
   if (config.getSystemDebug()) Serial.println("[ oLED ] Display turned on");
-  #endif
 }
+#endif
 
 #ifndef ESP8266
 void ICACHE_FLASH_ATTR handleRse() {
@@ -505,9 +515,15 @@ bool ICACHE_FLASH_ATTR setSmartWb11kWSettings() {
   }
 
   Serial.println("[ Auto-Config ] Going to interrupt CP for 500ms");
+  #ifdef ESP32_DEVKIT
+  xSemaphoreTake(CPMutex, portMAX_DELAY);
+  #endif
   digitalWrite(config.getEvseCpIntPin(0), HIGH);
   delay(500);
   digitalWrite(config.getEvseCpIntPin(0), LOW);
+  #ifdef ESP32_DEVKIT
+  xSemaphoreGive(CPMutex);
+  #endif
   Serial.println("[ Auto-Config ] CP interrupt ended - going to Reboot now...");
 
   toReboot = true;
@@ -680,7 +696,7 @@ bool ICACHE_FLASH_ATTR reconnectWiFi() {
   if (config.getSystemDebug())Serial.print(config.getWifiSsid());
   return true;
 }
-
+#ifdef RFID
 //////////////////////////////////////////////////////////////////////////////////////////
 ///////       RFID Functions
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -714,7 +730,7 @@ void ICACHE_FLASH_ATTR rfidloop() {
     jsonDoc["uid"] = scan.uid;
     jsonDoc["type"] = scan.type;
     
-    #ifdef ESP32
+    #ifdef OLED
     if (config.getEvseAlwaysActive(0) || timerActive) {    // In AA/Remote just turnOnOled and leave
       turnOnOled();
       return;
@@ -746,14 +762,14 @@ void ICACHE_FLASH_ATTR rfidloop() {
       else {
         toActivateEVSE = true;
       }
-      #ifndef ESP8266
+      #ifdef OLED
       millisUpdateOled = millis() + 3000;
       oled.showCheck(true, 0);
       #endif
       showLedRfidGrant = true;
     }
     else {
-      #ifndef ESP8266
+      #ifdef OLED
       millisUpdateOled = millis() + 3000;
       oled.showCheck(false, 0);
       #endif
@@ -770,6 +786,7 @@ void ICACHE_FLASH_ATTR rfidloop() {
     }
   }
 }
+#endif
 
 void ICACHE_FLASH_ATTR sendStatus() {
   fsWorking = true;
@@ -1347,9 +1364,11 @@ bool ICACHE_FLASH_ATTR queryEVSE(bool startup = false) {
       if (evseVehicleState == 2 ||
           evseVehicleState == 3 ||
           evseVehicleState == 4) {
+        #ifdef OLED
         if (evseStatus != 2){
           turnOnOled();
         }
+        #endif
         evseStatus = 2; //vehicle detected
         if (config.getEvseLedConfig(0) == 3) changeLedTimes(300, 2000);
       }
@@ -1357,7 +1376,9 @@ bool ICACHE_FLASH_ATTR queryEVSE(bool startup = false) {
         evseStatus = 1; // EVSE deactivated
       }
       if (vehicleCharging == true && manualStop == false) {   //vehicle interrupted charging
+      #ifdef OLED
         turnOnOled();
+      #endif
         stopChargingTimestamp = ntp.getUtcTimeNow();
         vehicleCharging = false;
         if (config.getSystemDebug()) Serial.println("[ SYSTEM ] Vehicle interrupted charging");
@@ -1369,13 +1390,17 @@ bool ICACHE_FLASH_ATTR queryEVSE(bool startup = false) {
 
     if (evseVehicleState == 1) {
       if (evseStatus != 1){
+        #ifdef OLED
         turnOnOled();
+        #endif
       } 
       evseStatus = 1;  // ready
     }
     else if (evseVehicleState == 2) {
       if (evseStatus != 2){
+        #ifdef OLED
         turnOnOled();
+        #endif
       } 
       evseStatus = 2; //vehicle detected
       if (config.getEvseLedConfig(0) == 3) changeLedTimes(300, 2000);
@@ -1405,7 +1430,9 @@ bool ICACHE_FLASH_ATTR queryEVSE(bool startup = false) {
         if (config.getSystemDebug()) Serial.println("[ SYSTEM ] Vehicle interrupted charging");
       }
       if (evseStatus != 1) {
+        #ifdef OLED
         turnOnOled();
+        #endif
       }
       evseStatus = 1; // ready
       evseActive = true;
@@ -1420,9 +1447,11 @@ bool ICACHE_FLASH_ATTR queryEVSE(bool startup = false) {
           lastUsername = "vehicle";
           if (config.getSystemDebug()) Serial.println("[ SYSTEM ] Vehicle interrupted charging");
         }
+        #ifdef OLED
         if (evseStatus != 2){
           turnOnOled();
         }
+        #endif
         evseStatus = 2; //vehicle detected
         evseActive = true;
         if (config.getEvseLedConfig(0) == 3) changeLedTimes(300, 2000);
@@ -1432,7 +1461,9 @@ bool ICACHE_FLASH_ATTR queryEVSE(bool startup = false) {
           if (!startup) {
             toActivateEVSE = true;
           }
+          #ifdef OLED
           turnOnOled();
+          #endif
           startChargingTimestamp = ntp.getUtcTimeNow();
           meteredKWh = 0.0;
           vehicleCharging = true;
@@ -1449,9 +1480,11 @@ bool ICACHE_FLASH_ATTR queryEVSE(bool startup = false) {
       if (evseVehicleState == 2 ||
           evseVehicleState == 3 ||
           evseVehicleState == 4) {
+        #ifdef OLED
         if (evseStatus != 2){
           turnOnOled();
         }
+        #endif
         evseStatus = 2; //vehicle detected
         if (config.getEvseLedConfig(0) == 3) changeLedTimes(300, 2000);
         if (vehicleCharging && evseAmpsConfig == 0) { //Current Set to 0 - deactivate
@@ -1465,9 +1498,11 @@ bool ICACHE_FLASH_ATTR queryEVSE(bool startup = false) {
         }
       }
       else {
+        #ifdef OLED
         if (evseStatus != 1){
           turnOnOled();
         } 
+        #endif
         evseStatus = 1; // EVSE deactivated
       }
       if (vehicleCharging == true && manualStop == false) {   //vehicle interrupted charging
@@ -1562,7 +1597,9 @@ bool ICACHE_FLASH_ATTR getAdditionalEVSEData() {
 bool ICACHE_FLASH_ATTR activateEVSE() {
   if (!config.getEvseAlwaysActive(0) && !timerActive) {   //Normal Mode
     static uint16_t iTransmit;
+    #ifdef OLED
     turnOnOled();
+    #endif
     if (config.useMMeter) {
       if (millisUpdateMMeter - millis() < 50) {
         delay(50);
@@ -1613,17 +1650,21 @@ bool ICACHE_FLASH_ATTR activateEVSE() {
   vehicleCharging = true;
   meteredKWh = 0.0;
 
-  #ifndef ESP8266
+  #ifdef OLED
   millisUpdateOled = millis() + 3000;
   //oled.showCheck(false);
   #endif
+  #ifdef RFID
   showLedRfidGrant = true;
+  #endif
   sendEVSEdata();
   return true;
 }
 
 bool ICACHE_FLASH_ATTR deactivateEVSE(bool logUpdate) {
+  #ifdef OLED
   turnOnOled();
+  #endif
   if (!config.getEvseAlwaysActive(0) && !timerActive) {   //Normal Mode
     //New ModBus Master Library
     static uint16_t iTransmit = reg2005DefaultValues + 16384;  // deactivate evse
@@ -1697,10 +1738,14 @@ bool ICACHE_FLASH_ATTR setEVSEcurrent() {  // telegram 1: write EVSE current
   if (config.getEvseRemote(0)) {
     toSetEVSEcurrent = false;
     if (currentToSet == evseAmpsConfig) return true; // no oLED action
+    #ifdef OLED
     turnOnOled(5);
+    #endif
   }
   else {
+    #ifdef OLED
     turnOnOled();
+    #endif
     toSetEVSEcurrent = false;
     if (currentToSet == evseAmpsConfig) return true; // oLED action but register is already set
   }
@@ -1814,6 +1859,9 @@ void ICACHE_FLASH_ATTR sendEVSEdata() {
     }
     jsonDoc["ap_mode"] = inAPMode;
     jsonDoc["evse_disabled_by_remote_hearbeat"] = deactivatedByRemoteHeartbeat;
+#ifdef ESP32_DEVKIT
+    jsonDoc["evse_num_phases"] = String(numPhasesState);
+#endif
     size_t len = measureJson(jsonDoc);
     AsyncWebSocketMessageBuffer * buffer = ws.makeBuffer(len);
     if (buffer) {
@@ -1903,12 +1951,43 @@ void ICACHE_FLASH_ATTR sendUserList(int page, AsyncWebSocketClient * client) {
 
 #ifndef ESP8266
 bool ICACHE_FLASH_ATTR interruptCp() {
+  #ifdef ESP32_DEVKIT
+  xSemaphoreTake(CPMutex, portMAX_DELAY); 
+  #endif
   digitalWrite(config.getEvseCpIntPin(0), HIGH);
   millisInterruptCp = millis() + 3000;
   doCpInterruptCp = true;
   Serial.println("Interrupt CP started");
   return true;
 }
+#endif
+
+#ifdef ESP32_DEVKIT
+bool ICACHE_FLASH_ATTR switchNumPhases(uint8_t numPhases) {
+  // only allow to change mode if previous and current mode is not zero
+  if(numPhasesState && numPhases && (numPhasesState != numPhases))
+  {
+    if (config.getSystemDebug()) Serial.printf("[ switchNumPhases ] switch to: %d phases ...\r\n", numPhases);
+    xSemaphoreTake(CPMutex, portMAX_DELAY);
+    digitalWrite(config.getEvseCpIntPin(0), HIGH);
+    delay(1500);
+    if(numPhases == 3) {
+      config.setEvseNumPhases(0, numPhases);
+      digitalWrite(config.getEvseNumPhasesPin(0), HIGH);
+    } else if(numPhases == 1) {
+      config.setEvseNumPhases(0, numPhases);
+      digitalWrite(config.getEvseNumPhasesPin(0), LOW);
+    }
+    numPhasesState = numPhases;
+    delay(1500);
+    digitalWrite(config.getEvseCpIntPin(0), LOW);
+    xSemaphoreGive(CPMutex);
+    if (config.getSystemDebug()) Serial.printf("[ switchNumPhases ] switch phases done\r\n");
+    return true;
+  }
+  return false;
+}
+
 #endif
 
 void ICACHE_FLASH_ATTR onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len) {
@@ -2431,7 +2510,7 @@ bool ICACHE_FLASH_ATTR startAP(const char * ssid, const char * password = NULL) 
 bool ICACHE_FLASH_ATTR loadConfiguration(String configString = "") {
 
   Serial.println("[ SYSTEM ] Loading Config File on Startup...");
-  #ifdef ESP32
+  #ifdef OLED
   oled.showSplash("Config File...");
   #endif
   if (configString == "") {
@@ -2464,7 +2543,7 @@ bool ICACHE_FLASH_ATTR loadConfiguration(String configString = "") {
   server.addHandler(new SPIFFSEditor(SPIFFS, "admin", config.getSystemPass()));
   #endif
 
-  #ifdef ESP32
+  #ifdef OLED
   oled.showSplash("EVSE Controller...");
   #endif
 
@@ -2472,6 +2551,7 @@ bool ICACHE_FLASH_ATTR loadConfiguration(String configString = "") {
   while (evseErrorCount != 0) {
     if(config.getSystemDebug()) Serial.println("[ Modbus ] Error getting EVSE data!");
     delay(500);
+
     queryEVSE(true);
     if (evseErrorCount > 2) {
       break;
@@ -2511,7 +2591,7 @@ bool ICACHE_FLASH_ATTR loadConfiguration(String configString = "") {
     rfid.begin(config.getRfidPin(), config.getRfidUsePN532(), config.getRfidGain(), &ntp, config.getSystemDebug());
   }
 
-  #ifdef ESP32
+  #ifdef OLED
   oled.showSplash("Connecting WiFi...");
   #endif
   if (config.getWifiWmode() == 1) {
@@ -2619,62 +2699,102 @@ bool ICACHE_FLASH_ATTR loadConfiguration(String configString = "") {
 
 void ICACHE_FLASH_ATTR setWebEvents() {
   server.on("/index.htm", HTTP_GET, [](AsyncWebServerRequest * request) {
+#ifdef ESP32_DEVKIT
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "text/html", websrc_index_htm_start, websrc_index_htm_end-websrc_index_htm_start-1);
+#else
     AsyncWebServerResponse * response = request->beginResponse_P(200, "text/html", WEBSRC_INDEX_HTM, WEBSRC_INDEX_HTM_LEN);
     response->addHeader("Content-Encoding", "gzip");
+#endif
     request->send(response);
   });
 
   server.on("/script.js", HTTP_GET, [](AsyncWebServerRequest * request) {
+#ifdef ESP32_DEVKIT
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "text/javascript", websrc_script_js_start, websrc_script_js_end-websrc_script_js_start-1);
+#else
     AsyncWebServerResponse * response = request->beginResponse_P(200, "text/javascript", WEBSRC_SCRIPT_JS, WEBSRC_SCRIPT_JS_LEN);
     response->addHeader("Content-Encoding", "gzip");
+#endif
     request->send(response);
   });
 
   server.on("/fonts/glyph.woff", HTTP_GET, [](AsyncWebServerRequest * request) {
+#ifdef ESP32_DEVKIT
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "font/woff", websrc_glyph_woff_start, websrc_glyph_woff_end-websrc_glyph_woff_start-1);
+#else
     AsyncWebServerResponse * response = request->beginResponse_P(200, "font/woff", WEBSRC_GLYPH_WOFF, WEBSRC_GLYPH_WOFF_LEN);
     response->addHeader("Content-Encoding", "gzip");
+#endif
     request->send(response);
   });
  
   server.on("/fonts/glyph.woff2", HTTP_GET, [](AsyncWebServerRequest * request) {
+#ifdef ESP32_DEVKIT
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "font/woff", websrc_glyph_woff2_start, websrc_glyph_woff2_end-websrc_glyph_woff2_start-1);
+#else
     AsyncWebServerResponse * response = request->beginResponse_P(200, "font/woff", WEBSRC_GLYPH_WOFF2, WEBSRC_GLYPH_WOFF2_LEN);
     response->addHeader("Content-Encoding", "gzip");
+#endif
     request->send(response);
   });
 
   server.on("/required/required.css", HTTP_GET, [](AsyncWebServerRequest * request) {
+#ifdef ESP32_DEVKIT
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "text/css", websrc_required_css_start, websrc_required_css_end-websrc_required_css_start-1);
+#else
     AsyncWebServerResponse * response = request->beginResponse_P(200, "text/css", WEBSRC_REQUIRED_CSS, WEBSRC_REQUIRED_CSS_LEN);
     response->addHeader("Content-Encoding", "gzip");
+#endif
     request->send(response);
   });
 
   server.on("/required/required.js", HTTP_GET, [](AsyncWebServerRequest * request) {
+#ifdef ESP32_DEVKIT
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "text/javascript", websrc_required_js_start, websrc_required_js_end-websrc_required_js_start-1);
+#else
     AsyncWebServerResponse * response = request->beginResponse_P(200, "text/javascript", WEBSRC_REQUIRED_JS, WEBSRC_REQUIRED_JS_LEN);
     response->addHeader("Content-Encoding", "gzip");
+#endif
     request->send(response);
   });
 
   server.on("/status_charging.svg", HTTP_GET, [](AsyncWebServerRequest * request) {
+#ifdef ESP32_DEVKIT
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "image/svg+xml", websrc_status_charging_svg_start, websrc_status_charging_svg_end-websrc_status_charging_svg_start-1);
+#else
     AsyncWebServerResponse * response = request->beginResponse_P(200, "image/svg+xml", WEBSRC_STATUS_CHARGING_SVG, WEBSRC_STATUS_CHARGING_SVG_LEN);
     response->addHeader("Content-Encoding", "gzip");
+#endif
     request->send(response);
   });
 
   server.on("/status_detected.svg", HTTP_GET, [](AsyncWebServerRequest * request) {
+#ifdef ESP32_DEVKIT
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "image/svg+xml", websrc_status_detected_svg_start, websrc_status_detected_svg_end-websrc_status_detected_svg_start-1);
+#else
     AsyncWebServerResponse * response = request->beginResponse_P(200, "image/svg+xml", WEBSRC_STATUS_DETECTED_SVG, WEBSRC_STATUS_DETECTED_SVG_LEN);
     response->addHeader("Content-Encoding", "gzip");
+#endif
     request->send(response);
   });
 
   server.on("/status_ready.svg", HTTP_GET, [](AsyncWebServerRequest * request) {
+#ifdef ESP32_DEVKIT
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "image/svg+xml", websrc_status_ready_svg_start, websrc_status_ready_svg_end-websrc_status_ready_svg_start-1);
+#else
     AsyncWebServerResponse * response = request->beginResponse_P(200, "image/svg+xml", WEBSRC_STATUS_READY_SVG, WEBSRC_STATUS_READY_SVG_LEN);
     response->addHeader("Content-Encoding", "gzip");
+#endif
     request->send(response);
   });
 
   server.on("/favicon.ico", HTTP_GET, [](AsyncWebServerRequest * request) {
+#ifdef ESP32_DEVKIT
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "image/x-icon", websrc_favicon_ico_start, websrc_favicon_ico_end-websrc_favicon_ico_start-1);
+#else
     AsyncWebServerResponse * response = request->beginResponse_P(200, "image/x-icon", WEBSRC_FAVICON_ICO, WEBSRC_FAVICON_ICO_LEN);
     response->addHeader("Content-Encoding", "gzip");
+#endif
     request->send(response);
   });
 
@@ -2975,6 +3095,30 @@ void ICACHE_FLASH_ATTR setWebEvents() {
         request->send(200, "text/plain", "E2_could not set registers and config - wrong parameter");
       }
     });
+#ifdef ESP32_DEVKIT
+    server.on("/setNumPhases", HTTP_GET, [](AsyncWebServerRequest * request) {
+        awp = request->getParam(0);
+        if (awp->name() == "numPhases") {
+          uint8_t numPhases = atoi(awp->value().c_str());
+          if((numPhases == 1) || (numPhases == 3)) {
+            switchNumPhases(numPhases);
+            request->send(200, "text/plain", "Number of phases set to given value");
+          }
+        }
+        request->send(200, "text/plain", "Number of phases could not be processed - wrong parameter");
+    });
+    server.on("/setMeteringFactor", HTTP_GET, [](AsyncWebServerRequest * request) {
+        awp = request->getParam(0);
+        if (awp->name() == "meteringFactor") {
+          uint8_t meteringFactor = atoi(awp->value().c_str());
+          if(meteringFactor > 0) {
+            config.setMeterFactor(0, meteringFactor);
+            request->send(200, "text/plain", "Metering factor set to given value");
+          }
+        }
+        request->send(200, "text/plain", "Metering factor could not be processed - wrong parameter");
+    });
+#endif
   }
 }
 
@@ -3059,7 +3203,11 @@ void ICACHE_FLASH_ATTR startWebserver() {
 ///////       Setup
 //////////////////////////////////////////////////////////////////////////////////////////
 void ICACHE_RAM_ATTR setup() {
+  #ifdef ESP32_DEVKIT
+  Serial.begin(115200);
+  #else
   Serial.begin(9600);
+  #endif
   if (config.getSystemDebug()) Serial.println();
   if (config.getSystemDebug()) Serial.print("[ INFO ] EVSE-WiFi - version ");
   if (config.getSystemDebug()) Serial.print(swVersion);
@@ -3077,7 +3225,7 @@ void ICACHE_RAM_ATTR setup() {
   
   evseNode.begin(1, SecondSer);
 
-  #ifdef ESP32
+  #ifdef OLED
   oled.begin(&u8g2, config.getEvseDisplayRotation(0));
   Serial.println("[ SYSTEM ] OLED started");
   turnOnOled(120);
@@ -3085,7 +3233,7 @@ void ICACHE_RAM_ATTR setup() {
   #endif
 
   if (!loadConfiguration()) {
-    #ifdef ESP32
+    #ifdef OLED
     oled.showSplash("WARNING!");
     delay(500);
     oled.showSplash("Fallback Mode!");
@@ -3115,7 +3263,7 @@ void ICACHE_RAM_ATTR setup() {
   if (digitalRead(config.getButtonPin(0)) == LOW) {
     pinMode(config.getEvseLedPin(0), OUTPUT);
     if (config.getSystemDebug()) Serial.println("Button Pressed while boot!");
-    #ifdef ESP32
+    #ifdef OLED
     oled.showSplash("FactoryReset in 20s");
     #endif
     digitalWrite(config.getEvseLedPin(0), HIGH);
@@ -3124,7 +3272,7 @@ void ICACHE_RAM_ATTR setup() {
     while (digitalRead(button) == LOW) {  
       if (millis() > (millisBefore + 20000)) {
         factoryReset();
-        #ifdef ESP32
+        #ifdef OLED
         oled.showSplash("Factory Reset done!");
         #endif
         Serial.println("[ SYSTEM ] System has been reset to factory settings!");
@@ -3143,6 +3291,19 @@ void ICACHE_RAM_ATTR setup() {
     startTotal = getS0MeterReading();
   }
 
+#ifdef ESP32_DEVKIT
+  CPMutex = xSemaphoreCreateMutex();
+  if (CPMutex == NULL) {
+    Serial.println("[ SYSTEM ] CPMutex can not be created");
+  }
+  pinMode(config.getEvseNumPhasesPin(0), OUTPUT);
+  numPhasesState = config.getEvseNumPhases(0);
+  if(numPhasesState == 3) {
+    digitalWrite(config.getEvseNumPhasesPin(0), HIGH);
+  } else if(numPhasesState == 1) {
+    digitalWrite(config.getEvseNumPhasesPin(0), LOW);
+  }
+#endif
 #ifndef ESP8266
   pinMode(config.getEvseRsePin(0), INPUT_PULLUP);
   if (config.getSystemDebug()) Serial.print("[ SYSTEM ] Use RSE GPIO ");
@@ -3151,7 +3312,7 @@ void ICACHE_RAM_ATTR setup() {
   delay(100);
 #endif
   now();
-  #ifdef ESP32
+  #ifdef OLED
   oled.showSplash("Starting webserver...");
   #endif
   startWebserver();
@@ -3197,10 +3358,11 @@ void ICACHE_RAM_ATTR loop() {
     delay(100);
     ESP.restart();
   }
+  #ifdef RFID
   if (currentMillis >= rfid.cooldown && config.getRfidActive() == true && !updateRunning) {
     rfidloop();
   }
-
+  #endif
   handleLed();
 
   modbusTCPServerNode.task();
@@ -3262,7 +3424,7 @@ void ICACHE_RAM_ATTR loop() {
     if (digitalRead(config.getButtonPin(0)) == HIGH) {
       if (config.getSystemDebug()) Serial.println("Button released");
       buttonState = HIGH;
-      #ifdef ESP32
+      #ifdef OLED
       if (millisOnTimeOled < millis()) { // oLED is off
         turnOnOled();
       }
@@ -3277,11 +3439,11 @@ void ICACHE_RAM_ATTR loop() {
           }
           lastUsername = "Button";
           lastUID = "Button";
-        #ifdef ESP32
+        #ifdef OLED
           oled.showCheck(true, 1);
         #endif
       }
-      #ifdef ESP32
+      #ifdef OLED
       }
       #endif
     }
@@ -3329,6 +3491,7 @@ void ICACHE_RAM_ATTR loop() {
   }
 
 #ifndef ESP8266
+  #ifdef OLED
   oled.oledLoop();
   if (millisUpdateOled < millis()) {
     delay(5);
@@ -3340,12 +3503,15 @@ void ICACHE_RAM_ATTR loop() {
     oled.turnOff();
     Serial.println("Display turned off"); ///DBG DBUG DEBUG
   }
-
+  #endif
   if (doCpInterruptCp) {
     if (millis() > millisInterruptCp) {
       doCpInterruptCp = false;
       digitalWrite(config.getEvseCpIntPin(0), LOW);
       Serial.println("Interrupt CP stopped");
+  #ifdef ESP32_DEVKIT
+      xSemaphoreGive(CPMutex);
+  #endif
     }
   }
 

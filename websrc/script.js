@@ -77,12 +77,14 @@ function listEVSEData(obj) {
   chargingTime = obj.evse_charging_time;
   evseActive = obj.evse_active;
   document.getElementById("evse_charging_time").innerHTML = getTimeFormat(obj.evse_charging_time);
-  document.getElementById("evse_current_limit").innerHTML = obj.evse_current_limit + " A";
   if (obj.evse_rse_status === true) {
     document.getElementById("evse_current_limit").innerHTML = "RSE Active <span class=\"glyphicon glyphicon-flash\" style=\"color:red\"></span>&nbsp;" + obj.evse_current_limit + " / " + obj.evse_rse_current_before + " A (" + obj.evse_rse_value + "%)";
-  }
-  if (obj.evse_current_limit > pp_limit) {
+  } else if (obj.evse_current_limit > pp_limit) {
     document.getElementById("evse_current_limit").innerHTML = "PP-Limit <span class=\"glyphicon glyphicon-flash\" style=\"color:orange\"></span>&nbsp;" + pp_limit + " A / " + obj.evse_current_limit + " A";
+  } else if (obj.evse_num_phases) {
+    document.getElementById("evse_current_limit").innerHTML = obj.evse_current_limit + " A (" + obj.evse_num_phases + "P)";
+  } else {
+    document.getElementById("evse_current_limit").innerHTML = obj.evse_current_limit + " A";
   }
 
   document.getElementById("evse_current").innerHTML = obj.evse_current + " kW";
@@ -723,6 +725,7 @@ function listCONF(obj) {
     hw_rev = "ESP8266";
     document.getElementById("divRSEValue").style.display = "none";
     document.getElementById("divUseRSE").style.display = "none";
+    document.getElementById("divNumPhases").style.display = "none";
     document.getElementById("divCPInterrupt").style.display = "none";
     document.getElementById("divDisplayRotation").style.display = "none";
     document.getElementById("textDownloadFwVersion").innerHTML = "Download <a href=\"https://github.com/CurtRod/SimpleEVSE-WiFi/releases\" target=\"_blank\">latest version</a> from GitHub.";
@@ -821,6 +824,13 @@ function listCONF(obj) {
   document.getElementById("checkboxUseRse").checked = obj.evse[0].rseactive;
   document.getElementById("rsevalue").value = obj.evse[0].rsevalue;
   handleUseRse();
+
+  //number of phases switchable? ()
+  if(obj.evse[0].numPhases) {
+    document.getElementById("checkboxNumPhases").checked = obj.evse[0].numPhases==3?true:false;
+  } else {
+    document.getElementById("divNumPhases").style.display = "none";
+  }
 
   var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2));
   var dlAnchorElem = document.getElementById("downloadSet");
@@ -1198,6 +1208,7 @@ function saveConf() {
   else {
     datatosend.evse[0].rseactive = document.getElementById("checkboxUseRse").checked;
     datatosend.evse[0].rsevalue = parseInt(document.getElementById("rsevalue").value);
+    datatosend.evse[0].numPhases = document.getElementById("checkboxNumPhases").checked?3:1;
   }
   
   websock.send(JSON.stringify(datatosend));
