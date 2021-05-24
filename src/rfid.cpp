@@ -1,6 +1,8 @@
 #include <rfid.h>
 
+#ifdef RFID
 MFRC522 mfrc522 = MFRC522();
+#endif
 
 bool ICACHE_FLASH_ATTR EvseWiFiRfid::begin(int rfidss, bool usePN532, int rfidgain, NtpClient* ntp, bool debug) {
 #ifdef RFID

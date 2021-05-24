@@ -1,4 +1,3 @@
-#ifndef ESP8266
 #ifdef OLED
 #include "oled.h"
 #include <string>
@@ -276,5 +275,4 @@ void EvseWiFiOled::showCheck(bool checked, uint8_t textID) {
     drawUncheck();
   }
 }
-#endif
 #endif

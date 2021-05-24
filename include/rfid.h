@@ -1,5 +1,7 @@
 #include <Arduino.h>
-#include <MFRC522.h>
+#ifdef RFID
+    #include <MFRC522.h>
+#endif
 #include <ArduinoJson.h>
 #include <ESPAsyncWebServer.h> 
 #include <Wire.h>

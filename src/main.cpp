@@ -36,7 +36,6 @@
 
 #include <TimeLib.h>                  // Library for converting epochtime to a date
 #include <SPI.h>                      // SPI protocol
-#include <MFRC522.h>                  // Library for Mifare RC522 Devices
 #include <ArduinoJson.h>              // JSON Library for Encoding and Parsing Json object to send browser
 #include <ESPAsyncWebServer.h>        // Async Web Server with built-in WebSocket Plug-in
 #include <SPIFFSEditor.h>             // This creates a web page on server which can be used to edit text based files
