@@ -287,6 +287,50 @@ E0_could not set current - internal error | Internal error occured (unspecified)
 E1_could not set current - give a value between *x* and *y*  | Wrong value was given
 E2_could not set current - wrong parameter | Wrong parameter was given
 
+### setNumPhases()
+using setNumPhases() will switch between one and three phase operation
+
+Parameter | Description
+--------- | -----------
+numPhases | Number of phases to be used (1 or 3).
+
+#### Example
+
+`GET http://192.168.4.1/setNumPhases?numPhases=3`
+
+> Enables three phase operation.
+
+```text
+Number of phases set to given value
+```
+In cases of Error, the answer would be
+
+Answer | Description
+--------- | -----------
+Number of phases could not be processed - wrong parameter
+
+### setMeteringFactor()
+using setMeteringFactor() will the metering factor.
+
+Parameter | Description
+--------- | -----------
+meteringFactor | When using a single phase meter it might make sense to switch between factor 1 and 3 when switching the number of phases.
+
+#### Example
+
+`GET http://192.168.4.1/setMeteringFactor?meteringFactor=3`
+
+> Sets factor 3 (for e.g. in three phase operation with a single phase meter).
+
+```text
+Metering factor set to given value
+```
+In cases of Error, the answer would be
+
+Answer | Description
+--------- | -----------
+Metering factor could not be processed - wrong parameter
+
 ### setStatus()
 will activate/deactivate EVSE WB
 
