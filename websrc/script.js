@@ -81,7 +81,7 @@ function listEVSEData(obj) {
     document.getElementById("evse_current_limit").innerHTML = "RSE Active <span class=\"glyphicon glyphicon-flash\" style=\"color:red\"></span>&nbsp;" + obj.evse_current_limit + " / " + obj.evse_rse_current_before + " A (" + obj.evse_rse_value + "%)";
   } else if (obj.evse_current_limit > pp_limit) {
     document.getElementById("evse_current_limit").innerHTML = "PP-Limit <span class=\"glyphicon glyphicon-flash\" style=\"color:orange\"></span>&nbsp;" + pp_limit + " A / " + obj.evse_current_limit + " A";
-  } else if (obj.evse_num_phases) {
+  } else if (parseInt(obj.evse_num_phases)>0) {
     document.getElementById("evse_current_limit").innerHTML = obj.evse_current_limit + " A (" + obj.evse_num_phases + "P)";
   } else {
     document.getElementById("evse_current_limit").innerHTML = obj.evse_current_limit + " A";
