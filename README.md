@@ -307,7 +307,10 @@ In cases of Error, the answer would be
 
 Answer | Description
 --------- | -----------
-Number of phases could not be processed - wrong parameter
+S0_switchNumPhases set to given value
+E1_switchNumPhases failed - wrong state
+E2_switchNumPhases failed - always active mode
+E3_switchNumPhases failed - wrong parameter name
 
 ### setMeteringFactor()
 using setMeteringFactor() will the metering factor.
@@ -329,7 +332,9 @@ In cases of Error, the answer would be
 
 Answer | Description
 --------- | -----------
-Metering factor could not be processed - wrong parameter
+S0_setMeterFactor set to given value
+E1_setMeterFactor failed - invalid factor value
+E2_setMeterFactor - wrong parameter name
 
 ### setStatus()
 will activate/deactivate EVSE WB
