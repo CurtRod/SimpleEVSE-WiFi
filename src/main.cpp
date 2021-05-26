@@ -48,6 +48,7 @@
 #include "proto.h"
 #include "ntp.h"
 #ifdef ESP32_DEVKIT
+  #include <esp_task_wdt.h>
   #include "websrcembed.h"
 #else
   #include "websrc.h"
@@ -59,7 +60,7 @@
 
 uint8_t sw_min = 2; //Firmware Minor Version
 uint8_t sw_rev = 2; //Firmware Revision
-String sw_add = "-deti";
+String sw_add = "-deti-3";
 
 #ifdef ESP8266
 uint8_t sw_maj = 1; //Firmware Major Version
@@ -105,8 +106,9 @@ bool rseActive = false;
 uint8_t currentBeforeRse = 0;
 #endif
 #ifdef ESP32_DEVKIT
-SemaphoreHandle_t CPMutex;
 uint8_t numPhasesState = 0;
+uint8_t numPhasesDoSwitch = 0;
+bool needReactivation = false;
 #endif
 
 //RFID
@@ -514,15 +516,9 @@ bool ICACHE_FLASH_ATTR setSmartWb11kWSettings() {
   }
 
   Serial.println("[ Auto-Config ] Going to interrupt CP for 500ms");
-  #ifdef ESP32_DEVKIT
-  xSemaphoreTake(CPMutex, portMAX_DELAY);
-  #endif
   digitalWrite(config.getEvseCpIntPin(0), HIGH);
   delay(500);
   digitalWrite(config.getEvseCpIntPin(0), LOW);
-  #ifdef ESP32_DEVKIT
-  xSemaphoreGive(CPMutex);
-  #endif
   Serial.println("[ Auto-Config ] CP interrupt ended - going to Reboot now...");
 
   toReboot = true;
@@ -1950,9 +1946,6 @@ void ICACHE_FLASH_ATTR sendUserList(int page, AsyncWebSocketClient * client) {
 
 #ifndef ESP8266
 bool ICACHE_FLASH_ATTR interruptCp() {
-  #ifdef ESP32_DEVKIT
-  xSemaphoreTake(CPMutex, portMAX_DELAY); 
-  #endif
   digitalWrite(config.getEvseCpIntPin(0), HIGH);
   millisInterruptCp = millis() + 3000;
   doCpInterruptCp = true;
@@ -1964,24 +1957,17 @@ bool ICACHE_FLASH_ATTR interruptCp() {
 #ifdef ESP32_DEVKIT
 bool ICACHE_FLASH_ATTR switchNumPhases(uint8_t numPhases) {
   // only allow to change mode if previous and current mode is not zero
-  if(numPhasesState && numPhases && (numPhasesState != numPhases))
+  if(!numPhasesDoSwitch && numPhasesState && numPhases && (numPhasesState != numPhases))
   {
     if (config.getSystemDebug()) Serial.printf("[ switchNumPhases ] switch to: %d phases ...\r\n", numPhases);
-    xSemaphoreTake(CPMutex, portMAX_DELAY);
-    digitalWrite(config.getEvseCpIntPin(0), HIGH);
-    delay(5000);
-    if(numPhases == 3) {
-      config.setEvseNumPhases(0, numPhases);
-      digitalWrite(config.getEvseNumPhasesPin(0), HIGH);
-    } else if(numPhases == 1) {
-      config.setEvseNumPhases(0, numPhases);
-      digitalWrite(config.getEvseNumPhasesPin(0), LOW);
+    if(evseStatus == 3) {
+      if (config.getSystemDebug()) Serial.printf("[ switchNumPhases ] need to deactivateEVSE first\r\n");
+      toDeactivateEVSE = true;
+      needReactivation = true;
+    } else {
+      needReactivation = false;
     }
-    numPhasesState = numPhases;
-    delay(500);
-    digitalWrite(config.getEvseCpIntPin(0), LOW);
-    xSemaphoreGive(CPMutex);
-    if (config.getSystemDebug()) Serial.printf("[ switchNumPhases ] switch phases done\r\n");
+    numPhasesDoSwitch = numPhases;    
     return true;
   }
   return false;
@@ -3099,23 +3085,33 @@ void ICACHE_FLASH_ATTR setWebEvents() {
         awp = request->getParam(0);
         if (awp->name() == "numPhases") {
           uint8_t numPhases = atoi(awp->value().c_str());
-          if((numPhases == 1) || (numPhases == 3)) {
-            switchNumPhases(numPhases);
-            request->send(200, "text/plain", "Number of phases set to given value");
+          if(!config.getEvseAlwaysActive(0)) {
+            if((numPhases == 1) || (numPhases == 3)) {
+              if(switchNumPhases(numPhases)) {
+                request->send(200, "text/plain", "S0_switchNumPhases set to given value");
+              } else {
+                request->send(200, "text/plain", "E1_switchNumPhases failed - wrong state");
+              }
+            }
+          } else {
+            request->send(200, "text/plain", "E2_switchNumPhases failed - always active mode");
           }
         }
-        request->send(200, "text/plain", "Number of phases could not be processed - wrong parameter");
+        request->send(200, "text/plain", "E3_switchNumPhases failed - wrong parameter name");
     });
     server.on("/setMeteringFactor", HTTP_GET, [](AsyncWebServerRequest * request) {
         awp = request->getParam(0);
         if (awp->name() == "meteringFactor") {
           uint8_t meteringFactor = atoi(awp->value().c_str());
-          if(meteringFactor > 0) {
+          if(meteringFactor >= 1 && meteringFactor <=  3) {
             config.setMeterFactor(0, meteringFactor);
-            request->send(200, "text/plain", "Metering factor set to given value");
+            request->send(200, "text/plain", "S0_setMeterFactor set to given value");
+          } else {
+            request->send(200, "text/plain", "E1_setMeterFactor failed - invalid factor value");
           }
+
         }
-        request->send(200, "text/plain", "Metering factor could not be processed - wrong parameter");
+        request->send(200, "text/plain", "E2_setMeterFactor - wrong parameter name");
     });
 #endif
   }
@@ -3291,10 +3287,6 @@ void ICACHE_RAM_ATTR setup() {
   }
 
 #ifdef ESP32_DEVKIT
-  CPMutex = xSemaphoreCreateMutex();
-  if (CPMutex == NULL) {
-    Serial.println("[ SYSTEM ] CPMutex can not be created");
-  }
   pinMode(config.getEvseNumPhasesPin(0), OUTPUT);
   numPhasesState = config.getEvseNumPhases(0);
   if(numPhasesState == 3) {
@@ -3508,10 +3500,27 @@ void ICACHE_RAM_ATTR loop() {
       doCpInterruptCp = false;
       digitalWrite(config.getEvseCpIntPin(0), LOW);
       Serial.println("Interrupt CP stopped");
-  #ifdef ESP32_DEVKIT
-      xSemaphoreGive(CPMutex);
-  #endif
     }
+  }
+  if (numPhasesDoSwitch && (numPhasesState != numPhasesDoSwitch) && (evseStatus < 3)) {
+    if(numPhasesDoSwitch == 3) {
+      config.setEvseNumPhases(0, numPhasesDoSwitch);
+      digitalWrite(config.getEvseNumPhasesPin(0), HIGH);
+    } else if(numPhasesDoSwitch == 1) {
+      config.setEvseNumPhases(0, numPhasesDoSwitch);
+      digitalWrite(config.getEvseNumPhasesPin(0), LOW);
+    }
+    numPhasesState = numPhasesDoSwitch;
+    
+    numPhasesDoSwitch = 0;
+
+    if(needReactivation) {
+      if (config.getSystemDebug()) Serial.printf("[ switchNumPhases ] need to reactivate EVSE\r\n");
+      toActivateEVSE = true;
+      needReactivation = false;
+    }
+    if (config.getSystemDebug()) Serial.printf("[ switchNumPhases ] switch phases done\r\n");
+
   }
 
   if (config.getEvseRseActive(0)) {
