@@ -72,28 +72,28 @@ SimpleEVSE-WiFi supports not only the control of the EVSE WB but also the use of
 ##### Mandatory
 This wiring is mandatory and absolutely needed to run SimpleEVSE-WiFi
 
-ESP8266-Pin | ESP8266-GPIO | EVSE WB
------------ | ----------- | -----------
-D1 | GPIO5 | TX
-D2 | GPIO4 | RX
-GND |  | GND
+ESP8266-Pin | ESP8266-GPIO | EVSE WB | ESP32 DEVKIT V1
+----------- | ----------- | ----------- | -----------
+D1 | GPIO5 | TX | 21
+D2 | GPIO4 | RX | 22
+GND |  | GND | GND
 
 ##### Button (optional)
-ESP8266-Pin | ESP8266-GPIO | Button
------------ | ----------- | -----------
-D4 | GPIO2 | Pin 1
-GND | | Pin 2
+ESP8266-Pin | ESP8266-GPIO | Button | ESP32 DEVKIT V1
+----------- | ----------- | ----------- | -----------
+D4 | GPIO2 | Pin 1 | 16
+GND | | Pin 2| GND
 
 ##### S0 Electicity Meter (optional)*
-ESP8266-Pin | ESP8266-GPIO | electricity meter
------------ | ----------- | -----------
-D3 | GPIO0 | S0+
-GND | | S0-
+ESP8266-Pin | ESP8266-GPIO | electricity meter | ESP32 DEVKIT V1
+----------- | ----------- | ----------- | -----------
+D3 | GPIO0 | S0+ | 17
+GND | | S0- | GND
 
 ##### LED (optional)
-ESP8266-Pin | ESP8266-GPIO | LED
------------ | ----------- | -----------
-D0 | GPIO16 | Anode (+)
+ESP8266-Pin | ESP8266-GPIO | LED | ESP32 DEVKIT V1
+----------- | ----------- | ----------- | -----------
+D0 | GPIO16 | Anode (+) | 2
 GND | | Kathode (-)
 
 ##### Modbus Electicity Meter (optional)**
@@ -109,17 +109,22 @@ TTL->RS485 | Modbus Meter
 A+ | A
 B- | B
 
+##### Phase switching (optional)**
+ESP8266-Pin | ESP8266-GPIO | LED | ESP32 DEVKIT V1
+----------- | ----------- | ----------- | -----------
+ | | | 32
+ | | | GND
 
 
 ##### RC522 RFID-Reader (optional)
-ESP8266-Pin | ESP8266-GPIO | RC522
------------ | ----------- | -----------
-D5 | GPIO14 | SCK
-D6 | GPIO12 | MISO
-D7 | GPIO13 | MOSI
-D8 | GPIO15 | SDA
-GND |  | GND
-3.3V |  | 3.3V
+ESP8266-Pin | ESP8266-GPIO | RC522 | ESP32 DEVKIT V1
+----------- | ----------- | ----------- | -----------
+D5 | GPIO14 | SCK | 18
+D6 | GPIO12 | MISO | 19
+D7 | GPIO13 | MOSI | 23
+D8 | GPIO15 | SDA | 5
+GND |  | GND | GND
+3.3V |  | 3.3V | 3.3V
 
 Be sure to use a suitable power supply for ESP. At least 500mA is recommended!
 
@@ -307,10 +312,10 @@ In cases of Error, the answer would be
 
 Answer | Description
 --------- | -----------
-S0_switchNumPhases set to given value
-E1_switchNumPhases failed - wrong state
-E2_switchNumPhases failed - always active mode
-E3_switchNumPhases failed - wrong parameter name
+S0_switchNumPhases set to given value | Operation succeeded
+E1_switchNumPhases failed - wrong state | Wrong value or already set
+E2_switchNumPhases failed - always active mode | Function is not available in always active ode 
+E3_switchNumPhases failed - wrong parameter name | Parameter `numPhases` is missing
 
 ### setMeteringFactor()
 using setMeteringFactor() will the metering factor.
@@ -332,9 +337,9 @@ In cases of Error, the answer would be
 
 Answer | Description
 --------- | -----------
-S0_setMeterFactor set to given value
-E1_setMeterFactor failed - invalid factor value
-E2_setMeterFactor - wrong parameter name
+S0_setMeterFactor set to given value | Operation succeeded
+E1_setMeterFactor failed - invalid factor value | Factor has to be 1 2 or 3
+E2_setMeterFactor - wrong parameter name | Parameter `meteringFactor` is missing
 
 ### setStatus()
 will activate/deactivate EVSE WB
