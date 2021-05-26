@@ -94,7 +94,7 @@ GND | | S0- | GND
 ESP8266-Pin | ESP8266-GPIO | LED | ESP32 DEVKIT V1
 ----------- | ----------- | ----------- | -----------
 D0 | GPIO16 | Anode (+) | 2
-GND | | Kathode (-)
+GND | | Kathode (-) | GND
 
 ##### Modbus Electicity Meter (optional)**
 TTL->RS485 | ESP8266-Pin
@@ -110,7 +110,7 @@ A+ | A
 B- | B
 
 ##### Phase switching (optional)**
-ESP8266-Pin | ESP8266-GPIO | LED | ESP32 DEVKIT V1
+ESP8266-Pin | ESP8266-GPIO |  | ESP32 DEVKIT V1
 ----------- | ----------- | ----------- | -----------
  | | | 32
  | | | GND
