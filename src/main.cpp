@@ -1969,7 +1969,7 @@ bool ICACHE_FLASH_ATTR switchNumPhases(uint8_t numPhases) {
     if (config.getSystemDebug()) Serial.printf("[ switchNumPhases ] switch to: %d phases ...\r\n", numPhases);
     xSemaphoreTake(CPMutex, portMAX_DELAY);
     digitalWrite(config.getEvseCpIntPin(0), HIGH);
-    delay(1500);
+    delay(5000);
     if(numPhases == 3) {
       config.setEvseNumPhases(0, numPhases);
       digitalWrite(config.getEvseNumPhasesPin(0), HIGH);
@@ -1978,7 +1978,7 @@ bool ICACHE_FLASH_ATTR switchNumPhases(uint8_t numPhases) {
       digitalWrite(config.getEvseNumPhasesPin(0), LOW);
     }
     numPhasesState = numPhases;
-    delay(1500);
+    delay(500);
     digitalWrite(config.getEvseCpIntPin(0), LOW);
     xSemaphoreGive(CPMutex);
     if (config.getSystemDebug()) Serial.printf("[ switchNumPhases ] switch phases done\r\n");
