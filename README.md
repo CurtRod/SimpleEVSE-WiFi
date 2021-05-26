@@ -110,11 +110,10 @@ A+ | A
 B- | B
 
 ##### Phase switching (optional)**
-ESP8266-Pin | ESP8266-GPIO |  | ESP32 DEVKIT V1
------------ | ----------- | ----------- | -----------
- | | | 32
- | | | GND
-
+ESP32 DEVKIT V1
+----------- |
+32 |
+GND |
 
 ##### RC522 RFID-Reader (optional)
 ESP8266-Pin | ESP8266-GPIO | RC522 | ESP32 DEVKIT V1
