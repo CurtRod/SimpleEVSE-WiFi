@@ -3300,6 +3300,7 @@ void ICACHE_RAM_ATTR setup() {
   if (config.getSystemDebug()) Serial.print("[ SYSTEM ] Use RSE GPIO ");
   if (config.getSystemDebug()) Serial.println(config.getEvseRsePin(0));
   pinMode(config.getEvseCpIntPin(0), OUTPUT);
+  digitalWrite(config.getEvseCpIntPin(0), LOW);
   delay(100);
 #endif
   now();
