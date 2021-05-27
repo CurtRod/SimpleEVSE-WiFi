@@ -60,7 +60,7 @@
 
 uint8_t sw_min = 2; //Firmware Minor Version
 uint8_t sw_rev = 2; //Firmware Revision
-String sw_add = "-deti-4";
+String sw_add = "-deti-6";
 
 #ifdef ESP8266
 uint8_t sw_maj = 1; //Firmware Major Version
@@ -3099,8 +3099,9 @@ void ICACHE_FLASH_ATTR setWebEvents() {
           } else {
             request->send(200, "text/plain", "E2_switchNumPhases failed - always active mode");
           }
+        } else {
+          request->send(200, "text/plain", "E3_switchNumPhases failed - wrong parameter name");
         }
-        request->send(200, "text/plain", "E3_switchNumPhases failed - wrong parameter name");
     });
     server.on("/setMeteringFactor", HTTP_GET, [](AsyncWebServerRequest * request) {
         awp = request->getParam(0);
@@ -3112,9 +3113,9 @@ void ICACHE_FLASH_ATTR setWebEvents() {
           } else {
             request->send(200, "text/plain", "E1_setMeterFactor failed - invalid factor value");
           }
-
+        } else {
+          request->send(200, "text/plain", "E2_setMeterFactor - wrong parameter name");
         }
-        request->send(200, "text/plain", "E2_setMeterFactor - wrong parameter name");
     });
 #endif
   }
