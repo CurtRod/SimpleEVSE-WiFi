@@ -60,7 +60,7 @@
 
 uint8_t sw_min = 2; //Firmware Minor Version
 uint8_t sw_rev = 2; //Firmware Revision
-String sw_add = "-deti-3";
+String sw_add = "-deti-4";
 
 #ifdef ESP8266
 uint8_t sw_maj = 1; //Firmware Major Version
@@ -2845,6 +2845,9 @@ void ICACHE_FLASH_ATTR setWebEvents() {
       }
       items["useMeter"] = config.getMeterActive(0);
       items["RFIDUID"] = lastRFIDUID;
+#ifdef ESP32_DEVKIT
+      items["numPhases"] = numPhasesState;
+#endif
 
       remoteHeartbeatCounter = 0; // Reset Heartbeat Counter
 
