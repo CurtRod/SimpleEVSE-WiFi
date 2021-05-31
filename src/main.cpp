@@ -2212,8 +2212,24 @@ uint16_t onSetMbTCPHreg(TRegister *reg, uint16_t val) {
     #endif
     return false;
     break;
-  default:
+    #ifdef ESP32_DEVKIT
+  case 40004: // numPhases
+    if (val == 1 || val == 3) {
+      switchNumPhases(val);
+      return 0;
+    }
+    return false;
     break;
+  case 40005: // meteringFactor
+    if (val >= 1 && val <= 3) {
+      config.setMeterFactor(0, val);
+      return 0;
+    }
+    return false;
+    break;
+    #endif
+  default:
+  break;
   }
   return -1;
 }
@@ -2234,6 +2250,15 @@ uint16_t onGetMbTCPHreg(TRegister *reg, uint16_t val) {
     else {
       return 0;
     }
+    break;
+#ifdef ESP32_DEVKIT
+  case 40004: // numPhases
+    return numPhasesState;
+    break;
+  case 40005: // meteringFactor
+    return  config.getMeterFactor(0);
+    break;
+#endif
   default:
     break;
   }
@@ -2403,9 +2428,13 @@ void setModbusTCPRegisters() {
   modbusTCPServerNode.addHreg(40001);
   modbusTCPServerNode.addHreg(40002);
   modbusTCPServerNode.addHreg(40003);
-  modbusTCPServerNode.onGetHreg(40000, onGetMbTCPHreg, 3);
+  modbusTCPServerNode.addHreg(40004);
+  modbusTCPServerNode.addHreg(40005);
+  modbusTCPServerNode.onGetHreg(40000, onGetMbTCPHreg, 6);
   modbusTCPServerNode.onSetHreg(40000, onSetMbTCPHreg, 2);
   modbusTCPServerNode.onSetHreg(40003, onSetMbTCPHreg, 1);
+  modbusTCPServerNode.onSetHreg(40004, onSetMbTCPHreg, 1);
+  modbusTCPServerNode.onSetHreg(40005, onSetMbTCPHreg, 1);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
