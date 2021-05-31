@@ -60,7 +60,7 @@
 
 uint8_t sw_min = 2; //Firmware Minor Version
 uint8_t sw_rev = 2; //Firmware Revision
-String sw_add = "-deti-6";
+String sw_add = "-deti-8";
 
 #ifdef ESP8266
 uint8_t sw_maj = 1; //Firmware Major Version
@@ -2212,22 +2212,22 @@ uint16_t onSetMbTCPHreg(TRegister *reg, uint16_t val) {
     #endif
     return false;
     break;
-    #ifdef ESP32_DEVKIT
+#ifdef ESP32_DEVKIT
   case 40004: // numPhases
     if (val == 1 || val == 3) {
       switchNumPhases(val);
-      return 0;
+      return val;
     }
     return false;
     break;
   case 40005: // meteringFactor
     if (val >= 1 && val <= 3) {
       config.setMeterFactor(0, val);
-      return 0;
+      return val;
     }
     return false;
     break;
-    #endif
+#endif
   default:
   break;
   }
@@ -3231,11 +3231,11 @@ void ICACHE_FLASH_ATTR startWebserver() {
 ///////       Setup
 //////////////////////////////////////////////////////////////////////////////////////////
 void ICACHE_RAM_ATTR setup() {
-  #ifdef ESP32_DEVKIT
+#ifdef ESP32_DEVKIT
   Serial.begin(115200);
-  #else
+#else
   Serial.begin(9600);
-  #endif
+#endif
   if (config.getSystemDebug()) Serial.println();
   if (config.getSystemDebug()) Serial.print("[ INFO ] EVSE-WiFi - version ");
   if (config.getSystemDebug()) Serial.print(swVersion);
@@ -3536,6 +3536,7 @@ void ICACHE_RAM_ATTR loop() {
       Serial.println("Interrupt CP stopped");
     }
   }
+#ifdef ESP32_DEVKIT
   if (numPhasesDoSwitch && (numPhasesState != numPhasesDoSwitch) && (evseStatus < 3)) {
     if(numPhasesDoSwitch == 3) {
       config.setEvseNumPhases(0, numPhasesDoSwitch);
@@ -3554,8 +3555,8 @@ void ICACHE_RAM_ATTR loop() {
       needReactivation = false;
     }
     if (config.getSystemDebug()) Serial.printf("[ switchNumPhases ] switch phases done\r\n");
-
   }
+#endif
 
   if (config.getEvseRseActive(0)) {
     if (digitalRead(config.getEvseRsePin(0)) == LOW && rseActive == false) {
