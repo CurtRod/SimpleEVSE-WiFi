@@ -86,6 +86,20 @@ function listEVSEData(obj) {
   }
   if (parseInt(obj.evse_num_phases)>0) {
     document.getElementById("evse_current_limit").innerHTML += " (" + obj.evse_num_phases + "P)";
+    if (currentModalOpen === false) {
+      switch(parseInt(obj.evse_num_phases)) {
+        case 1: document.getElementById("button1P").checked = true;
+                document.getElementById("button3P").checked = false;
+                $("#labelButton1P").addClass('active');
+                $("#labelButton3P").removeClass('active');
+                break;
+        case 3: document.getElementById("button1P").checked = false;
+                document.getElementById("button3P").checked = true;
+                $("#labelButton1P").removeClass('active');
+                $("#labelButton3P").addClass('active');
+                break;
+      }
+    }
   }
 
   document.getElementById("evse_current").innerHTML = obj.evse_current + " kW";
@@ -185,6 +199,11 @@ function setEVSECurrent() {
     currentToSet = parseFloat(currentToSet) * 100.0;
   }
   websock.send("{\"command\":\"setcurrent\", \"current\":" + currentToSet + "}");
+  if(document.getElementById("button1P").checked) {
+    websock.send("{\"command\":\"setnumphases\", \"numphases\":" + 1 + "}");
+  } else if(document.getElementById("button3P").checked) {
+    websock.send("{\"command\":\"setnumphases\", \"numphases\":" + 3 + "}");
+  }
   $("#currentModal").modal("hide");
   currentModalOpen = false;
 }
@@ -830,6 +849,7 @@ function listCONF(obj) {
     document.getElementById("checkboxNumPhases").checked = obj.evse[0].numPhases==3?true:false;
   } else {
     document.getElementById("divNumPhases").style.display = "none";
+    document.getElementById("numPhasesButtons").style.display = "none";
   }
 
   var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2));
