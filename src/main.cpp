@@ -2173,6 +2173,18 @@ void ICACHE_FLASH_ATTR processWsEvent(JsonDocument& root, AsyncWebSocketClient *
     interruptCp();
   }
   #endif
+  #ifdef ESP32_DEVKIT
+    else if (strcmp(command, "setnumphases") == 0) {
+    uint8_t numPhases = root["numphases"];
+    if (config.getSystemDebug())Serial.println("[ SYSTEM ] Websocket Command \"setnumphases\"...");
+    switchNumPhases(numPhases);
+  } else if (strcmp(command, "setmeterfactor") == 0) {
+    uint8_t meterFactor = root["meterfactor"];
+    if (config.getSystemDebug())Serial.println("[ SYSTEM ] Websocket Command \"setmeterfactor\"...");
+    config.setMeterFactor(0, meterFactor);
+  }
+
+  #endif
   msg = "";
 }
 
@@ -2220,7 +2232,7 @@ uint16_t onSetMbTCPHreg(TRegister *reg, uint16_t val) {
     }
     return false;
     break;
-  case 40005: // meteringFactor
+  case 40005: // meterFactor
     if (val >= 1 && val <= 3) {
       config.setMeterFactor(0, val);
       return val;
@@ -2255,7 +2267,7 @@ uint16_t onGetMbTCPHreg(TRegister *reg, uint16_t val) {
   case 40004: // numPhases
     return numPhasesState;
     break;
-  case 40005: // meteringFactor
+  case 40005: // meterFactor
     return  config.getMeterFactor(0);
     break;
 #endif
@@ -3132,12 +3144,12 @@ void ICACHE_FLASH_ATTR setWebEvents() {
           request->send(200, "text/plain", "E3_switchNumPhases failed - wrong parameter name");
         }
     });
-    server.on("/setMeteringFactor", HTTP_GET, [](AsyncWebServerRequest * request) {
+    server.on("/setMeterFactor", HTTP_GET, [](AsyncWebServerRequest * request) {
         awp = request->getParam(0);
-        if (awp->name() == "meteringFactor") {
-          uint8_t meteringFactor = atoi(awp->value().c_str());
-          if(meteringFactor >= 1 && meteringFactor <=  3) {
-            config.setMeterFactor(0, meteringFactor);
+        if (awp->name() == "meterFactor") {
+          uint8_t meterFactor = atoi(awp->value().c_str());
+          if(meterFactor >= 1 && meterFactor <=  3) {
+            config.setMeterFactor(0, meterFactor);
             request->send(200, "text/plain", "S0_setMeterFactor set to given value");
           } else {
             request->send(200, "text/plain", "E1_setMeterFactor failed - invalid factor value");
@@ -3321,6 +3333,8 @@ void ICACHE_RAM_ATTR setup() {
 
 #ifdef ESP32_DEVKIT
   pinMode(config.getEvseNumPhasesPin(0), OUTPUT);
+  if (config.getSystemDebug()) Serial.print("[ SYSTEM ] Use numPhases GPIO ");
+  if (config.getSystemDebug()) Serial.println(config.getEvseNumPhasesPin(0));
   numPhasesState = config.getEvseNumPhases(0);
   if(numPhasesState == 3) {
     digitalWrite(config.getEvseNumPhasesPin(0), HIGH);
