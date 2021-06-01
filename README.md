@@ -316,16 +316,16 @@ E1_switchNumPhases failed - wrong state | Wrong value or already set
 E2_switchNumPhases failed - always active mode | Function is not available in always active ode 
 E3_switchNumPhases failed - wrong parameter name | Parameter `numPhases` is missing
 
-### setMeteringFactor()
-using setMeteringFactor() will the metering factor.
+### setMeterFactor()
+using setMeterFactor() will the metering factor.
 
 Parameter | Description
 --------- | -----------
-meteringFactor | When using a single phase meter it might make sense to switch between factor 1 and 3 when switching the number of phases.
+meterFactor | When using a single phase meter it might make sense to switch between factor 1 and 3 when switching the number of phases.
 
 #### Example
 
-`GET http://192.168.4.1/setMeteringFactor?meteringFactor=3`
+`GET http://192.168.4.1/setMeterFactor?meterFactor=3`
 
 > Sets factor 3 (for e.g. in three phase operation with a single phase meter).
 
@@ -338,7 +338,7 @@ Answer | Description
 --------- | -----------
 S0_setMeterFactor set to given value | Operation succeeded
 E1_setMeterFactor failed - invalid factor value | Factor has to be 1 2 or 3
-E2_setMeterFactor - wrong parameter name | Parameter `meteringFactor` is missing
+E2_setMeterFactor - wrong parameter name | Parameter `meterFactor` is missing
 
 ### setStatus()
 will activate/deactivate EVSE WB
