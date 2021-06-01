@@ -198,6 +198,7 @@ currentP1 | actual current in A (phase 1)
 currentP2 | actual current in A (phase 2)
 currentP3 | actual current in A (phase 3)
 useMeter | energy meter is configured in EVSE-WiFi (true/false)
+numPhases | number of phases in use
 
 
 #### Example
