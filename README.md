@@ -74,8 +74,8 @@ This wiring is mandatory and absolutely needed to run SimpleEVSE-WiFi
 
 ESP8266-Pin | ESP8266-GPIO | EVSE WB | ESP32 DEVKIT V1
 ----------- | ----------- | ----------- | -----------
-D1 | GPIO5 | TX | 21
-D2 | GPIO4 | RX | 22
+D1 | GPIO5 | TX | GPIO21
+D2 | GPIO4 | RX | GPIO22
 GND |  | GND | GND
 
 ##### Button (optional)
@@ -87,13 +87,13 @@ GND | | Pin 2| GND
 ##### S0 Electicity Meter (optional)*
 ESP8266-Pin | ESP8266-GPIO | electricity meter | ESP32 DEVKIT V1
 ----------- | ----------- | ----------- | -----------
-D3 | GPIO0 | S0+ | 17
+D3 | GPIO0 | S0+ | GPIO17
 GND | | S0- | GND
 
 ##### LED (optional)
 ESP8266-Pin | ESP8266-GPIO | LED | ESP32 DEVKIT V1
 ----------- | ----------- | ----------- | -----------
-D0 | GPIO16 | Anode (+) | 2
+D0 | GPIO16 | Anode (+) | GPIO2
 GND | | Kathode (-) | GND
 
 ##### Modbus Electicity Meter (optional)**
@@ -112,16 +112,16 @@ B- | B
 ##### Phase switching (optional)**
 ESP32 DEVKIT V1
 ----------- |
-32 |
+GPIO32 |
 GND |
 
 ##### RC522 RFID-Reader (optional)
 ESP8266-Pin | ESP8266-GPIO | RC522 | ESP32 DEVKIT V1
 ----------- | ----------- | ----------- | -----------
-D5 | GPIO14 | SCK | 18
-D6 | GPIO12 | MISO | 19
-D7 | GPIO13 | MOSI | 23
-D8 | GPIO15 | SDA | 5
+D5 | GPIO14 | SCK | GPIO18
+D6 | GPIO12 | MISO | GPIO19
+D7 | GPIO13 | MOSI | GPIO23
+D8 | GPIO15 | SDA | GPIO5
 GND |  | GND | GND
 3.3V |  | 3.3V | 3.3V
 
