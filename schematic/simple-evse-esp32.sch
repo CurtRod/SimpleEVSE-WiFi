@@ -6,7 +6,7 @@
 <setting alwaysvectorfont="no"/>
 <setting verticaltext="up"/>
 </settings>
-<grid distance="0.1" unitdist="inch" unit="inch" style="dots" multiple="1" display="yes" altdistance="0.01" altunitdist="inch" altunit="inch"/>
+<grid distance="0.1" unitdist="inch" unit="inch" style="lines" multiple="1" display="no" altdistance="0.01" altunitdist="inch" altunit="inch"/>
 <layers>
 <layer number="1" name="Top" color="4" fill="1" visible="no" active="no"/>
 <layer number="2" name="Route2" color="1" fill="3" visible="no" active="no"/>
@@ -1130,7 +1130,6 @@ DIN A4, landscape with extra doc field</description>
 <part name="U$1" library="ESP32-DEVKITV1" deviceset="ESP32DEVKITV1" device=""/>
 <part name="REL2" library="App Store" deviceset="RELAY-1-SRD#RC" device="" value=""/>
 <part name="REL1" library="App Store" deviceset="RELAY-1-SRD#RC" device="" value=""/>
-<part name="U$4" library="EVSEWB" deviceset="EVSEWB" device=""/>
 <part name="U$5" library="EVSEWB" deviceset="EVSEWB" device=""/>
 <part name="IEC62196" library="con-amp" deviceset="MTA07-156" device=""/>
 <part name="FRAME1" library="frames" deviceset="DINA4_L" device=""/>
@@ -1443,15 +1442,12 @@ DIN A4, landscape with extra doc field</description>
 <wire x1="256.54" y1="157.48" x2="236.22" y2="157.48" width="0.1524" layer="91"/>
 <wire x1="236.22" y1="157.48" x2="236.22" y2="121.92" width="0.1524" layer="91"/>
 <label x="254" y="157.48" size="1.778" layer="95"/>
-<wire x1="175.26" y1="121.92" x2="58.42" y2="121.92" width="0.1524" layer="91"/>
+<wire x1="175.26" y1="121.92" x2="96.52" y2="121.92" width="0.1524" layer="91"/>
 <junction x="175.26" y="121.92"/>
 <pinref part="U$5" gate="G$1" pin="GND"/>
+<wire x1="96.52" y1="121.92" x2="58.42" y2="121.92" width="0.1524" layer="91"/>
 <wire x1="218.44" y1="134.62" x2="218.44" y2="121.92" width="0.1524" layer="91"/>
 <junction x="218.44" y="121.92"/>
-</segment>
-</net>
-<net name="N$11" class="0">
-<segment>
 <pinref part="P1" gate="G$1" pin="I2"/>
 <pinref part="REL2" gate="G$1" pin="GND"/>
 <pinref part="G1" gate="G$1" pin="3"/>
@@ -1467,8 +1463,10 @@ DIN A4, landscape with extra doc field</description>
 <wire x1="205.74" y1="58.42" x2="231.14" y2="58.42" width="0.1524" layer="91"/>
 <wire x1="205.74" y1="58.42" x2="139.7" y2="58.42" width="0.1524" layer="91"/>
 <junction x="205.74" y="58.42"/>
-<wire x1="96.52" y1="144.78" x2="96.52" y2="58.42" width="0.1524" layer="91"/>
+<wire x1="96.52" y1="144.78" x2="96.52" y2="121.92" width="0.1524" layer="91"/>
 <junction x="96.52" y="58.42"/>
+<junction x="96.52" y="121.92"/>
+<wire x1="96.52" y1="121.92" x2="96.52" y2="58.42" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="N$10" class="0">
