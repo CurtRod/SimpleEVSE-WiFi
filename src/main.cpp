@@ -60,7 +60,7 @@
 
 uint8_t sw_min = 2; //Firmware Minor Version
 uint8_t sw_rev = 2; //Firmware Revision
-String sw_add = "-deti-8";
+String sw_add = "-deti-9";
 
 #ifdef ESP8266
 uint8_t sw_maj = 1; //Firmware Major Version
@@ -161,7 +161,9 @@ unsigned long millisOnTimeOled = 0;
 
 ModbusMaster evseNode;
 ModbusMaster meterNode;
+#ifdef MODBUSIP
 ModbusIP modbusTCPServerNode;  //ModbusIP object
+#endif
 AsyncWebServer server(80);    // Create AsyncWebServer instance on port "80"
 AsyncWebSocket ws("/ws");     // Create WebSocket instance on URL "/ws"
 NtpClient ntp;
@@ -1280,6 +1282,7 @@ bool ICACHE_FLASH_ATTR queryEVSE(bool startup = false) {
     Serial.print("[ ModBus ] Error ");
     Serial.print(result, HEX);
     Serial.println(" occured while getting EVSE Register 1000+");
+    esp_task_wdt_reset();
     evseNode.clearTransmitBuffer();
     evseNode.clearResponseBuffer();
     lastModbusAction = millis();
@@ -1535,6 +1538,7 @@ bool ICACHE_FLASH_ATTR getAdditionalEVSEData() {
     Serial.print("[ ModBus ] Error ");
     Serial.print(result, HEX);
     Serial.println(" occured while getting EVSE Register 2000+");
+    esp_task_wdt_reset();
     evseNode.clearTransmitBuffer();
     evseNode.clearResponseBuffer();
     if (config.getEvseLedConfig(0) == 3) changeLedTimes(300, 300);
@@ -1614,6 +1618,7 @@ bool ICACHE_FLASH_ATTR activateEVSE() {
         Serial.print("[ ModBus ] Error ");
         Serial.print(result, HEX);
         Serial.println(" occured while activating EVSE - trying again...");
+        esp_task_wdt_reset();
         if (config.getEvseLedConfig(0) == 3) changeLedTimes(300, 300);
         delay(500);
         return false;
@@ -1681,6 +1686,7 @@ bool ICACHE_FLASH_ATTR deactivateEVSE(bool logUpdate) {
       Serial.print("[ ModBus ] Error ");
       Serial.print(result, HEX);
       Serial.println(" occured while deactivating EVSE - trying again...");
+      esp_task_wdt_reset();
       if (config.getEvseLedConfig(0) == 3) changeLedTimes(300, 300);
       delay(500);
       return false;
@@ -1760,6 +1766,7 @@ bool ICACHE_FLASH_ATTR setEVSEcurrent() {  // telegram 1: write EVSE current
     Serial.print("[ ModBus ] Error ");
     Serial.print(result, HEX);
     Serial.println(" occured while setting current in EVSE - trying again...");
+    esp_task_wdt_reset();
     if (config.getEvseLedConfig(0) == 3) changeLedTimes(300, 300);
     delay(500);
     return false;
@@ -1787,6 +1794,7 @@ bool ICACHE_FLASH_ATTR setEVSERegister(uint16_t reg, uint16_t val) {
       Serial.print("[ ModBus ] Error ");
       Serial.print(result, HEX);
       Serial.println(" occured while setting EVSE Register " + (String)reg + " to " + (String)val);
+      esp_task_wdt_reset();
       if (config.getEvseLedConfig(0) == 3) changeLedTimes(300, 300);
       delay(150);
     }
@@ -2188,6 +2196,7 @@ void ICACHE_FLASH_ATTR processWsEvent(JsonDocument& root, AsyncWebSocketClient *
   msg = "";
 }
 
+#ifdef MODBUSIP
 //////////////////////////////////////////////////////////////////////////////////////////
 ///////       Modbus/TCP Functions
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -2448,6 +2457,7 @@ void setModbusTCPRegisters() {
   modbusTCPServerNode.onSetHreg(40004, onSetMbTCPHreg, 1);
   modbusTCPServerNode.onSetHreg(40005, onSetMbTCPHreg, 1);
 }
+#endif
 
 //////////////////////////////////////////////////////////////////////////////////////////
 ///////       Setup Functions
@@ -2476,7 +2486,6 @@ bool ICACHE_FLASH_ATTR connectSTA(const char* ssid, const char* password, byte b
     isWifiConnected = true;
     return true;
   }
-
   //Try again without given BSSID
   WiFi.disconnect();
   delay(100);
@@ -2888,6 +2897,8 @@ void ICACHE_FLASH_ATTR setWebEvents() {
       items["RFIDUID"] = lastRFIDUID;
 #ifdef ESP32_DEVKIT
       items["numPhases"] = numPhasesState;
+      items["uptime"] = ntp.getDeviceUptimeString();
+      items["uptimeSec"] = ntp.getUptimeSec();
 #endif
 
       remoteHeartbeatCounter = 0; // Reset Heartbeat Counter
@@ -3359,8 +3370,9 @@ void ICACHE_RAM_ATTR setup() {
   if (config.getEvseRemote(0)) sliderStatus = false;
 
   MDNS.addService("http", "tcp", 80);
+#ifdef MODBUSIP
   setModbusTCPRegisters();
-
+#endif
 /* // Show IP Address on oLED
   String ip = "IP: ";
   if (config.getWifiWmode == 1) {
@@ -3403,9 +3415,10 @@ void ICACHE_RAM_ATTR loop() {
   }
   #endif
   handleLed();
-
+#ifdef MODBUSIP
+  esp_task_wdt_reset();
   modbusTCPServerNode.task();
-
+#endif
   if (config.getEvseRemote(0) && millisRemoteHeartbeat < millis()) {
     updateRemoteHeartbeat();
   }
@@ -3553,10 +3566,8 @@ void ICACHE_RAM_ATTR loop() {
 #ifdef ESP32_DEVKIT
   if (numPhasesDoSwitch && (numPhasesState != numPhasesDoSwitch) && (evseStatus < 3)) {
     if(numPhasesDoSwitch == 3) {
-      config.setEvseNumPhases(0, numPhasesDoSwitch);
       digitalWrite(config.getEvseNumPhasesPin(0), HIGH);
     } else if(numPhasesDoSwitch == 1) {
-      config.setEvseNumPhases(0, numPhasesDoSwitch);
       digitalWrite(config.getEvseNumPhasesPin(0), LOW);
     }
     numPhasesState = numPhasesDoSwitch;
@@ -3564,11 +3575,11 @@ void ICACHE_RAM_ATTR loop() {
     numPhasesDoSwitch = 0;
 
     if(needReactivation) {
-      if (config.getSystemDebug()) Serial.printf("[ switchNumPhases ] need to reactivate EVSE\r\n");
+      if (config.getSystemDebug()) Serial.printf("[ numPhasesDoSwitch ] need to reactivate EVSE\r\n");
       toActivateEVSE = true;
       needReactivation = false;
     }
-    if (config.getSystemDebug()) Serial.printf("[ switchNumPhases ] switch phases done\r\n");
+    if (config.getSystemDebug()) Serial.printf("[ numPhasesDoSwitch ] switch phases done\r\n");
   }
 #endif
 
