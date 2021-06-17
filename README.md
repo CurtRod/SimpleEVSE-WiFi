@@ -72,29 +72,29 @@ SimpleEVSE-WiFi supports not only the control of the EVSE WB but also the use of
 ##### Mandatory
 This wiring is mandatory and absolutely needed to run SimpleEVSE-WiFi
 
-ESP8266-Pin | ESP8266-GPIO | EVSE WB
------------ | ----------- | -----------
-D1 | GPIO5 | TX
-D2 | GPIO4 | RX
-GND |  | GND
+ESP8266-Pin | ESP8266-GPIO | EVSE WB | ESP32 DEVKIT V1
+----------- | ----------- | ----------- | -----------
+D1 | GPIO5 | TX | GPIO21
+D2 | GPIO4 | RX | GPIO22
+GND |  | GND | GND
 
 ##### Button (optional)
-ESP8266-Pin | ESP8266-GPIO | Button
------------ | ----------- | -----------
-D4 | GPIO2 | Pin 1
-GND | | Pin 2
+ESP8266-Pin | ESP8266-GPIO | Button | ESP32 DEVKIT V1
+----------- | ----------- | ----------- | -----------
+D4 | GPIO2 | Pin 1 | 16
+GND | | Pin 2| GND
 
 ##### S0 Electicity Meter (optional)*
-ESP8266-Pin | ESP8266-GPIO | electricity meter
------------ | ----------- | -----------
-D3 | GPIO0 | S0+
-GND | | S0-
+ESP8266-Pin | ESP8266-GPIO | electricity meter | ESP32 DEVKIT V1
+----------- | ----------- | ----------- | -----------
+D3 | GPIO0 | S0+ | GPIO17
+GND | | S0- | GND
 
 ##### LED (optional)
-ESP8266-Pin | ESP8266-GPIO | LED
------------ | ----------- | -----------
-D0 | GPIO16 | Anode (+)
-GND | | Kathode (-)
+ESP8266-Pin | ESP8266-GPIO | LED | ESP32 DEVKIT V1
+----------- | ----------- | ----------- | -----------
+D0 | GPIO16 | Anode (+) | GPIO2
+GND | | Kathode (-) | GND
 
 ##### Modbus Electicity Meter (optional)**
 TTL->RS485 | ESP8266-Pin
@@ -109,17 +109,21 @@ TTL->RS485 | Modbus Meter
 A+ | A
 B- | B
 
-
+##### Phase switching (optional)**
+ESP32 DEVKIT V1
+----------- |
+GPIO32 |
+GND |
 
 ##### RC522 RFID-Reader (optional)
-ESP8266-Pin | ESP8266-GPIO | RC522
------------ | ----------- | -----------
-D5 | GPIO14 | SCK
-D6 | GPIO12 | MISO
-D7 | GPIO13 | MOSI
-D8 | GPIO15 | SDA
-GND |  | GND
-3.3V |  | 3.3V
+ESP8266-Pin | ESP8266-GPIO | RC522 | ESP32 DEVKIT V1
+----------- | ----------- | ----------- | -----------
+D5 | GPIO14 | SCK | GPIO18
+D6 | GPIO12 | MISO | GPIO19
+D7 | GPIO13 | MOSI | GPIO23
+D8 | GPIO15 | SDA | GPIO5
+GND |  | GND | GND
+3.3V |  | 3.3V | 3.3V
 
 Be sure to use a suitable power supply for ESP. At least 500mA is recommended!
 
@@ -194,6 +198,7 @@ currentP1 | actual current in A (phase 1)
 currentP2 | actual current in A (phase 2)
 currentP3 | actual current in A (phase 3)
 useMeter | energy meter is configured in EVSE-WiFi (true/false)
+numPhases | number of phases in use
 
 
 #### Example
@@ -286,6 +291,55 @@ Answer | Description
 E0_could not set current - internal error | Internal error occured (unspecified)
 E1_could not set current - give a value between *x* and *y*  | Wrong value was given
 E2_could not set current - wrong parameter | Wrong parameter was given
+
+### setNumPhases()
+using setNumPhases() will switch between one and three phase operation
+
+Parameter | Description
+--------- | -----------
+numPhases | Number of phases to be used (1 or 3).
+
+#### Example
+
+`GET http://192.168.4.1/setNumPhases?numPhases=3`
+
+> Enables three phase operation.
+
+```text
+Number of phases set to given value
+```
+In cases of Error, the answer would be
+
+Answer | Description
+--------- | -----------
+S0_switchNumPhases set to given value | Operation succeeded
+E1_switchNumPhases failed - wrong state | Wrong value or already set
+E2_switchNumPhases failed - always active mode | Function is not available in always active ode 
+E3_switchNumPhases failed - wrong parameter name | Parameter `numPhases` is missing
+
+### setMeterFactor()
+using setMeterFactor() will the metering factor.
+
+Parameter | Description
+--------- | -----------
+meterFactor | When using a single phase meter it might make sense to switch between factor 1 and 3 when switching the number of phases.
+
+#### Example
+
+`GET http://192.168.4.1/setMeterFactor?meterFactor=3`
+
+> Sets factor 3 (for e.g. in three phase operation with a single phase meter).
+
+```text
+Metering factor set to given value
+```
+In cases of Error, the answer would be
+
+Answer | Description
+--------- | -----------
+S0_setMeterFactor set to given value | Operation succeeded
+E1_setMeterFactor failed - invalid factor value | Factor has to be 1 2 or 3
+E2_setMeterFactor - wrong parameter name | Parameter `meterFactor` is missing
 
 ### setStatus()
 will activate/deactivate EVSE WB

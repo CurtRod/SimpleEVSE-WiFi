@@ -193,6 +193,13 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::loadConfig(String givenConfig) {
     }
     // End Testing RS485
 
+    if (jsonDoc["evse"][0].containsKey("numPhases")) {
+        evseConfig[0].numPhases = jsonDoc["evse"][0]["numPhases"];
+    }
+    else {
+        evseConfig[0].numPhases = 0;
+    }
+
     Serial.println("EVSE loaded");
     Serial.println("loadConfig.. Check!");
     configLoaded = true;
@@ -305,6 +312,7 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::printConfig() {
     Serial.println("reg1000: " + String(getEvseReg1000(0)));
     Serial.println("reg2000: " + String(getEvseReg2000(0)));
     Serial.println("updateInterval: " + String(getEvseUpdateInterval(0)));
+    Serial.println("numPhases: " + String(getEvseNumPhases(0)));
     Serial.println("--- End of Config...");
     return true;
 }
@@ -403,6 +411,7 @@ String ICACHE_FLASH_ATTR EvseWiFiConfig::getConfigJson() {
     evseObject_0["reg1000"] = this->getEvseReg1000(0);
     evseObject_0["reg2000"] = this->getEvseReg2000(0);
     evseObject_0["updateInterval"] = this->getEvseUpdateInterval(0);
+    evseObject_0["numPhases"] = this->getEvseNumPhases(0);
     
     String sReturn;
     serializeJsonPretty(rootDoc, sReturn);
@@ -587,6 +596,8 @@ uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getMeterPin(uint8_t meterId) {
     if (meterConfig[meterId].intpin) return meterConfig[meterId].intpin;
     #ifdef ESP8266
     return D3;
+    #elif ESP32_DEVKIT
+    return 17;
     #else
     return 17;
     #endif
@@ -606,6 +617,10 @@ uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getMeterPhaseCount(uint8_t meterId) {
 uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getMeterFactor(uint8_t meterId) {
     if (meterConfig[meterId].factor) return meterConfig[meterId].factor;
     return 1;
+}
+bool ICACHE_FLASH_ATTR EvseWiFiConfig::setMeterFactor(uint8_t meterId, uint8_t factor) {
+    meterConfig[meterId].factor = factor;
+    return true;
 }
 
 // rfidConfig getter/setter
@@ -650,6 +665,8 @@ uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getButtonPin(uint8_t buttonId) {
     if (buttonConfig[0].buttonpin) return buttonConfig[buttonId].buttonpin;
     #ifdef ESP8266
     return D4;
+    #elif ESP32_DEVKIT
+    return 16;
     #else
     return 16;
     #endif
@@ -711,6 +728,8 @@ uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseDisplayRotation(uint8_t evseId)
 uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseLedPin(uint8_t evseId) {
     #ifdef ESP8266
     return D0;
+    #elif ESP32_DEVKIT
+    return 2;
     #else
     return 26;
     #endif
@@ -732,7 +751,11 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseRseActive(uint8_t evseId) {
     return evseConfig[evseId].rseActive;
 }
 uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseRsePin(uint8_t evseId) {
-    return 2;
+    #ifdef ESP32_DEVKIT
+        return 34;
+    #else
+        return 2;
+    #endif
 }
 uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseRseValue(uint8_t evseId) {
     return evseConfig[evseId].rseValue;
@@ -757,4 +780,19 @@ uint16_t ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseCurrentAfterBoot(uint8_t evseI
 bool ICACHE_FLASH_ATTR EvseWiFiConfig::setEvseCurrentAfterBoot(uint8_t evseId, uint16_t current) {
     evseConfig[evseId].currentAfterBoot = current;
     return true;
+}
+
+// number of phases to switch through
+uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseNumPhasesPin(uint8_t evseId) {
+    return 32;
+}
+
+bool ICACHE_FLASH_ATTR EvseWiFiConfig::setEvseNumPhases(uint8_t evseId, uint8_t numPhases) {
+    evseConfig[evseId].numPhases = numPhases;
+    return true;
+}
+
+uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseNumPhases(uint8_t evseId) {
+    if (evseConfig[evseId].numPhases) return evseConfig[evseId].numPhases;
+    return 0;
 }

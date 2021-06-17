@@ -57,7 +57,8 @@
       "evseinstall": 16,
       "avgconsumption": 15,
       "rseactive": false,
-      "rsevalue": 80
+      "rsevalue": 80,
+      "numPhases": 3
     }
   ]
 }

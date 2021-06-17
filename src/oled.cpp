@@ -1,4 +1,4 @@
-#ifndef ESP8266
+#ifdef OLED
 #include "oled.h"
 #include <string>
 

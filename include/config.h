@@ -79,6 +79,7 @@ struct s_evseConfig {
     bool reg2000;
     unsigned long updateInterval;
     uint8_t currentAfterBoot;   // Not in config.json - just for runtime
+    uint8_t numPhases;
 };
 
 class EvseWiFiConfig {
@@ -113,6 +114,7 @@ public:
     uint16_t ICACHE_RAM_ATTR getMeterImpLen(uint8_t meterId);
     uint8_t ICACHE_FLASH_ATTR getMeterPhaseCount(uint8_t meterId);
     uint8_t ICACHE_FLASH_ATTR getMeterFactor(uint8_t meterId);
+    bool ICACHE_FLASH_ATTR setMeterFactor(uint8_t meterId, uint8_t factor);
     bool useSMeter;
     bool useMMeter;
     bool mMeterTypeSDM120;
@@ -168,6 +170,10 @@ public:
 
     uint16_t ICACHE_FLASH_ATTR getEvseCurrentAfterBoot(uint8_t evseId);
     bool ICACHE_FLASH_ATTR setEvseCurrentAfterBoot(uint8_t evseId, uint16_t current);
+
+    uint8_t ICACHE_FLASH_ATTR getEvseNumPhasesPin(uint8_t evseId);
+    bool ICACHE_FLASH_ATTR setEvseNumPhases(uint8_t evseId, uint8_t numphases);
+    uint8_t ICACHE_FLASH_ATTR getEvseNumPhases(uint8_t evseId);
 
 private:
     s_wifiConfig wifiConfig;
