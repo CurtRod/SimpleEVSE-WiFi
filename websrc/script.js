@@ -1769,12 +1769,12 @@ function socketMessageListener(evt) {
     highResolution = obj.highResolution;
 
     if (highResolution) {
-      document.getElementById("currentSlider").setAttribute("step", "0.5");
-      document.getElementById("timer1_current").setAttribute("step", "0.5");
-      document.getElementById("timer2_current").setAttribute("step", "0.5");
-      document.getElementById("timer3_current").setAttribute("step", "0.5");
-      document.getElementById("timer4_current").setAttribute("step", "0.5");
-      document.getElementById("timer5_current").setAttribute("step", "0.5");
+      document.getElementById("currentSlider").setAttribute("step", "0.5"); //Test -> 0,1
+      document.getElementById("timer1_current").setAttribute("step", "0.5");//Test -> 0,1
+      document.getElementById("timer2_current").setAttribute("step", "0.5");//Test -> 0,1
+      document.getElementById("timer3_current").setAttribute("step", "0.5");//Test -> 0,1
+      document.getElementById("timer4_current").setAttribute("step", "0.5");//Test -> 0,1
+      document.getElementById("timer5_current").setAttribute("step", "0.5");//Test -> 0,1
     }
     
     const fw = document.getElementsByClassName("fw_version")

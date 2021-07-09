@@ -54,7 +54,7 @@
 #include "rfid.h"
 
 uint8_t sw_min = 2; //Firmware Minor Version
-uint8_t sw_rev = 2; //Firmware Revision
+uint8_t sw_rev = 4; //Firmware Revision
 String sw_add = "-beta2";
 
 #ifdef ESP8266
@@ -69,6 +69,7 @@ String swVersion = String(sw_maj) + "." + String(sw_min) + "." + String(sw_rev) 
 ///////       Variables For Whole Scope
 //////////////////////////////////////////////////////////////////////////////////////////
 //EVSE Variables
+bool noEVSE = false;
 uint16_t reg2005DefaultValues = 0;
 bool highResolution = false;
 uint32_t startChargingTimestamp = 0;
@@ -121,6 +122,7 @@ unsigned long previousMeterMillis = 0;
 volatile uint8_t meterInterrupt = 0;
 
 //Metering Modbus
+bool noSDM = false;
 unsigned long millisUpdateMMeter = 0;
 unsigned long millisUpdateSMeter = 0;
 bool mMeterTypeSDM120 = false;
@@ -138,6 +140,7 @@ float voltageP3 = 0.0;
 #ifdef ESP8266
 SoftwareSerial SecondSer(D1, D2); //SoftwareSerial object (RX, TX)
 #else
+HardwareSerial FirstSer(1);
 HardwareSerial SecondSer(2);
 //oLED
 unsigned long millisUpdateOled = 0;
@@ -160,6 +163,7 @@ unsigned long lastModbusAction = 0;
 unsigned long buttonTimer = 0;
 
 //Loop
+unsigned long millisUpdateEvse = 0;
 unsigned long millisRemoteHeartbeat = 0;
 unsigned long currentMillis = 0;
 unsigned long previousMillis = 0;
@@ -234,15 +238,10 @@ void ICACHE_FLASH_ATTR updateRemoteHeartbeat() {
   }
   remoteHeartbeatCounter ++;
   millisRemoteHeartbeat = millis() + 1000;
-  Serial.print("RemoteHeartbeat: ");
-  Serial.println(remoteHeartbeatCounter);
 }
 
 void ICACHE_FLASH_ATTR handleEVSETimer() {
   millisCheckTimer = millis() + 10000;
-  //Serial.print("Vehicle Charging: ");
-  //Serial.println(vehicleCharging);
-  //Serial.println("Last Username: " + lastUsername);
   if (vehicleCharging && lastUsername.compareTo("vehicle") != 0) {
     return;
   } 
@@ -571,13 +570,26 @@ void ICACHE_FLASH_ATTR updateS0MeterData() {
 }
 
 void ICACHE_FLASH_ATTR updateMMeterData() {
+  float fRes = 0.0;
   if (config.mMeterTypeSDM120 == true) {
-    currentKW = readMeter(0x000C) / 1000.0;
-    meterReading = readMeter(0x0156);
+    fRes = readMeter(0x000C);
+    if (fRes >= 0.0) {
+      currentKW = fRes / 1000.0;
+    }
+    fRes = readMeter(0x0156);
+    if (fRes >= 0.0) {
+      meterReading = fRes;    
+    }
   }
   else if (config.mMeterTypeSDM630 == true) {
-    currentKW = readMeter(0x0034) / 1000.0;
-    meterReading = readMeter(0x0156);
+    fRes = readMeter(0x0034);
+    if (fRes >= 0.0) {
+      currentKW = fRes / 1000.0;
+    }
+    fRes = readMeter(0x0156);
+    if (fRes >= 0.0) {
+      meterReading = fRes;    
+    }
   }
   if (meterReading != 0.0 &&
       vehicleCharging == true) {
@@ -591,6 +603,10 @@ void ICACHE_FLASH_ATTR updateMMeterData() {
 }
 
 void ICACHE_FLASH_ATTR updateSDMMeterCurrent() {
+  if (noSDM) {
+    Serial.println("[ ERR ] No SDM meter detected!");
+    return;
+  }
   const int regsToRead = 12;
   uint8_t result;
   uint16_t iaRes[regsToRead];
@@ -707,7 +723,13 @@ void ICACHE_FLASH_ATTR rfidloop() {
       Serial.println(scan.valid);
     }
 
-    lastRFIDUID = scan.uid;
+    
+    if (scan.uid.length() == 7) {
+      lastRFIDUID = "0" + scan.uid;
+    }
+    else {
+      lastRFIDUID = scan.uid;
+    }
 
     StaticJsonDocument<230> jsonDoc;
     jsonDoc["command"] = "piccscan";
@@ -1201,9 +1223,13 @@ bool ICACHE_FLASH_ATTR initLogFile() {
 ///////       Meter Modbus functions
 //////////////////////////////////////////////////////////////////////////////////////////
 float ICACHE_FLASH_ATTR readMeter(uint16_t reg) {
+  if (noSDM) {
+    Serial.println("[ ERR ] No SDM meter detected!");
+    return -1;
+  }
   uint8_t result;
   uint16_t iaRes[2];
-  float fResponse = 0.0;
+  float fResponse = -1;
   meterNode.clearTransmitBuffer();
   meterNode.clearResponseBuffer();
   delay(50);
@@ -1250,6 +1276,10 @@ bool ICACHE_FLASH_ATTR updateEvseData() {
 }
 
 bool ICACHE_FLASH_ATTR queryEVSE(bool startup = false) {
+  if (noEVSE) {
+    Serial.println("[ ERR ] No EVSE detected!");
+    return false;
+  }
   uint8_t result;
   evseNode.clearTransmitBuffer();
   evseNode.clearResponseBuffer();
@@ -1487,6 +1517,10 @@ bool ICACHE_FLASH_ATTR queryEVSE(bool startup = false) {
 }
 
 bool ICACHE_FLASH_ATTR getAdditionalEVSEData() {
+  if (noEVSE) {
+    Serial.println("[ ERR ] No EVSE detected!");
+    return false;
+  }
   // Getting additional Modbus data
   evseNode.clearTransmitBuffer();
   evseNode.clearResponseBuffer();
@@ -1560,6 +1594,10 @@ bool ICACHE_FLASH_ATTR getAdditionalEVSEData() {
 }
 
 bool ICACHE_FLASH_ATTR activateEVSE() {
+  if (noEVSE) {
+    Serial.println("[ ERR ] No EVSE detected!");
+    return false;
+  }
   if (!config.getEvseAlwaysActive(0) && !timerActive) {   //Normal Mode
     static uint16_t iTransmit;
     turnOnOled();
@@ -1623,6 +1661,10 @@ bool ICACHE_FLASH_ATTR activateEVSE() {
 }
 
 bool ICACHE_FLASH_ATTR deactivateEVSE(bool logUpdate) {
+  if (noEVSE) {
+    Serial.println("[ ERR ] No EVSE detected!");
+    return false;
+  }
   turnOnOled();
   if (!config.getEvseAlwaysActive(0) && !timerActive) {   //Normal Mode
     //New ModBus Master Library
@@ -1681,7 +1723,6 @@ bool ICACHE_FLASH_ATTR deactivateEVSE(bool logUpdate) {
 
 bool ICACHE_FLASH_ATTR setEVSEcurrent() {  // telegram 1: write EVSE current
   //New ModBus Master Library
-  uint8_t result;
 
   if (highResolution) {
     if (currentToSet < 64) { // Current given in low resolution
@@ -1705,37 +1746,36 @@ bool ICACHE_FLASH_ATTR setEVSEcurrent() {  // telegram 1: write EVSE current
     if (currentToSet == evseAmpsConfig) return true; // oLED action but register is already set
   }
 
-  if (config.useMMeter) {
-    if (millisUpdateMMeter - millis() < 50) {
-      delay(50);
-    }
-  }
-
-  evseNode.clearTransmitBuffer();
-  evseNode.setTransmitBuffer(0, currentToSet); // set word 0 of TX buffer (bits 15..0)
-  result = evseNode.writeMultipleRegisters(0x03E8, 1);  // write register 0x03E8 (1000 - Actual configured amps value)
-
-  if (result != 0) {
+  if (setEVSERegister(1000,currentToSet) == false) {
     // error occured
-    Serial.print("[ ModBus ] Error ");
-    Serial.print(result, HEX);
-    Serial.println(" occured while setting current in EVSE - trying again...");
-    if (config.getEvseLedConfig(0) == 3) changeLedTimes(300, 300);
-    delay(500);
-    return false;
+    Serial.println("[ ModBus ] Error occured while setting current in EVSE - trying again in a few seconds...");
   }
-
-  // register successfully written
-  if (config.getSystemDebug()) Serial.print("[ ModBus ] Register 1000 successfully set to ");
-  if (config.getSystemDebug()) Serial.println(currentToSet);
-  evseAmpsConfig = currentToSet;  //foce update in WebUI
-  sendEVSEdata();               //foce update in WebUI
-  toSetEVSEcurrent = false;
+  else {
+    // register successfully written
+    //if (config.getSystemDebug()) Serial.print("[ ModBus ] Register 1000 successfully set to ");
+    //if (config.getSystemDebug()) Serial.println(currentToSet);
+    evseAmpsConfig = currentToSet;  //foce update in WebUI
+    sendEVSEdata();               //foce update in WebUI
+    toSetEVSEcurrent = false;
+  }
   return true;
 }
 
 bool ICACHE_FLASH_ATTR setEVSERegister(uint16_t reg, uint16_t val) {
-  bool err = true;
+  if (noEVSE) {
+    Serial.println("[ ERR ] No EVSE detected!");
+    return false;
+  }
+
+  if (config.useMMeter) {   //short delay to prevent collisions
+    if (millisUpdateMMeter - millis() < 50) {
+      delay(50);
+    }
+  }
+  while (millisUpdateEvse > millis()) {
+    delay(1);
+  }
+
   for (int i = 0; i < 5; i++) {
     uint8_t result;
     evseNode.clearTransmitBuffer();
@@ -1748,34 +1788,22 @@ bool ICACHE_FLASH_ATTR setEVSERegister(uint16_t reg, uint16_t val) {
       Serial.print(result, HEX);
       Serial.println(" occured while setting EVSE Register " + (String)reg + " to " + (String)val);
       if (config.getEvseLedConfig(0) == 3) changeLedTimes(300, 300);
-      delay(150);
+      delay((i+1) * 50);
     }
     else {
       // register successfully written
       if (config.getSystemDebug()) Serial.println("[ ModBus ] Register " + (String)reg + " successfully set to " + (String)val);
+      millisUpdateEvse = millis() + 100;
       return true;
     }
   }
+  millisUpdateEvse = millis() + 5000;
   return false;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
 ///////       Websocket Functions
 //////////////////////////////////////////////////////////////////////////////////////////
-/*
-void ICACHE_FLASH_ATTR pushSessionTimeOut() {
-  // push "TimeOut" to evse.htm!
-  // Encode a JSON Object and send it to All WebSocket Clients
-  StaticJsonDocument<40> jsonDoc;
-  jsonDoc["command"] = "sessiontimeout";
-  size_t len = measureJson(jsonDoc);
-  AsyncWebSocketMessageBuffer * buffer = ws.makeBuffer(len);
-  if (buffer) {
-    serializeJson(jsonDoc, (char *)buffer->get(), len + 1);
-    ws.textAll(buffer);
-  }
-}*/
-
 void ICACHE_FLASH_ATTR sendEVSEdata() {
     StaticJsonDocument<520> jsonDoc;
     jsonDoc["command"] = "getevsedata";
@@ -2428,8 +2456,45 @@ bool ICACHE_FLASH_ATTR startAP(const char * ssid, const char * password = NULL) 
   return success;
 }
 
-bool ICACHE_FLASH_ATTR loadConfiguration(String configString = "") {
+#ifdef ESP32
+bool checkUart(HardwareSerial* Ser, uint8_t deviceId) {
+  // Device IDs:
+  // 1 -> EVSE
+  // 2 -> SDM
 
+  ModbusMaster testNode;
+  testNode.begin(deviceId, *Ser);
+  testNode.clearTransmitBuffer();
+  testNode.clearResponseBuffer();
+  
+  uint8_t result;
+  uint8_t err;
+
+  int i = 0;
+  do {
+    if (deviceId == 1) result = testNode.readHoldingRegisters(0x03E8, 2);  // read 1 registers starting at 0x03E8 (1000)
+    if (deviceId == 2) result = testNode.readHoldingRegisters(0x0156, 2);  // read 1 registers starting at 0x0156 (342)
+    testNode.clearTransmitBuffer();
+    testNode.clearResponseBuffer();
+    if (result != 0) {
+      Serial.print("[ checkUart ] Error on getting data from device ");
+      Serial.println(deviceId);
+      delay(300);
+
+    } 
+    i++;
+  } while (result != 0 && i < 3);
+
+  if (result == 0) {
+    return true;
+  }
+  else {
+    return false;
+  }
+}
+#endif
+
+bool ICACHE_FLASH_ATTR loadConfiguration(String configString = "") {
   Serial.println("[ SYSTEM ] Loading Config File on Startup...");
   #ifdef ESP32
   oled.showSplash("Config File...");
@@ -2446,6 +2511,45 @@ bool ICACHE_FLASH_ATTR loadConfiguration(String configString = "") {
   config.renewConfigFile();
 
   delay(300); // wait a few milliseconds to prevent voltage drop...
+
+#ifdef ESP8266
+  SecondSer.begin(9600);
+  meterNode.begin(2, Serial);
+  evseNode.begin(1, SecondSer);
+  #else
+
+  FirstSer.begin(9600, SERIAL_8N1, 22, 21);   //EVSE
+  SecondSer.begin(9600, SERIAL_8N1, 34, 14);  //SDM
+
+  //Check connected devices
+  //EVSE:
+  if (checkUart(&FirstSer, 1)) { //EVSE -> UART1
+    evseNode.begin(1, FirstSer);
+    Serial.println("[ Modbus ] EVSE detected at UART 1");
+  }
+  else if (checkUart(&SecondSer, 1)) { //EVSE -> UART2
+    evseNode.begin(1, SecondSer);
+    Serial.println("[ Modbus ] EVSE detected at UART 2");
+  }
+  else {
+    noEVSE = true;
+  }
+
+  //SDM:
+  if (config.useMMeter) {
+    if (checkUart(&FirstSer, 2)) { //SDM -> UART1
+      meterNode.begin(2, FirstSer);
+      Serial.println("[ Modbus ] SDM detected at UART 1");
+    }
+    else if (checkUart(&SecondSer, 2)) { //SDM -> UART2
+      meterNode.begin(2, SecondSer);
+      Serial.println("[ Modbus ] SDM detected at UART 2");
+    }
+    else {
+      noSDM = true;
+    }
+  }
+  #endif
 
   if (config.getSystemDebug()) {
     Serial.println("[ SYSTEM ] Debug Mode: ON!");
@@ -2692,7 +2796,13 @@ void ICACHE_FLASH_ATTR setWebEvents() {
       items["vehicleState"] = evseStatus;
       items["evseState"] = evseActive;
       items["maxCurrent"] = maxCurrent;
-      items["actualCurrent"] = evseAmpsConfig;
+      if (highResolution) {
+        items["actualCurrent"] = evseAmpsConfig / 100;
+        items["actualCurrentMA"] = evseAmpsConfig;
+      }
+      else {
+        items["actualCurrent"] = evseAmpsConfig;
+      }
       items["actualPower"] =  float(int((currentKW + 0.005) * 100.0)) / 100.0;
       items["duration"] = getChargingTime();
       items["alwaysActive"] = config.getEvseAlwaysActive(0);
@@ -2705,6 +2815,9 @@ void ICACHE_FLASH_ATTR setWebEvents() {
         items["currentP1"] = currentP1;
         items["currentP2"] = currentP2;
         items["currentP3"] = currentP3;
+        items["voltageP1"] = voltageP1;
+        items["voltageP2"] = voltageP2;
+        items["voltageP3"] = voltageP3;
       }
       else {
         if (!vehicleCharging && !config.useMMeter) {
@@ -2717,7 +2830,7 @@ void ICACHE_FLASH_ATTR setWebEvents() {
           float fCurrent = float(int((currentKW / float(config.getMeterFactor(0)) / 0.227 + 0.005) * 100.0) / 100.0);
           if (config.getMeterFactor(0) == 1) {
             items["currentP1"] = fCurrent;
-              items["currentP2"] = 0.0;
+            items["currentP2"] = 0.0;
             items["currentP3"] = 0.0;
           }
           else if (config.getMeterFactor(0) == 2) {
@@ -2736,7 +2849,10 @@ void ICACHE_FLASH_ATTR setWebEvents() {
           items["currentP1"] = fCurrent;
           items["currentP2"] = fCurrent;
           items["currentP3"] = fCurrent;
-        }
+        }   // S0 meter -> no voltage available
+        items["voltageP1"] = 0;
+        items["voltageP2"] = 0;
+        items["voltageP3"] = 0;
       }
       items["useMeter"] = config.getMeterActive(0);
       items["RFIDUID"] = lastRFIDUID;
@@ -2773,6 +2889,7 @@ void ICACHE_FLASH_ATTR setWebEvents() {
           if ((atoi(awp->value().c_str()) <= config.getSystemMaxInstall() && atoi(awp->value().c_str()) >= 6) || 
             (atoi(awp->value().c_str()) <= config.getSystemMaxInstall() * 100 && atoi(awp->value().c_str()) >= 600) || atoi(awp->value().c_str()) == 0) {
             currentToSet = atoi(awp->value().c_str());
+            toSetEVSEcurrent = true;
             if (setEVSEcurrent()) {
               request->send(200, "text/plain", "S0_set current to given value");
             }
@@ -2783,6 +2900,7 @@ void ICACHE_FLASH_ATTR setWebEvents() {
           else {
             if (atoi(awp->value().c_str()) >= config.getSystemMaxInstall()) {
               currentToSet = config.getSystemMaxInstall();
+              toSetEVSEcurrent = true;
               if (setEVSEcurrent()) {
                 request->send(200, "text/plain", "S0_set current to maximum value");
               }
@@ -3067,16 +3185,8 @@ void ICACHE_RAM_ATTR setup() {
 
   SPI.begin();
   SPIFFS.begin();
-  #ifdef ESP8266
-  SecondSer.begin(9600);
-  meterNode.begin(2, Serial);
-  #else
-  SecondSer.begin(9600, SERIAL_8N1, 22, 21);
-  meterNode.begin(2, SecondSer);
-  #endif
   
-  evseNode.begin(1, SecondSer);
-
+  
   #ifdef ESP32
   oled.begin(&u8g2, config.getEvseDisplayRotation(0));
   Serial.println("[ SYSTEM ] OLED started");
@@ -3238,7 +3348,7 @@ void ICACHE_RAM_ATTR loop() {
       currentKW = 0.0;
     }
   }
-  if (toSetEVSEcurrent && !updateRunning) {
+  if (toSetEVSEcurrent && millisUpdateEvse < millis() && !updateRunning) {
     setEVSEcurrent();
   }
 
