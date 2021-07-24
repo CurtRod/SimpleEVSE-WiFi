@@ -55,7 +55,7 @@
 
 uint8_t sw_min = 2; //Firmware Minor Version
 uint8_t sw_rev = 4; //Firmware Revision
-String sw_add = "-beta2";
+String sw_add = "";
 
 #ifdef ESP8266
 uint8_t sw_maj = 1; //Firmware Major Version
@@ -2967,64 +2967,6 @@ void ICACHE_FLASH_ATTR setWebEvents() {
     });
     #endif
 
-    //evseHost
-    server.on("/evseHost", HTTP_GET, [](AsyncWebServerRequest * request) {
-      AsyncResponseStream *response = request->beginResponseStream("application/json");
-      StaticJsonDocument<340> jsonDoc;
-      jsonDoc["type"] = "evseHost";
-      JsonArray list = jsonDoc.createNestedArray("list");
-      JsonObject item = list.createNestedObject();
-
-      #ifdef ESP8266
-      struct ip_info info;
-      if (inAPMode) {
-        wifi_get_ip_info(SOFTAP_IF, &info);
-        struct softap_config conf;
-        wifi_softap_get_config(&conf);
-        item["ssid"] = String(reinterpret_cast<char*>(conf.ssid));
-        item["dns"] = printIP(WiFi.softAPIP());
-        item["mac"] = WiFi.softAPmacAddress();
-      }
-      else {
-        wifi_get_ip_info(STATION_IF, &info);
-        struct station_config conf;
-        wifi_station_get_config(&conf);
-        item["ssid"] = String(reinterpret_cast<char*>(conf.ssid));
-        item["rssi"] = String(WiFi.RSSI());
-        item["dns"] = printIP(WiFi.dnsIP());
-        item["mac"] = WiFi.macAddress();
-      }
-      #else
-      wifi_config_t conf;
-      tcpip_adapter_ip_info_t info;
-      tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_ETH, &info);
-      if (inAPMode) {
-        esp_wifi_get_config(WIFI_IF_AP, &conf);
-        item["ssid"] = String(reinterpret_cast<char*>(conf.ap.ssid));
-        item["dns"] = printIP(WiFi.softAPIP());
-        item["mac"] = WiFi.softAPmacAddress();
-      }
-      else {
-        esp_wifi_get_config(WIFI_IF_STA, &conf);
-        item["ssid"] = String(reinterpret_cast<char*>(conf.sta.ssid));
-        item["rssi"] = String(WiFi.RSSI());
-        item["dns"] = printIP(WiFi.dnsIP());
-        item["mac"] = WiFi.macAddress();
-      } 
-      #endif
-
-      IPAddress ipaddr = IPAddress(info.ip.addr);
-      IPAddress gwaddr = IPAddress(info.gw.addr);
-      IPAddress nmaddr = IPAddress(info.netmask.addr);
-      item["ip"] = printIP(ipaddr);
-      item["gateway"] = printIP(gwaddr);
-      item["netmask"] = printIP(nmaddr);
-      item["uptime"] = ntp.getUptimeSec();
-
-      serializeJson(jsonDoc, *response);
-      request->send(response);
-    });
-
     //doReboot
     server.on("/doReboot", HTTP_GET, [](AsyncWebServerRequest * request) {
       awp = request->getParam(0);
@@ -3094,6 +3036,71 @@ void ICACHE_FLASH_ATTR setWebEvents() {
       }
     });
   }
+    //evseHost
+    server.on("/evseHost", HTTP_GET, [](AsyncWebServerRequest * request) {
+      AsyncResponseStream *response = request->beginResponseStream("application/json");
+      StaticJsonDocument<340> jsonDoc;
+      jsonDoc["type"] = "evseHost";
+      JsonArray list = jsonDoc.createNestedArray("list");
+      JsonObject item = list.createNestedObject();
+
+      #ifdef ESP8266
+      struct ip_info info;
+      if (inAPMode) {
+        wifi_get_ip_info(SOFTAP_IF, &info);
+        struct softap_config conf;
+        wifi_softap_get_config(&conf);
+        item["ssid"] = String(reinterpret_cast<char*>(conf.ssid));
+        item["dns"] = printIP(WiFi.softAPIP());
+        item["mac"] = WiFi.softAPmacAddress();
+      }
+      else {
+        wifi_get_ip_info(STATION_IF, &info);
+        struct station_config conf;
+        wifi_station_get_config(&conf);
+        item["ssid"] = String(reinterpret_cast<char*>(conf.ssid));
+        item["rssi"] = String(WiFi.RSSI());
+        item["dns"] = printIP(WiFi.dnsIP());
+        item["mac"] = WiFi.macAddress();
+      }
+      #else
+      wifi_config_t conf;
+      tcpip_adapter_ip_info_t info;
+      tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_ETH, &info);
+      if (inAPMode) {
+        esp_wifi_get_config(WIFI_IF_AP, &conf);
+        item["ssid"] = String(reinterpret_cast<char*>(conf.ap.ssid));
+        item["dns"] = printIP(WiFi.softAPIP());
+        item["mac"] = WiFi.softAPmacAddress();
+        item["ip"] = WiFi.softAPIP().toString();
+        item["netmask"] = printSubnet(WiFi.softAPSubnetCIDR());
+        item["gateway"] = WiFi.gatewayIP().toString();
+      }
+      else {
+        esp_wifi_get_config(WIFI_IF_STA, &conf);
+        item["ssid"] = String(reinterpret_cast<char*>(conf.sta.ssid));
+        item["rssi"] = String(WiFi.RSSI());
+        item["dns"] = printIP(WiFi.dnsIP());
+        item["mac"] = WiFi.macAddress();
+        item["ip"] = WiFi.localIP().toString();
+        item["netmask"] = WiFi.subnetMask().toString();
+        item["gateway"] = WiFi.gatewayIP().toString();
+      } 
+      #endif
+      item["uptime"] = ntp.getUptimeSec();
+      if (config.getEvseRemote(0)) {
+        item["opMode"] = "remote";
+      }
+      else if (config.getEvseAlwaysActive(0)) {
+        item["opMode"] = "alwaysActive";
+      }
+      else {
+        item["opMode"] = "normal";
+      }
+      item["firmware"] = swVersion;
+      serializeJson(jsonDoc, *response);
+      request->send(response);
+    });
 }
 
 void ICACHE_FLASH_ATTR fallbacktoAPMode() {
