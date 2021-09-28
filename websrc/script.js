@@ -473,10 +473,10 @@ FooTable.MyFiltering = FooTable.Filtering.extend({
 //Script data for Log
 function loadLog() {
   if (hw_rev === "ESP8266") {
-    document.getElementById("textlimitlogfile").innerHTML = "The log file is limited to 50 entries (LIFO principle)";
+    document.getElementById("textlimitlogfile").innerHTML = "The log file is limited to 50 entries (FIFO principle)";
   }
   else {
-    document.getElementById("textlimitlogfile").innerHTML = "The log file is limited to 100 entries (LIFO principle)";
+    document.getElementById("textlimitlogfile").innerHTML = "The log file is limited to 100 entries (FIFO principle)";
   }
 
   document.getElementById("evseContent").style.display = "none";
