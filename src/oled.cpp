@@ -3,8 +3,10 @@
 #include <string>
 
 void EvseWiFiOled::begin(U8G2_SSD1327_WS_128X128_F_4W_HW_SPI* u8, uint8_t rotation) {
+//void EvseWiFiOled::begin(U8G2_SSD1309_128X64_NONAME0_F_4W_HW_SPI* u8, uint8_t rotation) {
   this->u8g2 = u8;
   this->u8g2->begin();
+
   switch (rotation)
   {
   case 0: 
@@ -22,6 +24,15 @@ void EvseWiFiOled::begin(U8G2_SSD1327_WS_128X128_F_4W_HW_SPI* u8, uint8_t rotati
   default: //No rotation
   this->u8g2->setDisplayRotation(U8G2_R0);
     break;
+  }
+}
+
+void EvseWiFiOled::setLanguage(EvseWiFiConfig* config) {
+  if (strcmp(config->getSystemLanguage(), "en") == 0) {
+    this->language = 0; //EN
+  }
+  else {
+    this->language = 1; //DE
   }
 }
 
@@ -78,36 +89,8 @@ void EvseWiFiOled::showDemo(uint8_t evseStatus, unsigned long chargingTime, uint
   if (day(time) < 10) {_date += ("0" + (String)day(time));}
   else {_date += (String)day(time);}
 
-  String _weekday;
-
   // Day of the week
-  switch (weekday(time))
-  {
-  case 1:
-    _weekday = "Sunday";
-    break;
-  case 2:
-    _weekday = "Monday";
-    break;
-  case 3:
-    _weekday = "Tuesday";
-    break;
-  case 4:
-    _weekday = "Wednesday";
-    break;
-  case 5:
-    _weekday = "Thursday";
-    break;
-  case 6:
-    _weekday = "Friday";
-    break;
-  case 7:
-    _weekday = "Saturday";
-    break;
-  default:
-    _weekday = "";
-    break;
-  } 
+  String _weekday = this->getTranslation(weekday(time), this->language);
 
   String strDuration = "";
   chargingTime = chargingTime / 1000;
@@ -153,16 +136,16 @@ void EvseWiFiOled::showDemo(uint8_t evseStatus, unsigned long chargingTime, uint
   uint8_t val_y_date2 = val_y + 5;
 
   do {
-    this->u8g2->setFont(u8g2_font_helvR14_tr);
-    this->u8g2->drawStr(val_x,val_y, _time.c_str());
+    this->u8g2->setFont(u8g2_font_helvR14_tf);
+    this->u8g2->drawUTF8(val_x,val_y, _time.c_str());
     val_y += 9;
 
-    this->u8g2->setFont(u8g2_font_helvR10_tr);
-    this->u8g2->drawStr(val_x_date,val_y_date1, _weekday.c_str());
-    this->u8g2->setFont(u8g2_font_helvR08_tr);
-    this->u8g2->drawStr(val_x_date,val_y_date2, _date.c_str());
+    this->u8g2->setFont(u8g2_font_helvR10_tf);
+    this->u8g2->drawUTF8(val_x_date,val_y_date1, _weekday.c_str());
+    this->u8g2->setFont(u8g2_font_helvR08_tf);
+    this->u8g2->drawUTF8(val_x_date,val_y_date2, _date.c_str());
     
-    this->u8g2->setFont(u8g2_font_helvR12_tr);
+    this->u8g2->setFont(u8g2_font_helvR12_tf);
     this->u8g2->drawHLine(val_x,val_y, 122);
     val_y += 17;
 
@@ -171,16 +154,16 @@ void EvseWiFiOled::showDemo(uint8_t evseStatus, unsigned long chargingTime, uint
     switch (evseStatus)
     {
     case 0:
-      strStatus += "MB Error";
+      strStatus += this->getTranslation(10, this->language); //MB Error
       break;
     case 1:
-      strStatus += "Ready";
+      strStatus += this->getTranslation(11, this->language); //Ready
       break;
     case 2:
-      strStatus += "Detected";
+      strStatus += this->getTranslation(12, this->language); //Detected
       break;
     case 3:
-      strStatus += "Charging";
+      strStatus += this->getTranslation(13, this->language); //Charging
       break;
     default:
       break;
@@ -192,7 +175,7 @@ void EvseWiFiOled::showDemo(uint8_t evseStatus, unsigned long chargingTime, uint
     else {
       this->u8g2->drawXBMP(val_x, val_y-12, 12, 12, xbm_locked);
     }
-    this->u8g2->drawStr(val_x + 17,val_y, strStatus.c_str());
+    this->u8g2->drawUTF8(val_x + 17,val_y, strStatus.c_str());
     val_y += 16;
 
     if (timerActive) {
@@ -200,30 +183,30 @@ void EvseWiFiOled::showDemo(uint8_t evseStatus, unsigned long chargingTime, uint
     }
     
     this->u8g2->drawXBMP(val_x, val_y-12, 12, 12, xbm_flash);
-    this->u8g2->drawStr(val_x + 17,val_y, strCurrent.c_str());
+    this->u8g2->drawUTF8(val_x + 17,val_y, strCurrent.c_str());
     val_y += 16;
 
     this->u8g2->drawXBMP(val_x, val_y-12, 12, 12, xbm_power);
-    this->u8g2->drawStr(val_x + 17,val_y, strPower.c_str());
+    this->u8g2->drawUTF8(val_x + 17,val_y, strPower.c_str());
     val_y += 16;
 
     this->u8g2->drawXBMP(val_x, val_y-12, 12, 12, xbm_time);
-    this->u8g2->drawStr(val_x + 17,val_y, strDuration.c_str());
+    this->u8g2->drawUTF8(val_x + 17,val_y, strDuration.c_str());
     val_y += 16;
     
     this->u8g2->drawXBMP(val_x, val_y-12, 12, 12, xbm_energy);
-    this->u8g2->drawStr(val_x + 17,val_y, strEnergy.c_str());
+    this->u8g2->drawUTF8(val_x + 17,val_y, strEnergy.c_str());
   } while ( this->u8g2->nextPage() );
   delay(100);
 }
 
-void EvseWiFiOled::showSplash(String text) {
+void EvseWiFiOled::showSplash(String text, String head) {
   this->u8g2->firstPage();
   do {
     this->u8g2->drawXBMP(32, 15, 64, 64, xbm_splash);
-    this->u8g2->setFont(u8g2_font_helvR10_tr);
-    this->u8g2->drawStr(35 + this->offsetX, 100 + this->offsetY, "Loading...");
-    this->u8g2->drawStr(this->offsetX, 120 + this->offsetY, text.c_str());
+    this->u8g2->setFont(u8g2_font_helvR10_tf);
+    this->u8g2->drawUTF8(35 + this->offsetX, 100 + this->offsetY, head.c_str());
+    this->u8g2->drawUTF8(this->offsetX, 120 + this->offsetY, text.c_str());
   } while(this->u8g2->nextPage());
 }
 
@@ -238,13 +221,17 @@ void EvseWiFiOled::drawCheck(uint8_t textId) {
   switch (textId)
   {
   case 0:
-    text = "RFID tag valid";
+    text = this->getTranslation(20, this->language); //RFID tag valid
     val_x_text += 10;
     val_y_text += 110;
     break;
   case 1:
-    text = "Button input";
-    val_x_text += 20;
+    text = this->getTranslation(22, this->language); //Button input
+    val_x_text += 15;
+    val_y_text += 110;
+  case 3:
+    text = this->getTranslation(23, this->language); //RFID tag read
+    val_x_text += 10;
     val_y_text += 110;
   default:
     break;
@@ -252,18 +239,18 @@ void EvseWiFiOled::drawCheck(uint8_t textId) {
   this->u8g2->firstPage();
   do {
     this->u8g2->drawXBMP( 27 + this->offsetX, 25 + this->offsetY, xbm_checked_width, xbm_checked_height, xbm_checked);
-    this->u8g2->setFont(u8g2_font_helvR12_tr);
-    this->u8g2->drawStr(val_x_text, val_y_text, text.c_str());
+    this->u8g2->setFont(u8g2_font_helvR12_tf);
+    this->u8g2->drawUTF8(val_x_text, val_y_text, text.c_str());
   } while(this->u8g2->nextPage());
 }
 
 void EvseWiFiOled::drawUncheck() {
-  String text = "RFID tag invalid!";
+  String text = this->getTranslation(21, this->language); //RFID tag invalid!
   this->u8g2->firstPage();
   do {
     this->u8g2->drawXBMP( 32 + this->offsetX, 25 + this->offsetY, xbm_unchecked_width, xbm_unchecked_height, xbm_unchecked);
-    this->u8g2->setFont(u8g2_font_helvR12_tr);
-    this->u8g2->drawStr(10 + this->offsetX, 110 + this->offsetY, text.c_str());
+    this->u8g2->setFont(u8g2_font_helvR12_tf);
+    this->u8g2->drawUTF8(10 + this->offsetX, 110 + this->offsetY, text.c_str());
   } while(this->u8g2->nextPage());
 }
 
@@ -275,4 +262,134 @@ void EvseWiFiOled::showCheck(bool checked, uint8_t textID) {
     drawUncheck();
   }
 }
+
+String EvseWiFiOled::getTranslation(uint8_t id, uint8_t lang) {
+  switch (id)
+  {
+  case 1:
+    if (lang == 0) {
+      return "Sunday";
+    }
+    else {
+      return "Sonntag";
+    }
+    break;
+  case 2:
+    if (lang == 0) {
+      return "Monday";
+    }
+    else {
+      return "Montag";
+    }
+    break;
+  case 3:
+    if (lang == 0) {
+      return "Tuesday";
+    }
+    else {
+      return "Dienstag";
+    }
+    break;
+  case 4:
+    if (lang == 0) {
+      return "Wednesday";
+    }
+    else {
+      return "Mittwoch";
+    }
+    break;
+  case 5:
+    if (lang == 0) {
+      return "Thursday";
+    }
+    else {
+      return "Donnerstag";
+    }
+    break;
+  case 6:
+    if (lang == 0) {
+      return "Friday";
+    }
+    else {
+      return "Freitag";
+    }
+    break;
+  case 7:
+    if (lang == 0) {
+      return "Saturday";
+    }
+    else {
+      return "Samstag";
+    }
+    break;
+  case 10:
+    if (lang == 0) {
+      return "MB Error";
+    }
+    else {
+      return "MB Fehler";
+    }
+    break;
+  case 11:
+    if (lang == 0) {
+      return "Ready";
+    }
+    else {
+      return "Bereit";
+    }
+    break;
+  case 12:
+    if (lang == 0) {
+      return "Detected";
+    }
+    else {
+      return "Angeschlossen";
+    }
+    break;
+  case 13:
+    if (lang == 0) {
+      return "Charging";
+    }
+    else {
+      return "Lädt"; // ä
+    }
+    break;
+  case 20:
+    if (lang == 0) {
+      return "RFID tag valid";
+    }
+    else {
+      return "RFID gültig";
+    }
+    break;
+  case 21:
+    if (lang == 0) {
+      return "RFID tag invalid!";
+    }
+    else {
+      return "RFID ungültig!";
+    }
+    break;
+  case 22:
+    if (lang == 0) {
+      return "Button input";
+    }
+    else {
+      return "Taster erkannt";
+    }
+    break;
+  case 23:
+    if (lang == 0) {
+      return "RFID Tag read";
+    }
+    else {
+      return "RFID erkannt";
+    }
+    break;
+  default:
+    break;
+  }
+  return "";
+}
+
 #endif

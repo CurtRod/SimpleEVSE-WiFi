@@ -83,7 +83,7 @@ String ICACHE_FLASH_ATTR NtpClient::iso8601DateTime() {
           zeroPaddedIntVal(hour()) + colon +
           zeroPaddedIntVal(minute()) + colon +
           zeroPaddedIntVal(second()) +
-          (timezone == 0 ? "Z" : String(timezone));
+          (timezone == 0 ? "Z" : String(timezone)) + " ";
 }
 
 time_t NtpClient::getUptimeSec() {

@@ -27,7 +27,7 @@
     "rfidgain": 32
   },
   "ntp": {
-    "ntpip": "pool.ntp.org",
+    "ntpip": "de.pool.ntp.org",
     "timezone": 1,
     "dst": false
   },
