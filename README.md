@@ -13,7 +13,7 @@ EVSE-WiFi brings WiFi functionality to your EVSE WB/DIN to control your Charging
 
 If you want to support this project, I would be very happy about a donation.
 
-[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/pools/c/85c7xRbeay)
+[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.me/evsewifi)
 
 ## Main Features
 
