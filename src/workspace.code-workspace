@@ -1,0 +1,68 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"name": "TestLAN",
+			"path": "..\\..\\TestLAN"
+		},
+		{
+			"name": "TestLAN-IDF",
+			"path": "..\\..\\..\\Users\\mathias\\Documents\\PlatformIO\\Projects\\TestLAN-IDF"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"string": "cpp",
+			"limits": "cpp",
+			"array": "cpp",
+			"atomic": "cpp",
+			"*.tcc": "cpp",
+			"cctype": "cpp",
+			"clocale": "cpp",
+			"cmath": "cpp",
+			"cstdarg": "cpp",
+			"cstdint": "cpp",
+			"cstdio": "cpp",
+			"cstdlib": "cpp",
+			"cwchar": "cpp",
+			"cwctype": "cpp",
+			"deque": "cpp",
+			"list": "cpp",
+			"unordered_map": "cpp",
+			"vector": "cpp",
+			"exception": "cpp",
+			"fstream": "cpp",
+			"functional": "cpp",
+			"initializer_list": "cpp",
+			"iosfwd": "cpp",
+			"istream": "cpp",
+			"new": "cpp",
+			"ostream": "cpp",
+			"numeric": "cpp",
+			"sstream": "cpp",
+			"stdexcept": "cpp",
+			"streambuf": "cpp",
+			"cinttypes": "cpp",
+			"tuple": "cpp",
+			"type_traits": "cpp",
+			"utility": "cpp",
+			"typeinfo": "cpp",
+			"map": "cpp",
+			"unordered_set": "cpp",
+			"regex": "cpp",
+			"bitset": "cpp",
+			"cstddef": "cpp",
+			"cstring": "cpp",
+			"random": "cpp",
+			"memory": "cpp",
+			"system_error": "cpp",
+			"iostream": "cpp",
+			"esp32-hal-spi.h": "c",
+			"esp32-hal.h": "c",
+			"*.ipp": "cpp",
+			"string_view": "cpp"
+		}
+	}
+}

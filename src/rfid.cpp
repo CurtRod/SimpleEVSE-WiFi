@@ -9,8 +9,10 @@ bool ICACHE_FLASH_ATTR EvseWiFiRfid::begin(int rfidss, bool usePN532, int rfidga
   delay(50);
   mfrc522.PCD_Init(rfidss, 0);
   delay(50);
-  if (debug) Serial.printf("[ INFO ] RFID SS_PIN: %u and Gain Factor: %u", rfidss, rfidgain);
-  if (debug) Serial.println("");
+  if (this->debug) this->slog->log(this->ntpClient->iso8601DateTime() + "[ INFO ] RFID SS_PIN:");
+  if (this->debug) this->slog->log(rfidss);
+  if (this->debug) this->slog->log(" and Gain Factor: ");
+  if (this->debug) this->slog->logln(rfidgain);
   delay(50);
   printReaderDetails();
   return true;

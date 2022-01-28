@@ -221,6 +221,18 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::loadConfiguration() {
             Serial.println("Use SDM630");
         }
     }
+
+    if (!(SPIFFS.exists("/timer.json"))) {
+        Serial.println("[ SYSTEM ] Timer File doesn't exist - create Timer File...");
+        File timerfile = SPIFFS.open("/timer.json", "w");
+        if (!timerfile.print(SRC_TIMER_TEMPLATE)) {
+            Serial.println("[ SYSTEM ] Can't write Timer File");
+        }
+        if (!timerfile) {
+            Serial.println("[ SYSTEM ] Can't create Timer File");
+        }
+        timerfile.close();
+    }
     return true;
 }
 bool ICACHE_FLASH_ATTR EvseWiFiConfig::printConfigFile() {

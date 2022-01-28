@@ -53,9 +53,9 @@
 #include "templates.h"
 #include "rfid.h"
 
-uint8_t sw_min = 2; //Firmware Minor Version
-uint8_t sw_rev = 4; //Firmware Revision
-String sw_add = "-beta2";
+uint8_t sw_min = 3; //Firmware Minor Version
+uint8_t sw_rev = 2; //Firmware Revision
+String sw_add = "";
 
 #ifdef ESP8266
 uint8_t sw_maj = 1; //Firmware Major Version
@@ -144,7 +144,9 @@ HardwareSerial FirstSer(1);
 HardwareSerial SecondSer(2);
 //oLED
 unsigned long millisUpdateOled = 0;
-U8G2_SSD1327_WS_128X128_F_4W_HW_SPI u8g2(U8G2_R0, /* cs=*/ 12, /* dc=*/ 13, /* reset=*/ 33);
+//U8G2_SSD1327_WS_128X128_F_4W_HW_SPI u8g2(U8G2_R0, /* cs=*/ 12, /* dc=*/ 13, /* reset=*/ 33);
+u8g2_t u8g2;
+
 EvseWiFiOled oled;
 #endif
 
@@ -267,7 +269,7 @@ void ICACHE_FLASH_ATTR handleEVSETimer() {
   timerFile.close();
   if (error) {
     millisCheckTimer = millis() + 10000;
-    if(config.getSystemDebug()) Serial.println("[ ERR ] Timer File does not exist");
+    if(config.getSystemDebug()) slog.logln(ntp.iso8601DateTime() + "[ ERR ] Can't read Timer File");
     return;
   }
 
@@ -324,6 +326,7 @@ void ICACHE_FLASH_ATTR handleEVSETimer() {
 }
 
 void ICACHE_FLASH_ATTR timerActivateMatch(uint16_t current) {
+  interruptCp();
   if (setEVSERegister(2005, reg2005DefaultValues)){
     addEvseData.evseReg2005 = reg2005DefaultValues;
     timerActive = true;
@@ -445,9 +448,26 @@ bool ICACHE_FLASH_ATTR setSmartWb11kWSettings() {
     Serial.println("[ Auto-Config ] config.json for smartWB 11kW successfully loaded and saved");
   }
   else {
-    Serial.println("[ Auto-Config ] [ !!! ] Error while loading config.json for smartWB 11kW!");
+    slog.logln(ntp.iso8601DateTime() + "[ Auto-Config ] [ !!! ] Error while loading config.json for smartWB 11kW!");
   }
 
+  bool err = false;
+// Setting SDM Meter ID
+/*
+  delay(200);
+  for (size_t i = 0; i < 3; i++) {
+    if (setSDMID() == false) {
+      delay(200);
+      err = true;
+      slog.logln(ntp.iso8601DateTime() + "[ Auto-Config ] [ !!! ] Error while setting SDM ID to 2");
+    }
+    else {
+      slog.logln(ntp.iso8601DateTime() + "[ Auto-Config ] SDM ID successfully set to 2");
+      err = false;
+      break;
+    }
+  }
+*/
 // Setting EVSE Registers for smartWB 11kW
   bool err = false;
   delay(200);
@@ -3388,7 +3408,9 @@ void ICACHE_RAM_ATTR loop() {
           lastUsername = "Button";
           lastUID = "Button";
         #ifdef ESP32
-          oled.showCheck(true, 1);
+        millisUpdateOled = millis() + 3000;
+        oled.showCheck(true, 1);
+        Serial.println("oled.showCheck(true, 1)");
         #endif
       }
       #ifdef ESP32
@@ -3442,8 +3464,11 @@ void ICACHE_RAM_ATTR loop() {
   oled.oledLoop();
   if (millisUpdateOled < millis()) {
     delay(5);
-    oled.showDemo(evseStatus, getChargingTime(), evseAmpsConfig, maxCurrent, currentKW, meteredKWh, ntp.getUtcTimeNow(), &swVersion, evseActive, timerActive);
-    millisUpdateOled = millis() + 3000;
+    int8_t rssi = WiFi.RSSI();
+    if (config.getWifiWmode() == 1) rssi = -50; //AP Mode
+    if (wifiInterrupted) rssi = 0;
+    oled.showDemo(evseStatus, getChargingTime(), evseAmpsConfig, maxCurrent, currentKW, meteredKWh, ntp.getUtcTimeNow(), &swVersion, evseActive, timerActive, rssi);
+    millisUpdateOled = millis() + 500;
   }
 
   if (millisOnTimeOled < millis() && oled.displayOn == true){

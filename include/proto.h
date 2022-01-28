@@ -46,3 +46,5 @@ void ICACHE_FLASH_ATTR startWebserver();
 bool ICACHE_FLASH_ATTR resetUserData();
 void ICACHE_FLASH_ATTR timerActivateMatch(uint16_t);
 void ICACHE_FLASH_ATTR timerDeactivateMatch();
+void ICACHE_FLASH_ATTR sendSyslogToWs();
+bool ICACHE_FLASH_ATTR interruptCp();
