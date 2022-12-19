@@ -20,22 +20,25 @@
   <div style="z-index: 99" id="mySidenav" class="sidenav">
     <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
     <a href="#" onclick="loadEVSEControl()">
-      <nobr><b><span class="glyphicon glyphicon-road"></span>&nbsp;&nbsp;EVSE&nbsp;Control</b></nobr>
+      <nobr><b><span class="glyphicon glyphicon-road"></span>&nbsp;&nbsp;<object class="g_evse_control"></object></b></nobr>
     </a>
     <a href="#" onclick="loadUsers()">
-      <nobr><span class="glyphicon glyphicon-user"></span>&nbsp;&nbsp;Users</nobr>
+      <nobr><span class="glyphicon glyphicon-user"></span>&nbsp;&nbsp;<object class="g_users"></object></nobr>
     </a>
     <a href="#" onclick="loadSettings()">
-      <nobr><span class="glyphicon glyphicon-cog"></span>&nbsp;&nbsp;Settings</nobr>
+      <nobr><span class="glyphicon glyphicon-cog"></span>&nbsp;&nbsp;<object class="g_settings"></object></nobr>
     </a>
     <a id="timerLink" href="#" onclick="loadTimer()">
-      <nobr><span class="glyphicon glyphicon-time"></span>&nbsp;&nbsp;Timer</nobr>
+      <nobr><span class="glyphicon glyphicon-time"></span>&nbsp;&nbsp;<object class="g_timer"></object></nobr>
     </a>
     <a href="#" onclick="loadStatus()">
-      <nobr><span class="glyphicon glyphicon-time"></span>&nbsp;&nbsp;Status</nobr>
+      <nobr><span class="glyphicon glyphicon-time"></span>&nbsp;&nbsp;<object class="g_status"></object></nobr>
     </a>
     <a href="#" onclick="loadLog()">
-      <nobr><span class="glyphicon glyphicon-list-alt"></span>&nbsp;&nbsp;Log</nobr>
+      <nobr><span class="glyphicon glyphicon-list-alt"></span>&nbsp;&nbsp;<object class="g_log"></object></nobr>
+    </a>
+    <a id="syslogLink" href="#" onclick="loadSyslog()">
+      <nobr><span class="glyphicon glyphicon-list-alt"></span>&nbsp;&nbsp;<object class="g_syslog"></object></nobr>
     </a>
     <div style="position: fixed; bottom: 0px; padding: 10px 10px 10px 10px"><object class="fw_version"></object></div>
   </div>
@@ -67,7 +70,7 @@
         <div class="modal-header">
           <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
               aria-hidden="true">&times;</span></button>
-          <h4 class="modal-title" id="current-title">Current&nbsp;<span id="slider_current"></span></h4>
+          <h4 class="modal-title" id="current-title"><object class="ec_max_current"></object>&nbsp;<span id="slider_current"></span></h4>
         </div>
         <div class="modal-body">
           <div class="slidecontainer">
@@ -76,18 +79,10 @@
           </div>
         </div>
         <div class="modal-footer">
-          <div class="btn-group pull-left" data-toggle="buttons" id="numPhasesButtons">
-            <label class="btn btn-primary" id="labelButton1P">
-              <input type="radio" name="options" id="button1P"> 1P
-            </label>
-            <label class="btn btn-primary" id="labelButton3P">
-              <input type="radio" name="options" id="button3P"> 3P
-            </label>
-          </div>
           <button type="button" class="btn btn-secondary" onclick="abortCurrentModal()"
-            data-dismiss="modal">Abort</button>
+            data-dismiss="modal"><object class="g_abort"></object></button>
           <button type="submit" id="currentModalSaveButton" class="btn btn-primary"
-            onclick="setEVSECurrent()">Save</button>
+            onclick="setEVSECurrent()"><object class="g_save"></object></button>
         </div>
       </div>
     </div>
@@ -151,7 +146,7 @@
           <form id="loginForm" method="GET" onsubmit="login(); return false">
             <div class="form-group">
               <label for="password" class="control-label">Password</label>
-              <input type="password" class="form-control" id="password" name="password" value="" required=""
+              <input type="password" class="form-control" id="password" name="password" value="" required="" autofocus
                 title="Please enter your password" style="font-size:16px">
             </div>
             <button type="submit" class="btn btn-success btn-sm">Login</button>
@@ -168,10 +163,10 @@
           <span class="text-muted" style="font-size:30px;cursor:pointer" onclick="openNav()">&#9776;</span>
         </ul>
       </nav>
-      <h3 class="text-muted">EVSE Control</h3>
+      <h3 class="text-muted"><object class="g_evse_control"></object></h3>
     </div>
-    <div id="dangerRemoteHeartbeat" class="alert alert-danger" style="display: none;"><strong>Warning!</strong> Charging was canceled because there is no connection to a remote system.</div>
-    <div id="successRemoteHeartbeat" class="alert alert-success" style="display: none;">Remote system connected</div>
+    <div id="dangerRemoteHeartbeat" class="alert alert-danger" style="display: none;"><object class="ec_remote_disconnected"></object></div>
+    <div id="successRemoteHeartbeat" class="alert alert-success" style="display: none;"><object class="ec_remote_connected"></object></div>
     <div class="hidden" id="carStatusReady" align=center>
       <img id="statusImg" src="/status_ready.svg">
     </div>
@@ -191,34 +186,33 @@
       <table class="table table-hover">
         <tbody style="transition:0.5s">
           <tr onclick="showCurrentModal()">
-            <th><span class="glyphicon glyphicon-cog"></span>&nbsp;&nbsp;Max. Current >></th>
+            <th><span class="glyphicon glyphicon-cog"></span>&nbsp;&nbsp;<object class="ec_max_current"></object></th>
             <td id="evse_current_limit" class="text-right"></td>
           </tr>
           <tr style="transition:0.3s">
-            <th><span class="glyphicon glyphicon-signal"></span>&nbsp;&nbsp;Power</th>
+            <th><span class="glyphicon glyphicon-signal"></span>&nbsp;&nbsp;<object class="ec_power"></object></th>
             <td id="evse_current" class="text-right"></td>
           </tr>
           <tr style="transition:0.3s">
-            <th><span class="glyphicon glyphicon-time"></span>&nbsp;&nbsp;Duration</th>
+            <th><span class="glyphicon glyphicon-time"></span>&nbsp;&nbsp;<object class="ec_duration"></object></th>
             <td id="evse_charging_time" class="text-right"></td>
           </tr>
           <tr style="transition:0.3s">
-            <th><span class="glyphicon glyphicon-download-alt"></span>&nbsp;&nbsp;Energy</th>
+            <th><span class="glyphicon glyphicon-download-alt"></span>&nbsp;&nbsp;<object class="ec_energy"></object></th>
             <td id="evse_charged_kwh" class="text-right"></td>
           </tr>
           <tr style="transition:0.3s">
-            <th><span class="glyphicon glyphicon-road"></span>&nbsp;&nbsp;Charged mileage</th>
+            <th><span class="glyphicon glyphicon-road"></span>&nbsp;&nbsp;<object class="ec_charged_mileage"></object></th>
             <td id="evse_charged_mileage" class="text-right"></td>
           </tr>
         </tbody>
       </table>
     </div>
     <div class="hidden" id="evseNotActive" align=center>
-      <button id="buttonActivate" type="button" class="btn btn-success" onclick="activateEVSE()">Activate EVSE</button>
+      <button id="buttonActivate" type="button" class="btn btn-success" onclick="activateEVSE()"><object class="ec_activate"></object></button>
     </div>
     <div class="hidden" id="evseActive" align=center>
-      <button id="buttonDeactivate" type="button" class="btn btn-danger" onclick="deactivateEVSE()">Deactivate
-        EVSE</button>
+      <button id="buttonDeactivate" type="button" class="btn btn-danger" onclick="deactivateEVSE()"><object class="ec_deactivate"></object></button>
     </div>
     <footer class="footer">
       <h6 class="text-muted"><a href="https://www.evse-wifi.de" target="_blank">EVSE WiFi</a></h6>
@@ -237,8 +231,7 @@
       </nav>
       <h3 class="text-muted">Users</h3>
     </div>
-    <div class="alert alert-info">You can add new users by either scanning a RFID Tag or by clicking on "New User"
-      button.</div>
+    <div class="alert alert-info"><object class="us_head"></object></div>
     <div class="panel panel-default">
       <table id="usertable" class="table" data-paging="true" data-filtering="true" data-sorting="true"
         data-editing="true" data-state="true"></table>
@@ -256,7 +249,7 @@
           <div class="modal-header">
             <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
                 aria-hidden="true">×</span></button>
-            <h4 class="modal-title" id="editor-title">Add User</h4>
+            <h4 class="modal-title" id="editor-title"><object class="us_add_user"></object></h4>
           </div>
           <div class="modal-body">
             <input type="number" id="id" name="id" class="hidden" />
@@ -273,23 +266,23 @@
               </div>
             </div>
             <div class="form-group required">
-              <label for="username" class="col-sm-3 control-label">User Name or Label</label>
+              <label for="username" class="col-sm-3 control-label"><object class="us_user_name_label"></object></label>
               <div class="col-sm-9">
                 <input type="text" class="form-control" id="username" name="username" placeholder="User Name or Label"
                   required maxlength="10">
               </div>
             </div>
             <div class="form-group required">
-              <label for="acctype" class="col-sm-3 control-label">Access Type</label>
+              <label for="acctype" class="col-sm-3 control-label"><object class="us_access_type"></object></label>
               <div class="col-sm-9">
                 <select class="form-control" id="acctype" required>
-                  <option selected="selected" value="1">Active</option>
-                  <option value="0">Disabled</option>
+                  <option selected="selected" value="1" class="us_active"></option>
+                  <option value="0" class="us_disabled"></option>
                 </select>
               </div>
             </div>
             <div class="form-group required">
-              <label for="validuntil" class="col-sm-3 control-label">Valid Until</label>
+              <label for="validuntil" class="col-sm-3 control-label"><object class="us_valid_until"></object></label>
               <div class="col-sm-9">
                 <input type="date" class="form-control" id="validuntil" name="validuntil" value="2038-01-01"
                   placeholder="Valid Until" required>
@@ -297,8 +290,8 @@
             </div>
           </div>
           <div class="modal-footer">
-            <button type="submit" class="btn btn-primary">Save changes</button>
-            <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary"><object class="g_save"></object></button>
+            <button type="button" class="btn btn-default" data-dismiss="modal"><object class="g_abort"></object></button>
           </div>
         </form>
       </div>
@@ -317,59 +310,57 @@
           <span class="text-muted" style="font-size:30px;cursor:pointer" onclick="openNav()">&#9776;</span>
         </ul>
       </nav>
-      <h3 class="text-muted">Settings</h3>
+      <h3 class="text-muted"><object class="g_settings"></object></h3>
     </div>
-    <div class="alert alert-warning"><strong>Warning!</strong> Settings will take effect when the device is rebooted.
-    </div>
+    <div class="alert alert-warning"><object class="se_head"></object></div>
     <br>
     <div class="row">
       <div class="col-sm-6">
-        <legend>Wi-Fi Settings</legend>
-        <h6 class="text-muted">Type your Wi-Fi Network's SSID or Scan for nerby Wireless Networks to join.</h6>
+        <legend><object class="se_wifi_settings"></object></legend>
+        <h6 class="text-muted"><object class="se_wifi_settings_desc"></object></h6>
         <div class="row form-group">
-          <label data-toggle="tooltip"
-            title="You can run EVSE-WiFi in AP Mode or Client Mode. In client mode you will need to connect to an existing Wi-Fi network, in AP Mode EVSE-WiFi creates a Wi-Fi network itself."
-            class="col-xs-3">Wi-Fi Mode</label>
+          <label data-toggle="tooltip" id="se_wifi_mode_tt"
+            title=""
+            class="col-xs-3"><object class="se_wifi_mode"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <div class="col-xs-9">
             <form>
               <label class="radio-inline"><input type="radio" value="1" name="wmode" id="wmodeap"
-                  onclick="handleAPClick();">Access Point </label>
+                  onclick="handleAPClick();"><object class="se_wifi_mode_a"></object></label>
               <label class="radio-inline"><input type="radio" value="0" name="wmode" id="wmodesta"
-                  onclick="handleSTAClick();">Client</label>
+                  onclick="handleSTAClick();"><object class="se_wifi_mode_c"></object></label>
             </form>
           </div>
         </div>
         <div class="row form-group">
-          <label data-toggle="tooltip" title="Wi-Fi Network's Name" class="col-xs-3">SSID</label>
+          <label data-toggle="tooltip" id="se_wifi_ssid_tt" title="Wi-Fi Network's Name" class="col-xs-3"><object class="se_wifi_ssid"></object>&nbsp;&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <span class="col-xs-6 col-md-5">
             <input class="form-control input-sm" id="ssid" type="text" name="ap_ssid">
             <select class="form-control input-sm" style="display:none;" id="ssidList" onchange="listBSSID();"></select>
           </span>
           <span class="col-xs-3">
-            <button id="scanb" type="button" class="btn btn-primary btn-xs" onclick="scanWifi()">Scan</button>
+            <button id="scanb" type="button" class="btn btn-primary btn-xs" onclick="scanWifi()"><object class="se_wifi_scan"></object></button>
           </span>
         </div>
         <div class="row form-group" style="display:none" id="bssid">
-          <label data-toggle="tooltip"
-            title="If you have two Wi-Fi networks with the same SSID you may want to choose the specific one by BSSID"
-            class="col-xs-3">BSSID</label>
+          <label data-toggle="tooltip" id="se_wifi_bssid_tt"
+            title=""
+            class="col-xs-3"><object class="se_wifi_bssid"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <span class="col-xs-9 col-md-5">
             <input id="wifibssid" class="form-control input-sm" type="text" name="ap_bssid">
           </span>
         </div>
         <div class="row form-group">
-          <label data-toggle="tooltip" title="WiFi Password - in AP mode at least 8 characters!"
-            class="col-xs-3">Password</label>
+          <label data-toggle="tooltip" id="se_wifi_password_tt"
+            class="col-xs-3"><object class="se_wifi_password"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <span class="col-xs-6 col-md-5">
             <input id="wifipass" class="form-control input-sm" type="password" name="ap_passwd">
           </span>
           <span class="col-xs-3">
-            <button id="shwifi" type="button" class="btn btn-primary btn-xs" onclick="shWifi()">show</button>
+            <button id="shwifi" type="button" class="btn btn-primary btn-xs" onclick="shWifi()"><object class="g_show"></object></button>
           </span>
         </div>
         <div class="row form-group">
-          <label data-toggle="tooltip" title="Use a static IP Address instead of DHCP" class="col-xs-3">Use Static
-            IP</label>
+          <label data-toggle="tooltip" id="se_wifi_use_static_ip_tt" class="col-xs-3"><object class="se_wifi_use_static_ip"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <div class="col-xs-9">
             <form>
               <label class="checkbox-inline"><input type="checkbox" id="checkboxStaticIP" value=""
@@ -378,25 +369,25 @@
           </div>
         </div>
         <div id="divIP" class="row form-group" style="display: none;">
-          <label data-toggle="tooltip" title="Give an IP Address" class="col-xs-3">IP Address</label>
+          <label data-toggle="tooltip" class="col-xs-3"><object class="se_wifi_ip_address"></object></label>
           <span class="col-xs-9 col-md-5">
             <input class="form-control input-sm" placeholder="IP Address" id="ipch" type="text" name="ip">
           </span>
         </div>
         <div id="divSubnet" class="row form-group" style="display: none;">
-          <label data-toggle="tooltip" title="Give a Subnet Mask" class="col-xs-3">Subnet Mask</label>
+          <label data-toggle="tooltip" class="col-xs-3"><object class="se_wifi_subnet"></object></label>
           <span class="col-xs-9 col-md-5">
             <input class="form-control input-sm" placeholder="Subnet Mask" id="subnetch" type="text" name="subnet">
           </span>
         </div>
         <div id="divGateway" class="row form-group" style="display: none;">
-          <label data-toggle="tooltip" title="Give a Gateway" class="col-xs-3">Gateway</label>
+          <label data-toggle="tooltip" class="col-xs-3"><object class="se_wifi_gateway"></object></label>
           <span class="col-xs-9 col-md-5">
             <input class="form-control input-sm" placeholder="Gateway" id="gatewaych" type="text" name="gateway">
           </span>
         </div>
         <div id="divDNS" class="row form-group" style="display: none;">
-          <label data-toggle="tooltip" title="Give a DNS Server" class="col-xs-3">DNS Server</label>
+          <label data-toggle="tooltip" class="col-xs-3"><object class="se_wifi_dns_server"></object></label>
           <span class="col-xs-9 col-md-5">
             <input class="form-control input-sm" placeholder="DNS Server" id="dnsch" type="text" name="dns">
           </span>
@@ -404,11 +395,11 @@
         <br>
       </div>
       <div class="col-sm-6">
-        <legend>RFID Hardware Settings</legend>
+        <legend><object class="se_rfid_hw_settings"></object></legend>
         <div class="row form-group">
           <label data-toggle="tooltip"
-            title="When you want to use a RC522 RFID Hardware to activate your EVSE, please activate this option."
-            class="col-xs-3">Use RFID-Hardware</label>
+            id="se_rfid_use_tt"
+            class="col-xs-3"><object class="se_rfid_use"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <div class="col-xs-9">
             <form>
               <label class="checkbox-inline"><input type="checkbox" id="checkboxRfid" value="" name="rfidmode"
@@ -417,8 +408,8 @@
           </div>
         </div>
         <div class="row form-group">
-          <label data-toggle="tooltip" title="Higher value means the longer RFID reader's reading distance"
-            class="col-xs-3">Antenna Gain</label>
+          <label data-toggle="tooltip" id="se_rfid_gain_tt"
+            class="col-xs-3"><object class="se_rfid_gain"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <span class="col-xs-9 col-md-5">
             <select class="form-control input-sm" id="gain">
               <option value="112">Max (48 db)</option>
@@ -435,11 +426,11 @@
     </div>
     <div class="row">
       <div class="col-sm-6">
-        <legend>Meter Hardware Settings</legend>
+        <legend><object class="se_meter_hw_settings"></object></legend>
         <div class="row form-group">
           <label data-toggle="tooltip"
-            title="If you want to use an electricity meter to count the power consumption, please activate this option."
-            class="col-xs-3">Use Meter Hardware</label>
+            id="se_meter_use_tt"
+            class="col-xs-3"><object class="se_meter_use"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <div class="col-xs-9">
             <form>
               <label class="checkbox-inline"><input type="checkbox" id="checkboxMeter" value="" name="checkboxMeter"
@@ -448,29 +439,29 @@
           </div>
         </div>
         <div class="row form-group">
-          <label data-toggle="tooltip" title="Choose whether you want to use an s0 meter or a modbus meter."
-            class="col-xs-3">Type of Meter</label>
+          <label data-toggle="tooltip" id="se_meter_type_tt"
+            class="col-xs-3"><object class="se_meter_type"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <span class="col-xs-9 col-md-5">
             <select class="form-control input-sm" id="smetertype" onchange="handleMeterType()">
-              <option selected value="S0">S0 Meter</option>
+              <option selected value="S0" class="se_meter_type_s0"></option>
               <option value="SDM120">SDM120 (Modbus)</option>
               <option value="SDM630">SDM630 (Modbus)</option>
             </select>
           </span>
         </div>
         <div id="divMeterPhase" class="row form-group">
-          <label data-toggle="tooltip" title="Choose the kind of Meter you Use" class="col-xs-3">Meter Phases</label>
+          <label data-toggle="tooltip" id="se_meter_phases_tt" class="col-xs-3"><object class="se_meter_phases"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <span class="col-xs-9 col-md-5">
             <select class="form-control input-sm" id="meterphase" onchange="handleMeterFactor()">
-              <option selected="selected" value="1">1-phase</option>
-              <option value="3">3-phase</option>
+              <option selected="selected" value="1" class="se_meter_1phase"></option>
+              <option value="3" class="se_meter_3phase"></option>
             </select>
           </span>
         </div>
         <div id="divImpKwh" class="row form-group">
           <label data-toggle="tooltip"
-            title="Depending on your meter setup, you can choose the impulses per kWh (usually 1000 or 2000 imp/kWh)"
-            class="col-xs-3">Impulses</label>
+            id="se_meter_imps_tt"
+            class="col-xs-3"><object class="se_meter_imps"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <span class="col-xs-9 col-md-5">
             <input class="form-control input-sm" value="1000" placeholder="impulses per kWh" id="impkwh" type="number"
               name="impsperkwh">
@@ -478,8 +469,8 @@
         </div>
         <div id="divImpLen" class="row form-group">
           <label data-toggle="tooltip"
-            title="Depending on your meter setup, you can choose the impulse length in milliseconds (for SDM120 use 90). Default: 30ms"
-            class="col-xs-3">Impulse Length</label>
+            id="se_meter_imp_len_tt"
+            class="col-xs-3"><object class="se_meter_imp_len"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <span class="col-xs-9 col-md-5">
             <input class="form-control input-sm" placeholder="impulse length in ms" id="implen" type="number"
               name="implength">
@@ -487,18 +478,18 @@
         </div>
         <div class="row form-group">
           <label data-toggle="tooltip"
-            title="Specify a factor with which the measured energy is to be multiplied (e.g. when using a single-phase meter in combination with a two- or three-phase charging vehicle). Use '1' if you don't need a factor."
-            class="col-xs-3">Factor</label>
+            id="se_meter_factor_tt"
+            class="col-xs-3"><object class="se_meter_factor"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <span class="col-xs-9 col-md-5">
             <select class="form-control input-sm" id="factor">
-              <option selected="selected" value="1">Factor 1 (no Factor)</option>
-              <option value="2">Factor 2</option>
-              <option value="3">Factor 3</option>
+              <option selected="selected" value="1" class="se_meter_factor_1"></option>
+              <option value="2" class="se_meter_factor_2"></option>
+              <option value="3" class="se_meter_factor_3"></option>
             </select>
           </span>
         </div>
         <div class="row form-group">
-          <label data-toggle="tooltip" title="Price per kWh in cent" class="col-xs-3">Price</label>
+          <label data-toggle="tooltip" id="se_meter_price_tt" class="col-xs-3"><object class="se_meter_price"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <span class="col-xs-9 col-md-5">
             <input class="form-control input-sm" value="25" placeholder="cent per kWh" id="price" type="number"
               step="0.1" name="price">
@@ -507,20 +498,45 @@
         <br>
       </div>
       <div class="col-sm-6">
-        <legend>EVSE Settings</legend>
+        <legend><object class="se_evse_settings"></object></legend>
         <div class="row form-group">
           <label data-toggle="tooltip"
-            title="Enter the maximum current (A) allowed by your electical installation to limit the slider in /'EVSE Control/'."
-            class="col-xs-3">Max Current</label>
+            id="se_evse_max_current_tt"
+            class="col-xs-3"><object class="se_evse_max_current"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <span class="col-xs-9 col-md-5">
             <input class="form-control input-sm" value="6" placeholder="Ampere" id="maxinstall" type="number"
               name="maxinstall">
           </span>
         </div>
         <div class="row form-group">
+          <label data-toggle="tooltip" id="se_evse_op_mode_tt" class="col-xs-3"><object class="se_evse_op_mode"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
+          <div class="col-xs-9">
+            <form>
+              <fieldset id="radioOperatingMode">
+                <input type="radio" id="radioOperatingMode_Normal" name="radioOperatingMode" onchange="handleApi();"
+                  value="n">
+                <label class="radio-inline" for="radioOperatingMode_Normal"><object class="se_evse_op_normal"></object></label>&nbsp;<span
+                  data-toggle="tooltip"
+                  id="se_evse_op_normal_tt"
+                  class="glyphicon glyphicon-question-sign"></span><br>
+                <input type="radio" id="radioOperatingMode_AlwaysActive" name="radioOperatingMode"
+                  onchange="handleApi();" value="a">
+                <label class="radio-inline" for="radioOperatingMode_AlwaysActive"><object class="se_evse_op_aa"></object></label>&nbsp;<span data-toggle="tooltip"
+                  id="se_evse_op_aa_tt"
+                  class="glyphicon glyphicon-question-sign"></span><br>
+                <input type="radio" id="radioOperatingMode_Remote" name="radioOperatingMode" onchange="handleApi();"
+                  value="r">
+                <label class="radio-inline" for="radioOperatingMode_Remote"><object class="se_evse_op_remote"></object></label>&nbsp;<span
+                  data-toggle="tooltip"
+                  id="se_evse_op_remote_tt"
+                  class="glyphicon glyphicon-question-sign"></span>
+              </fieldset>
+            </form>
+          </div>
+        </div>
+        <div class="row form-group">
           <label data-toggle="tooltip"
-            title="If you want to activate your EVSE via button, please activate this option." class="col-xs-3">Use
-            Button to Activate EVSE</label>
+            id="se_evse_use_button_tt" class="col-xs-3"><object class="se_evse_use_button"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <div class="col-xs-9">
             <form>
               <label class="checkbox-inline"><input type="checkbox" id="checkboxButtonActive" value=""
@@ -529,34 +545,7 @@
           </div>
         </div>
         <div class="row form-group">
-          <label data-toggle="tooltip" title="Select the operating mode" class="col-xs-3">Operating Mode</label>
-          <div class="col-xs-9">
-            <form>
-              <fieldset id="radioOperatingMode">
-                <input type="radio" id="radioOperatingMode_Normal" name="radioOperatingMode" onchange="handleApi();"
-                  value="n">
-                <label class="radio-inline" for="radioOperatingMode_Normal">Normal Mode</label>&nbsp;<span
-                  data-toggle="tooltip"
-                  title="Standalone - Normal: Uses EVSE register 1000 for current specification and Register 2005 for activating/deactivating"
-                  class="glyphicon glyphicon-question-sign"></span><br>
-                <input type="radio" id="radioOperatingMode_AlwaysActive" name="radioOperatingMode"
-                  onchange="handleApi();" value="a">
-                <label class="radio-inline" for="radioOperatingMode_AlwaysActive">Always Active
-                  Mode</label>&nbsp;<span data-toggle="tooltip"
-                  title="Standalone - Always Active: Uses only EVSE register 1000 for current specification - activating/deactivating via RFID or button is NOT possible"
-                  class="glyphicon glyphicon-question-sign"></span><br>
-                <input type="radio" id="radioOperatingMode_Remote" name="radioOperatingMode" onchange="handleApi();"
-                  value="r">
-                <label class="radio-inline" for="radioOperatingMode_Remote">Remote Controlled</label>&nbsp;<span
-                  data-toggle="tooltip"
-                  title="Remote Controlled: Uses only EVSE register 1000 for current specification - to deactivate EVSE set current to 0 (recommended to use with openWB)"
-                  class="glyphicon glyphicon-question-sign"></span>
-              </fieldset>
-            </form>
-          </div>
-        </div>
-        <div class="row form-group">
-          <label data-toggle="tooltip" title="Enables the HTTP-Rest-API" class="col-xs-3">Enable API</label>
+          <label data-toggle="tooltip" id="se_evse_api_tt" class="col-xs-3"><object class="se_evse_api"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <div class="col-xs-9">
             <form>
               <label class="checkbox-inline"><input type="checkbox" id="checkboxApi" value=""
@@ -566,8 +555,8 @@
         </div>
         <div class="row form-group">
           <label data-toggle="tooltip"
-            title="Sets the configured current to 'Default amps value after boot' (EVSE Reg 2000), when charging stops."
-            class="col-xs-3">Reset current after charge</label>
+            id="se_evse_rst_after_charge_tt"
+            class="col-xs-3"><object class="se_evse_rst_after_charge"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <div class="col-xs-9">
             <form>
               <label class="checkbox-inline"><input type="checkbox" id="checkboxResetCurrentAfterCharge" value=""
@@ -576,19 +565,18 @@
           </div>
         </div>
         <div class="row form-group" id="divCPInterrupt">
-          <label data-toggle="tooltip" title="Interrupt CP signal (briefly switches a relay connected to GPIO4)"
-            class="col-xs-3">CP interrupt</label>
+          <label data-toggle="tooltip" id="se_evse_cp_int_tt"
+            class="col-xs-3"><object class="se_evse_cp_int"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <div class="col-xs-9">
             <span class="col-xs-3">
-              <button id="interruptcpbutton" type="button" class="btn btn-primary btn-xs" onclick="interruptCp()">Int
-                CP</button>
+              <button id="interruptcpbutton" type="button" class="btn btn-primary btn-xs" onclick="interruptCp()"><object class="se_evse_cp_int_b"></object></button>
             </span>
           </div>
         </div>
         <div class="row form-group" id="divUseRSE">
           <label data-toggle="tooltip"
-            title="Use the RSE Pin (GPIO0) to let your energy supplier control the charging current"
-            class="col-xs-3">Use RSE Hardware</label>
+            id="se_evse_use_rse_tt"
+            class="col-xs-3"><object class="se_evse_use_rse"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <div class="col-xs-9">
             <form>
               <label class="checkbox-inline"><input type="checkbox" id="checkboxUseRse" value="" name="checkboxUseRse"
@@ -598,34 +586,22 @@
         </div>
         <div class="row form-group" id="divRSEValue">
           <label data-toggle="tooltip"
-            title="Maximum value with which the vehicle is charged when the RSE is triggered (%)" class="col-xs-3">RSE
-            Value</label>
+            id="se_evse_rse_val_tt" class="col-xs-3"><object class="se_evse_rse_val"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <span class="col-xs-9 col-md-5">
             <input class="form-control input-sm" value="100" placeholder="%" id="rsevalue" type="number" name="rsevalue"
               min="0" max="100">
           </span>
-        </div>
-        <div class="row form-group" id="divNumPhases">
-          <label data-toggle="tooltip"
-            title="Use the NumPhases Pin (GPIO32) to switch between one phase and three phase operation"
-            class="col-xs-3">Three phase operation</label>
-          <div class="col-xs-9">
-            <form>
-              <label class="checkbox-inline"><input type="checkbox" id="checkboxNumPhases" value="" name="checkboxNumPhases"></label>
-            </form>
-          </div>
         </div>
         <br>
       </div>
     </div>
     <div class="row">
       <div class="col-sm-6">
-        <legend>Car Settings</legend>
+        <legend><object class="se_car_settings"></object></legend>
         <div class="row form-group">
-          <label data-toggle="tooltip" title="Average energy consumption of your car" class="col-xs-3">Average
-            consumption</label>
+          <label data-toggle="tooltip" id="se_car_avg_consumption_tt" class="col-xs-3"><object class="se_car_avg_consumption"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <span class="col-xs-6 col-md-5">
-            <input class="form-control input-sm" placeholder="kWh per 100km" id="avgconsumption" type="number"
+            <input class="form-control input-sm" placeholder="kWh/100km" id="avgconsumption" type="number"
               step="0.1">
           </span>
           <br>
@@ -635,47 +611,44 @@
     </div>
     <div class="row">
       <div class="col-sm-6">
-        <legend>General Settings</legend>
+        <legend><object class="se_gen_settings"></object></legend>
         <div class="row form-group">
-          <label data-toggle="tooltip" title="Log On password for the Administrator" class="col-xs-3">Admin
-            Password</label>
+          <label data-toggle="tooltip" id="se_gen_adm_pw_tt" class="col-xs-3"><object class="se_gen_adm_pw"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <span class="col-xs-6 col-md-5">
-            <input class="form-control input-sm" placeholder="Administrator Password" id="adminpwd" type="password">
+            <input class="form-control input-sm" placeholder="Password" id="adminpwd" type="password">
           </span>
           <span class="col-xs-3">
-            <button id="shadmin" type="button" class="btn btn-primary btn-xs" onclick="shAdmin()">show</button>
+            <button id="shadmin" type="button" class="btn btn-primary btn-xs" onclick="shAdmin()"><object class="g_show"></object></button>
           </span>
           <br>
         </div>
         <div class="row form-group">
-          <label data-toggle="tooltip" title="Log On password for the Administrator" class="col-xs-3">Confirm Admin
-            Password</label>
+          <label data-toggle="tooltip" id="se_gen_adm_pw2_tt" class="col-xs-3"><object class="se_gen_adm_pw2"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <span class="col-xs-6 col-md-5">
-            <input class="form-control input-sm" placeholder="Administrator Password" id="cadminpwd" type="password">
+            <input class="form-control input-sm" placeholder="Password" id="cadminpwd" type="password">
           </span>
           <br>
         </div>
-
         <div class="row form-group">
           <label data-toggle="tooltip"
-            title="Hostname for your EVSE-WiFi, When Bonjour is installed on your computer you can access EVSE-WiFi via http://hostname.local"
-            class="col-xs-3">Host Name</label>
+            id="se_gen_host_tt"
+            class="col-xs-3"><object class="se_gen_host"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <span class="col-xs-9 col-md-5">
             <input class="form-control input-sm" placeholder="Hostname" value="evse-wifi" id="hostname" type="text">
           </span>
         </div>
         <div class="row form-group">
-          <label data-toggle="tooltip" title="LED actions" class="col-xs-3">LED Config</label>
+          <label data-toggle="tooltip" id="se_gen_led_tt" class="col-xs-3"><object class="se_gen_led"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <span class="col-xs-9 col-md-5">
             <select class="form-control input-sm" id="ledconfig">
-              <option selected="selected" value="1">Disable LED</option>
-              <option value="2">Heartbeat and RFID Feedback</option>
-              <option value="3">Heartbeat, RFID Feedback and EVSE Status</option>
+              <option selected="selected" value="1" class="se_gen_led_0"></option>
+              <option value="2" class="se_gen_led_1"></option>
+              <option value="3" class="se_gen_led_2"></option>
             </select>
           </span>
         </div>
         <div id="divDisplayRotation" class="row form-group">
-          <label data-toggle="tooltip" title="Display Rotation" class="col-xs-3">Display Rotation</label>
+          <label data-toggle="tooltip" class="col-xs-3"><object class="se_gen_dsp_rot"></object></label>
           <span class="col-xs-9 col-md-5">
             <select class="form-control input-sm" id="drotation">
               <option selected="selected" value="0">0°</option>
@@ -685,8 +658,30 @@
             </select>
           </span>
         </div>
+        <div id="divDisplayOnTime" class="row form-group">
+          <label data-toggle="tooltip" class="col-xs-3" id="se_gen_dsp_on_time_tt"><object class="se_gen_dsp_on_time"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
+          <span class="col-xs-9 col-md-5">
+            <select class="form-control input-sm" id="oledontime">
+              <option selected="selected" value="30">30s</option>
+              <option value="60">60s</option>
+              <option value="90">90s</option>
+              <option value="120">120s</option>
+              <option value="150">150s</option>
+              <option value="180">180s</option>
+            </select>
+          </span>
+        </div>
+        <div id="divLanguage" class="row form-group">
+          <label data-toggle="tooltip" class="col-xs-3"><object class="se_gen_lang"></object></label>
+          <span class="col-xs-9 col-md-5">
+            <select class="form-control input-sm" id="language">
+              <option selected="selected" value="de">Deutsch</option>
+              <option value="en">English</option>
+            </select>
+          </span>
+        </div>
         <div class="row form-group">
-          <label data-toggle="tooltip" title="Enable Debug Mode" class="col-xs-3">Debug Mode</label>
+          <label data-toggle="tooltip" class="col-xs-3"><object class="se_gen_debug"></object></label>
           <span class="col-xs-9 col-md-5">
             <form>
               <label class="checkbox-inline"><input type="checkbox" id="checkboxDebug" value=""></label>
@@ -695,8 +690,8 @@
         </div>
         <div class="row form-group">
           <label data-toggle="tooltip"
-            title="Disables BasicAuthentication for Websocket. This opens a security hole but is necessary when using Safari Browser."
-            class="col-xs-3">Safari Mode</label>
+            id="se_gen_safari_tt"
+            class="col-xs-3"><object class="se_gen_safari"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <span class="col-xs-9 col-md-5">
             <form>
               <label class="checkbox-inline"><input type="checkbox" id="checkboxSafari" value=""></label>
@@ -704,7 +699,7 @@
           </span>
         </div>
         <div class="row form-group">
-          <label data-toggle="tooltip" title="Enables the logging of EV charging processes" class="col-xs-3">Enable Logging</label>
+          <label data-toggle="tooltip" id="se_gen_log_tt" class="col-xs-3"><object class="se_gen_log"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <span class="col-xs-9 col-md-5">
             <form>
               <label class="checkbox-inline"><input type="checkbox" id="checkboxEnableLogging" value=""></label>
@@ -714,7 +709,7 @@
         <br>
       </div>
       <div class="col-sm-6">
-        <legend>Time and local Settings</legend>
+        <legend><object class="se_ntp_settings"></object></legend>
         <!--<div class="row form-group">
           <label data-toggle="tooltip" title="Choose a language for the web interface" class="col-xs-3">Language
           </label>
@@ -726,31 +721,29 @@
           </span>
         </div>-->
         <div class="row form-group">
-          <label data-toggle="tooltip" title="Choose an NTP Server (recommended: pool.ntp.org)" class="col-xs-3">NTP
-            Server</label>
+          <label data-toggle="tooltip" id="se_ntp_server_tt" class="col-xs-3"><object class="se_ntp_server"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <span class="col-xs-9 col-md-5">
             <input class="form-control input-sm" placeholder="NTP Server" value="pool.ntp.org" id="ntpIP" type="text">
           </span>
         </div>
-        <h6 class="text-muted">Small differences between device time and local time can be ignored.</h6>
+        <h6 class="text-muted"><object class="se_ntp_desc"></object></h6>
         <div class="row form-group">
-          <label class="col-xs-3">Device Time</label>
+          <label class="col-xs-3"><object class="se_ntp_dev_time"></object></label>
           <span id="utc" class="col-xs-9 col-md-5">
           </span>
         </div>
         <div class="row form-group">
-          <label class="col-xs-3">Browser Time</label>
+          <label class="col-xs-3"><object class="se_ntp_browser_time"></object></label>
           <span id="rtc" class="col-xs-9 col-md-5">
           </span>
         </div>
         <div class="row form-group">
           <div data-toggle="tooltip"
-            title="Send your PC/Phone time to EVSE-WiFi, useful when EVSE-WiFi does not have Internet connection."
-            class="col-xs-3"><button onclick="syncBrowserTime(false)" class="btn btn-link btn-sm">Sync Browser Time to
-              Device</button></div>
+            id="se_ntp_sync_tt"
+            class="col-xs-3"><button onclick="syncBrowserTime(false)" class="btn btn-link btn-sm"><object class="se_ntp_sync"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></button></div>
         </div>
         <div class="row form-group">
-          <label class="col-xs-3">Time Zone</label>
+          <label class="col-xs-3"><object class="se_ntp_tz"></object></label>
           <span class="col-xs-9 col-md-5">
             <select class="form-control input-sm" name="DropDownTimezone" id="DropDownTimezone">
               <option value="-12">(GMT -12:00) Eniwetok, Kwajalein</option>
@@ -767,7 +760,7 @@
               <option value="-2">(GMT -2:00) Mid-Atlantic</option>
               <option value="-1">(GMT -1:00 hour) Azores, Cape Verde Islands</option>
               <option value="0">(GMT) Western Europe Time, London, Lisbon, Casablanca</option>
-              <option selected="selected" value="1">(GMT +1:00 hour) Brussels, Copenhagen, Madrid, Paris</option>
+              <option selected="selected" value="1">(GMT +1:00 hour) Berlin, Brussels, Copenhagen, Madrid, Paris</option>
               <option value="2">(GMT +2:00) Kaliningrad, South Africa</option>
               <option value="3">(GMT +3:00) Baghdad, Riyadh, Moscow, St. Petersburg</option>
               <option value="3.5">(GMT +3:30) Tehran</option>
@@ -788,8 +781,7 @@
           </span>
         </div>
         <div class="row form-group">
-          <label data-toggle="tooltip" title="Use Daylight Saving Time (+1 h)" class="col-xs-3">Daylight Saving
-            Time</label>
+          <label data-toggle="tooltip" id="se_ntp_dst_tt" class="col-xs-3"><object class="se_ntp_dst"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
           <span class="col-xs-9 col-md-5">
             <form>
               <label class="checkbox-inline"><input type="checkbox" id="checkboxDst" value=""></label>
@@ -801,35 +793,35 @@
     </div>
     <hr>
     <div>
-      <button onclick="saveConf()" class="btn btn-primary btn-sm pull-right">Save & Reboot</button>
+      <button onclick="saveConf()" class="btn btn-primary btn-sm pull-right"><object class="se_save_reboot"></object></button>
     </div>
     <br><br><br>
     <div class="jumbotron">
       <div class="row">
         <div class="col-sm-6">
-          <legend>Backup</legend>
-          <h6 class="text-muted">Please make sure that you have made a backup before updating the firmware.</h6>
+          <legend><object class="se_bot_back"></object></legend>
+          <h6 class="text-muted"><object class="se_bot_back_desc"></object></h6>
           <div>
-            <button class="btn btn-link btn-sm" onclick="backupuser()">Backup User Data</button>
+            <button class="btn btn-link btn-sm" onclick="backupuser()"><object class="se_bot_back_user"></object></button>
             <a id="downloadUser" style="display:none"></a>
-            <button class="btn btn-link btn-sm" onclick="backupset()">Backup Settings</button>
+            <button class="btn btn-link btn-sm" onclick="backupset()"><object class="se_bot_back_set"></object></button>
             <a id="downloadSet" style="display:none"></a>
           </div>
           <br>
           <div>
-            <legend>Restore</legend>
-            <h6 class="text-muted">Click on links and choose your backup file to restore.</h6>
-            <label for="restoreUser" class="btn btn-link btn-sm">Restore User Data</label>
+            <legend><object class="se_bot_rest"></object></legend>
+            <h6 class="text-muted"><object class="se_bot_rest_desc"></object></h6>
+            <label for="restoreUser" class="btn btn-link btn-sm"><object class="se_bot_rest_user"></object></label>
             <input id="restoreUser" type="file" accept="text/json" onchange="restoreUser()" style="display:none;">
-            <label for="restoreSet" class="btn btn-link btn-sm">Restore Settings</label>
+            <label for="restoreSet" class="btn btn-link btn-sm"><object class="se_bot_rest_set"></object></label>
             <input id="restoreSet" type="file" accept="text/json" onchange="restoreSet()" style="display:none;">
           </div>
           <div>
-            <legend>Reset</legend>
-            <h6 class="text-muted">Choose the kind of reset.</h6>
-            <button class="btn btn-link btn-sm" onclick="resetLogFile()">Reset Log File</button>
-            <button class="btn btn-link btn-sm" onclick="resetUserData()">Reset User Data</button>
-            <button class="btn btn-link btn-sm" onclick="resetFactoryReset()">Factory Reset</button>
+            <legend><object class="se_bot_reset"></object></legend>
+            <h6 class="text-muted"><object class="se_bot_reset_desc"></object></h6>
+            <button class="btn btn-link btn-sm" onclick="resetLogFile()"><object class="se_bot_reset_log"></object></button>
+            <button class="btn btn-link btn-sm" onclick="resetUserData()"><object class="se_bot_reset_user"></object></button>
+            <button class="btn btn-link btn-sm" onclick="resetFactoryReset()"><object class="se_bot_factory_reset"></object></button>
           </div>
           <br>
           <div id="restoremodal" class="modal fade" role="dialog">
@@ -837,7 +829,7 @@
               <div class="modal-content">
                 <div class="modal-header">
                   <button type="button" class="close" data-dismiss="modal">&times;</button>
-                  <h4 class="modal-title">Please wait while restoring user data...</h4>
+                  <h4 class="modal-title"><object class="se_bot_rest_wait_ud"></object></h4>
                 </div>
                 <div class="modal-body">
                   <div id="pbar" class="progress">
@@ -848,7 +840,7 @@
                 </div>
                 <div class="modal-footer">
                   <button type="button" id="restoreclose" style="display:none;" class="btn btn-default"
-                    data-dismiss="modal">Close</button>
+                    data-dismiss="modal"><object class="g_ok"></object></button>
                 </div>
               </div>
             </div>
@@ -857,13 +849,13 @@
             <div class="modal-dialog">
               <div class="modal-content">
                 <div class="modal-header">
-                  <h4 id="h4UpdateModal" class="modal-title">Please wait while uploading...</h4>
+                  <h4 id="h4UpdateModal" class="modal-title"><object class="se_uploading"></object></h4>
                 </div>
                 <div id="bodyUpdateModal" class="modal-body">
                   <div class="loader"></div>
                 </div>
                 <div class="modal-footer">
-                  <button id="reloadUpdateModal" type="submit" class="btn btn-primary" style="display:none;" data-dismiss="modal" onclick="location.reload()">Refresh</button>
+                  <button id="reloadUpdateModal" type="submit" class="btn btn-primary" style="display:none;" data-dismiss="modal" onclick="location.reload()"><object class="g_refresh"></object></button>
                 </div>
               </div>
             </div>
@@ -872,26 +864,26 @@
             <div class="modal-dialog">
               <div class="modal-content">
                 <div class="modal-header">
-                  <h4 class="modal-title">Please select the firmware you want to install</h4>
+                  <h4 class="modal-title"><object class="se_upd_head"></object></h4>
                 </div>
                 <div class="modal-body">
-                  <h5 class="text">Current Firmware Version:&nbsp;<b><object class="fw_version"></object></b></h5>
+                  <h5 class="text"><object class="se_upd_curr_fw"></object>:&nbsp;<b><object class="fw_version"></object></b></h5>
                   <input class="form-check form-switch" type="checkbox" id="updateShowBetaVersions" onchange="checkFirmwareUpdate()">
-                  <label for="updateShowBetaVersions">Show Beta Software</label>
+                  <label for="updateShowBetaVersions"><object class="se_upd_sh_beta"></object></label>
                   <div class="row">
                     <div class="col-sm-6">
-                      <h3>Select Version</h3>
+                      <h3><object class="se_upd_sel_fw"></object></h3>
                       <select id="updateSelectContent" class="form-select" onchange="onChangeSelectionUpdate(this)" size="5" style="width:100%; font-size:16px">
                       </select>
                     </div>
                     <div class="col-sm-6">
-                      <h3>Description</h3>
+                      <h3><object class="se_upd_desc_fw"></object></h3>
                       <span id="selectedUpdateDescription"></span>
                     </div>
                   </div>
                 </div>
                 <div class="modal-footer">
-                  <button type="button" class="btn btn-secondary" data-dismiss="modal">Abort</button>
+                  <button type="button" class="btn btn-secondary" data-dismiss="modal"><object class="g_abort"></object></button>
                   <button type="submit" class="btn btn-primary" onclick="updateSelectedFirmware()">Update</button>
                 </div>
               </div>
@@ -900,23 +892,22 @@
         </div>
         <div class="col-sm-6">
           <div>
-            <legend>Support this Project</legend>
-            <h6 class="text-muted"><b>The development of EVSE-WiFi is very time consuming. If you want to support this
-                project, I would be very happy about a donation.</b></h6>
-            <h4><a href="https://www.paypal.com/pools/c/85c7xRbeay">Donate now!</a></h4>
+            <legend><object class="se_bot_supp"></object></legend>
+            <h6 class="text-muted"><b><object class="se_bot_supp_desc"></object></b></h6>
+            <h4><a href="https://www.paypal.com/pools/c/85c7xRbeay"><object class="se_bot_donate"></object></a></h4>
             <br>
           </div>
           <div>
-            <legend>Update Firmware</legend>
-            <button type="submit" onclick="checkFirmwareUpdate()" class="btn btn-primary btn-sm">Check for Update</button>
-            <h6 class="text-muted">Current Firmware Version:&nbsp;<object class="fw_version"></object></h6>
-            <h6 class="text-muted">Current Config Version:&nbsp;<object id="configversion"></object></h6>
+            <legend><object class="se_bot_upd"></object></legend>
+            <button type="submit" onclick="checkFirmwareUpdate()" class="btn btn-primary btn-sm"><object class="se_bot_upd_chk"></object></button>
+            <h6 class="text-muted"><object class="se_upd_curr_fw"></object>:&nbsp;<object class="fw_version"></object></h6>
+            <h6 class="text-muted"><object class="se_bot_upd_conf"></object>:&nbsp;<object id="configversion"></object></h6>
             <h6 class="text-muted"><object id="textDownloadFwVersion"></object></h6>
             <form class="form-inline" method="POST" action="/update" enctype="multipart/form-data">
               <div class="form-group">
                 <input type="file" id="fwUpdateFile" name="update" required>
               </div>
-              <button type="submit" onclick="showFwUpdateModal()" class="btn btn-primary btn-sm">Upload</button>
+              <button type="submit" onclick="showFwUpdateModal()" class="btn btn-primary btn-sm"><object class="se_bot_upload"></object></button>
             </form>
           </div>
         </div>
@@ -936,10 +927,10 @@
           <span class="text-muted" style="font-size:30px;cursor:pointer" onclick="openNav()">&#9776;</span>
         </ul>
       </nav>
-      <h3 class="text-muted">Timer Control</h3>
+      <h3 class="text-muted"><object class="ti_head"></object></h3>
     </div>
     <div>
-      <label for="timer_active">Activate Timer</label>
+      <label for="timer_active"><object class="ti_activate"></object></label>
       <input class="form-check form-switch" type="checkbox" value="" id="timer_active" onchange="handleTimerActivate()">
     </div>
     <div class="panel panel-default table-responsive">
@@ -947,23 +938,23 @@
         <thead>
           <tr>
             <th scope="col">#</th>
-            <th scope="col">Active</th>
-            <th scope="col">From</th>
-            <th scope="col">To</th>
-            <th scope="col">Weekdays</th>
-            <th scope="col">Preset Current (A)</th>
+            <th scope="col"><object class="ti_active"></object></th>
+            <th scope="col"><object class="ti_from"></object></th>
+            <th scope="col"><object class="ti_to"></object></th>
+            <th scope="col"><object class="ti_weekdays"></object></th>
+            <th scope="col"><object class="ti_preset_curr"></object></th>
           </tr>
         </thead>
         <tbody style="transition:0.5s">
           <tr>
             <td style="vertical-align:middle">1</td>
-            <td style="vertical-align:middle"><input class="form-check form-switch" type="checkbox" value=""
-                id="timer1_active"></td>
+            <td style="vertical-align:middle"><input class="form-check form-switch" type="checkbox" value="" id="timer1_active"></td>
             <td style="vertical-align:middle">
               <table>
                 <tr>
                   <td><input class="form-control input-sm" type="number" id="timer1_fromH" min="0" max="23"
                       maxlength="2" size="2" style="min-width:3em"></td>
+                  <td>:</td>
                   <td><input class="form-control input-sm" type="number" id="timer1_fromM" min="0" max="59"
                       maxlength="2" size="2" style="min-width:3em"></td>
                 </tr>
@@ -974,6 +965,7 @@
                 <tr>
                   <td><input class="form-control input-sm" type="number" id="timer1_toH" min="0" max="23" maxlength="2"
                       size="2" style="min-width:3em"></td>
+                  <td>:</td>
                   <td><input class="form-control input-sm" type="number" id="timer1_toM" min="0" max="59" maxlength="2"
                       size="2" style="min-width:3em"></td>
                 </tr>
@@ -982,13 +974,13 @@
               <div class="btn-group" role="group">
                 <table>
                   <tr align="center">
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer1_mo">Mon</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer1_tu">Tue</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer1_we">Wed</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer1_th">Thu</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer1_fr">Fri</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer1_sa">Sat</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer1_su">Sun</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer1_mo"><object class="ti_mo"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer1_tu"><object class="ti_tu"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer1_we"><object class="ti_we"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer1_th"><object class="ti_th"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer1_fr"><object class="ti_fr"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer1_sa"><object class="ti_sa"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer1_su"><object class="ti_su"></object></label></td>
                   </tr>
                   <tr align="center">
                     <td><input type="checkbox" class="btn-check" id="timer1_mo" autocomplete="off"></td>
@@ -1013,6 +1005,7 @@
                 <tr>
                   <td><input class="form-control input-sm" type="number" id="timer2_fromH" min="0" max="23"
                       maxlength="2" size="2" style="min-width:3em"></td>
+                  <td>:</td>
                   <td><input class="form-control input-sm" type="number" id="timer2_fromM" min="0" max="59"
                       maxlength="2" size="2" style="min-width:3em"></td>
                 </tr>
@@ -1023,6 +1016,7 @@
                 <tr>
                   <td><input class="form-control input-sm" type="number" id="timer2_toH" min="0" max="23" maxlength="2"
                       size="2" style="min-width:3em"></td>
+                  <td>:</td>
                   <td><input class="form-control input-sm" type="number" id="timer2_toM" min="0" max="59" maxlength="2"
                       size="2" style="min-width:3em"></td>
                 </tr>
@@ -1031,13 +1025,13 @@
               <div class="btn-group" role="group">
                 <table>
                   <tr align="center">
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer2_mo">Mon</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer2_tu">Tue</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer2_we">Wed</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer2_th">Thu</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer2_fr">Fri</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer2_sa">Sat</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer2_su">Sun</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer2_mo"><object class="ti_mo"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer2_tu"><object class="ti_tu"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer2_we"><object class="ti_we"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer2_th"><object class="ti_th"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer2_fr"><object class="ti_fr"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer2_sa"><object class="ti_sa"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer2_su"><object class="ti_su"></object></label></td>
                   </tr>
                   <tr align="center">
                     <td><input type="checkbox" class="btn-check" id="timer2_mo" autocomplete="off"></td>
@@ -1062,6 +1056,7 @@
                 <tr>
                   <td><input class="form-control input-sm" type="number" id="timer3_fromH" min="0" max="23"
                       maxlength="2" size="2" style="min-width:3em"></td>
+                  <td>:</td>
                   <td><input class="form-control input-sm" type="number" id="timer3_fromM" min="0" max="59"
                       maxlength="2" size="2" style="min-width:3em"></td>
                 </tr>
@@ -1072,6 +1067,7 @@
                 <tr>
                   <td><input class="form-control input-sm" type="number" id="timer3_toH" min="0" max="23" maxlength="2"
                       size="2" style="min-width:3em"></td>
+                  <td>:</td>
                   <td><input class="form-control input-sm" type="number" id="timer3_toM" min="0" max="59" maxlength="2"
                       size="2" style="min-width:3em"></td>
                 </tr>
@@ -1080,13 +1076,13 @@
               <div class="btn-group" role="group">
                 <table>
                   <tr align="center">
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer3_mo">Mon</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer3_tu">Tue</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer3_we">Wed</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer3_th">Thu</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer3_fr">Fri</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer3_sa">Sat</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer3_su">Sun</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer3_mo"><object class="ti_mo"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer3_tu"><object class="ti_tu"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer3_we"><object class="ti_we"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer3_th"><object class="ti_th"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer3_fr"><object class="ti_fr"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer3_sa"><object class="ti_sa"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer3_su"><object class="ti_su"></object></label></td>
                   </tr>
                   <tr align="center">
                     <td><input type="checkbox" class="btn-check" id="timer3_mo" autocomplete="off"></td>
@@ -1111,6 +1107,7 @@
                 <tr>
                   <td><input class="form-control input-sm" type="number" id="timer4_fromH" min="0" max="23"
                       maxlength="2" size="2" style="min-width:3em"></td>
+                  <td>:</td>
                   <td><input class="form-control input-sm" type="number" id="timer4_fromM" min="0" max="59"
                       maxlength="2" size="2" style="min-width:3em"></td>
                 </tr>
@@ -1121,6 +1118,7 @@
                 <tr>
                   <td><input class="form-control input-sm" type="number" id="timer4_toH" min="0" max="23" maxlength="2"
                       size="2" style="min-width:3em"></td>
+                  <td>:</td>
                   <td><input class="form-control input-sm" type="number" id="timer4_toM" min="0" max="59" maxlength="2"
                       size="2" style="min-width:3em"></td>
                 </tr>
@@ -1129,13 +1127,13 @@
               <div class="btn-group" role="group">
                 <table>
                   <tr align="center">
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer4_mo">Mon</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer4_tu">Tue</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer4_we">Wed</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer4_th">Thu</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer4_fr">Fri</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer4_sa">Sat</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer4_su">Sun</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer4_mo"><object class="ti_mo"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer4_tu"><object class="ti_tu"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer4_we"><object class="ti_we"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer4_th"><object class="ti_th"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer4_fr"><object class="ti_fr"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer4_sa"><object class="ti_sa"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer4_su"><object class="ti_su"></object></label></td>
                   </tr>
                   <tr align="center">
                     <td><input type="checkbox" class="btn-check" id="timer4_mo" autocomplete="off"></td>
@@ -1160,6 +1158,7 @@
                 <tr>
                   <td><input class="form-control input-sm" type="number" id="timer5_fromH" min="0" max="23"
                       maxlength="2" size="2" style="min-width:3em"></td>
+                  <td>:</td>
                   <td><input class="form-control input-sm" type="number" id="timer5_fromM" min="0" max="59"
                       maxlength="2" size="2" style="min-width:3em"></td>
                 </tr>
@@ -1170,6 +1169,7 @@
                 <tr>
                   <td><input class="form-control input-sm" type="number" id="timer5_toH" min="0" max="23" maxlength="2"
                       size="2" style="min-width:3em"></td>
+                  <td>:</td>
                   <td><input class="form-control input-sm" type="number" id="timer5_toM" min="0" max="59" maxlength="2"
                       size="2" style="min-width:3em"></td>
                 </tr>
@@ -1178,13 +1178,13 @@
               <div class="btn-group" role="group">
                 <table>
                   <tr align="center">
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer5_mo">Mon</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer5_tu">Tue</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer5_we">Wed</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer5_th">Thu</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer5_fr">Fri</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer5_sa">Sat</label></td>
-                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer5_su">Sun</label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer5_mo"><object class="ti_mo"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer5_tu"><object class="ti_tu"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer5_we"><object class="ti_we"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer5_th"><object class="ti_th"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer5_fr"><object class="ti_fr"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer5_sa"><object class="ti_sa"></object></label></td>
+                    <td><label class="checkbox-inline" style="padding-left: 5px" for="timer5_su"><object class="ti_su"></object></label></td>
                   </tr>
                   <tr align="center">
                     <td><input type="checkbox" class="btn-check" id="timer5_mo" autocomplete="off"></td>
@@ -1204,7 +1204,7 @@
       </table>
     </div>
     <div>
-      <button onclick="saveTimer()" class="btn btn-primary btn-sm pull-right">Save Timer</button> <br>
+      <button onclick="saveTimer()" class="btn btn-primary btn-sm pull-right"><object class="g_save"></object></button> <br>
     </div>
     <hr>
     <footer class="footer">
@@ -1222,30 +1222,30 @@
       </nav>
       <h3 class="text-muted">Status</h3>
     </div>
-    <div class="alert alert-info">Values will be refreshed in <object id="refreshSeconds"></object> seconds.</div>
+    <div class="alert alert-info"><object class="st_head" id="st_head"></object></div>
     <div id="status" class="row">
       <div class="col-sm-6">
         <div class="panel panel-default table-responsive">
           <table class="table table-hover table-striped">
-            <caption>Device</caption>
+            <caption><object class="st_dev_head"></object></caption>
             <tr>
-              <th>Chip ID</th>
+              <th><object class="st_dev_chip_id"></object></th>
               <td id="chip"></td>
             </tr>
             <tr>
-              <th>CPU Clock</th>
+              <th><object class="st_dev_cpu_clk"></object></th>
               <td id="cpu"></td>
             </tr>
             <tr>
-              <th>Uptime</th>
+              <th><object class="st_dev_uptime"></object></th>
               <td id="uptime"></td>
             </tr>
             <tr>
-              <th>Device Time</th>
+              <th><object class="st_dev_dev_time"></object></th>
               <td id="devicetime"></td>
             </tr>
             <tr>
-              <th>Firmware</th>
+              <th><object class="st_dev_fw"></object></th>
               <td><object class="fw_version"></object></td>
             </tr>
             <!--
@@ -1254,7 +1254,7 @@
             <td id="int_temp"></td>
           </tr>-->
             <tr>
-              <th>Free Heap</th>
+              <th><object class="st_dev_heap"></object></th>
               <td>
                 <div class="progress" style="margin-bottom: 0 !important;">
                   <div id="heap" class="progress-bar progress-bar-primary" role="progressbar">
@@ -1264,7 +1264,7 @@
               </td>
             </tr>
             <tr>
-              <th>Free Flash</th>
+              <th><object class="st_dev_flash"></object></th>
               <td>
                 <div class='progress' style="margin-bottom: 0 !important;">
                   <div id="flash" class="progress-bar progress-bar-primary" role="progressbar">
@@ -1274,7 +1274,7 @@
               </td>
             </tr>
             <tr>
-              <th>Free FS</th>
+              <th><object class="st_dev_fs"></object></th>
               <td>
                 <div class='progress' style="margin-bottom: 0 !important;">
                   <div id="spiffs" class="progress-bar progress-bar-primary" role="progressbar">
@@ -1289,33 +1289,33 @@
       <div class="col-sm-6">
         <div class="panel panel-default table-responsive">
           <table class="table table-hover table-striped">
-            <caption>Network</caption>
+            <caption><object class="st_net_head"></object></caption>
             <tr>
-              <th>SSID</th>
+              <th><object class="st_net_ssid"></object></th>
               <td id="ssidstat"></td>
             </tr>
             <tr>
-              <th>IP</th>
+              <th><object class="st_net_ip"></object></th>
               <td id="ip"></td>
             </tr>
             <tr>
-              <th>Gateway</th>
+              <th><object class="st_net_gw"></object></th>
               <td id="gate"></td>
             </tr>
             <tr>
-              <th>Mask</th>
+              <th><object class="st_net_subnet"></object></th>
               <td id="mask"></td>
             </tr>
             <tr>
-              <th>DNS</th>
+              <th><object class="st_net_dns"></object></th>
               <td id="dns"></td>
             </tr>
             <tr>
-              <th>MAC</th>
+              <th><object class="st_net_mac"></object></th>
               <td id="mac"></td>
             </tr>
             <tr>
-              <th>Hostname</th>
+              <th><object class="st_net_host"></object></th>
               <td id="host"></td>
             </tr>
           </table>
@@ -1327,7 +1327,7 @@
         <div class="panel panel-default table-responsive">
           <table class="table table-hover table-striped">
             <caption>
-              <span style="float: left">EVSE Registers</span>
+              <span style="float: left"><object class="st_evse_head"></object></span>
               <span style="float: right" class="glyphicon glyphicon-pencil" onclick="showEvseRegModal()"></span>
             </caption>
             <tr>
@@ -1397,34 +1397,34 @@
       <div id="meterRegisters" class="col-sm-6">
         <div class="panel panel-default table-responsive">
           <table class="table table-hover table-striped">
-            <caption>Meter Registers</caption>
+            <caption><object class="st_meter_head"></object></caption>
             <tr>
-              <th>Total active energy (kWh)</th>
+              <th><object class="st_meter_kwh"></object></th>
               <td id="meter_total"></td>
             </tr>
             <tr>
-              <th>Current P1 (A)</th>
+              <th><object class="st_meter_c1"></object></th>
               <td id="meter_p1"></td>
             </tr>
             <tr>
-              <th>Current P2 (A)</th>
+              <th><object class="st_meter_c2"></object></th>
               <td id="meter_p2"></td>
             </tr>
             <tr>
-              <th>Current P3 (A)</th>
+              <th><object class="st_meter_c3"></object></th>
               <td id="meter_p3"></td>
             </tr>
             <tr>
-              <th>Voltage P1 (V)</th>
-              <td id="meter_p1_v"></td>
+              <th><object class="st_meter_v1"></object></th>
+              <td id="meter_v1"></td>
             </tr>
             <tr>
-              <th>Voltage P2 (V)</th>
-              <td id="meter_p2_v"></td>
+              <th><object class="st_meter_v2"></object></th>
+              <td id="meter_v2"></td>
             </tr>
             <tr>
-              <th>Voltage P3 (V)</th>
-              <td id="meter_p3_v"></td>
+              <th><object class="st_meter_v3"></object></th>
+              <td id="meter_v3"></td>
             </tr>
           </table>
         </div>
@@ -1444,9 +1444,9 @@
           <span class="text-muted" style="font-size:30px;cursor:pointer" onclick="openNav()">&#9776;</span>
         </ul>
       </nav>
-      <h3 class="text-muted">Log</h3>
-      <div class="alert alert-warning" id="textlimitlogfile"></div>
-      <div class="alert alert-warning" id="textlimitlogfile2"></div>
+      <h3 class="text-muted"><object class="g_log"></object></h3>
+      <div class="alert alert-warning" id="textlimitlogfile"><object class="lo_head"></object></div>
+      <!-- <div class="alert alert-warning" id="textlimitlogfile2"><object class="lo_head2"></object></div> -->
     </div>
     <div class="panel panel-default">
       <table id="latestlogtable" class="table" data-paging="false" data-filtering="true" data-sorting="true"
@@ -1455,14 +1455,13 @@
     <div>
       <div class="row form-group">
         <span class="col-6 col-sm-2">
-          <button id="btnExportLogCsv" type="button" class="btn btn-primary btn-xs" onclick="exportLogCsv()">Export
-            .csv</button>
+          <button id="btnExportLogCsv" type="button" class="btn btn-primary btn-xs" onclick="exportLogCsv()"><object class="lo_exp"></object></button>
         </span>
-        <label data-toggle="tooltip" title="Choose the separator for csv file" class="col-6 col-sm-2">Separator</label>
+        <label data-toggle="tooltip" id="lo_exp_sep_tt" class="col-6 col-sm-2"><object class="lo_exp_sep"></object>&nbsp;<span class="glyphicon glyphicon-question-sign"></span></label>
         <span class="col-6 col-sm-2">
           <select class="form-control input-sm" id="csvSeparator">
-            <option value=";">Semicolon (;)</option>
-            <option value=",">Comma (,)</option>
+            <option value=";" class="lo_exp_sep_sc"></option>
+            <option value="," class="lo_exp_sep_c"></option>
           </select>
         </span>
       </div>
@@ -1472,7 +1471,36 @@
       <h6 class="text-muted"><a href="https://www.evse-wifi.de" target="_blank">EVSE WiFi</a></h6>
     </footer>
   </div>
+
+
+
+  <!-- Syslog Container -->
+  <div class="container" id="syslogContent" style="display: none">
+    <div class="header clearfix">
+      <nav>
+        <ul class="nav pull-right" style="padding:10px">
+          <span class="text-muted" style="font-size:30px;cursor:pointer" onclick="openNav()">&#9776;</span>
+        </ul>
+      </nav>
+      <h3 class="text-muted"><object class="sl_head"></object></h3>
+    </div>
+    <div>
+      <div class="row form-group">
+        <span class="col-6 col-sm-2">
+          <button id="btnExportSysLog" type="button" class="btn btn-primary btn-xs" onclick="exportSysLogJson()"><object class="sl_export"></object></button>
+        </span>
+      </div>
+    </div>
+    <div id="syslogstream">
+    </div>
+    <hr>
+    <footer class="footer">
+      <h6 class="text-muted"><a href="https://www.evse-wifi.de" target="_blank">EVSE WiFi</a></h6>
+    </footer>
+  </div>
+
   <script src="script.js" type="text/javascript"></script>
+  <script src="lang.js" type="text/javascript"></script>
   </div>
 </body>
 

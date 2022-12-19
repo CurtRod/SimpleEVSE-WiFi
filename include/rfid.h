@@ -1,13 +1,11 @@
 #include <Arduino.h>
-#ifdef RFID
-    #include <MFRC522.h>
-#endif
+#include <MFRC522.h>
 #include <ArduinoJson.h>
 #include <ESPAsyncWebServer.h> 
 #include <Wire.h>
 #include <SPI.h>
-//#include <Adafruit_PN532.h> 
 #include "ntp.h"
+#include "syslog.h"
 
 #ifdef ESP8266
 #include <FS.h>
@@ -26,7 +24,7 @@ struct scanResult {
 
 class EvseWiFiRfid {
 public:
-	bool ICACHE_FLASH_ATTR begin(int rfidss, bool usePN532, int rfidgain, NtpClient* ntp, bool debug);
+	bool ICACHE_FLASH_ATTR begin(int rfidss, bool usePN532, int rfidgain, NtpClient* ntp, bool debug, Syslog* s);
     scanResult ICACHE_FLASH_ATTR readPicc();
     bool ICACHE_FLASH_ATTR performSelfTest();
     bool ICACHE_FLASH_ATTR reset();
@@ -38,4 +36,5 @@ private:
     NtpClient* ntpClient;
     bool debug;
     bool usePN532;
+    Syslog* slog;
 };

@@ -125,6 +125,12 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::loadConfig(String givenConfig) {
     else {
         systemConfig.api = true;
     }
+    if (jsonDoc["system"].containsKey("oledontime")) {
+        systemConfig.oledontime = jsonDoc["system"]["oledontime"];
+    }
+    else {
+        systemConfig.oledontime = 120;
+    }
     Serial.println("SYSTEM loaded");
 
    // evseConfig
@@ -297,6 +303,7 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::printConfig() {
     Serial.println("evsecount: " + String(getSystemEvseCount()));
     Serial.println("logging: " + String(getSystemLogging()));
     Serial.println("api: " + String(getSystemApi()));
+    Serial.println("oledontime: " + String(getSystemOledOnTime()));
     Serial.println("configversion: " + String(getSystemConfigVersion()));
     Serial.println("// EVSE Config");
     Serial.println("mbid: " + String(getEvseMbid(0)));
@@ -395,6 +402,7 @@ String ICACHE_FLASH_ATTR EvseWiFiConfig::getConfigJson() {
     systemItem["evsecount"] = this->getSystemEvseCount();
     systemItem["logging"] = this->getSystemLogging();
     systemItem["api"] = this->getSystemApi();
+    systemItem["oledontime"] = this->getSystemOledOnTime();
 
     JsonArray evseArray = rootDoc.createNestedArray("evse");
     JsonObject evseObject_0 = evseArray.createNestedObject();
@@ -419,17 +427,18 @@ String ICACHE_FLASH_ATTR EvseWiFiConfig::getConfigJson() {
 }
 
 bool ICACHE_FLASH_ATTR EvseWiFiConfig::checkUpdateConfig(String jsonString, bool (*setEVSERegister)(uint16_t reg, uint16_t val)) {
+    Serial.println("[ DBG ] checkUpdateConfig()...");
     DynamicJsonDocument jsonDoc(2000);
     DeserializationError error = deserializeJson(jsonDoc, jsonString);
     if (error) {
-        Serial.println("parsing config file failed");
+        Serial.println("[ ERR ] parsing config file failed");
         return false;
     }
     bool err = false;
 
     // switch to Normal mode
-    if (jsonDoc["evse"][0]["alwaysactive"] == false) {
-        if (this->getSystemDebug()) Serial.println("[ SYSTEM ] Switched from AA/Remote to normal mode -> going to set Register 2005...");
+    if (jsonDoc["evse"][0]["alwaysactive"] == false && this->getEvseAlwaysActive(0) == true) {
+        Serial.println("[ SYSTEM ] Switched from AA/Remote to normal mode -> going to set Registers 2005 and 1000...");
         for (int i = 0; i < 5; i++) {               // Set reg 2005
             if (setEVSERegister(2005, 16448)){
                 err = false;
@@ -447,15 +456,16 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::checkUpdateConfig(String jsonString, bool
             delay(150);
         }
         if (err) {
-            Serial.println("[ ERROR ] Register 2005 could not be set (switch from AA/Remote to normal mode)");
+            Serial.println("[ ERR ] Register 2005 could not be set (switch from AA/Remote to normal mode)");
             return false;
-        } 
+        }
     }
-    else if (jsonDoc["evse"][0]["alwaysactive"] == true) { //Switch to AA
+    else if (jsonDoc["evse"][0]["alwaysactive"] == true && this->getEvseAlwaysActive(0) == false) { //Switch to AA
+        Serial.println("[ SYSTEM ] Switched from Normal Mode to AA/Remote -> going to check timer.json...");
         bool updateTimerFile = false;
         File timerFile = SPIFFS.open("/timer.json", "r");
         if (!timerFile) {
-            if(this->getSystemDebug()) Serial.println("[ ERR ] Timer File does not exist");
+            Serial.println("[ ERR ] Timer File does not exist");
         }
         else {
             size_t size = timerFile.size();
@@ -464,7 +474,7 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::checkUpdateConfig(String jsonString, bool
             DynamicJsonDocument jsonDoc(1800);
             DeserializationError error = deserializeJson(jsonDoc, buf.get());
             if (error) {
-                if(this->getSystemDebug()) Serial.println("[ ERR ] Cannot deserialize timer file");
+                Serial.println("[ ERR ] Cannot deserialize timer file");
             }
             timerFile.close();
 
@@ -480,23 +490,24 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::checkUpdateConfig(String jsonString, bool
                 SPIFFS.remove("/timer.json");
                 File timerFile2 = SPIFFS.open("/timer.json", "w");
                 if (!timerFile2) {
-                    if(this->getSystemDebug()) Serial.println("[ ERR ] Cannot write timer file");
+                    Serial.println("[ ERR ] Cannot write timer file");
                     return false;
                 }
                 if (serializeJson(jsonDoc, timerFile2) == 0) {
-                    if(this->getSystemDebug()) Serial.println("[ ERR ] Cannot write timer file");
+                    Serial.println("[ ERR ] Cannot write timer file");
                 }
                 timerFile2.close();
             }
         }
     }
     else {
-        if (this->getSystemDebug()) Serial.println("[ SYSTEM ] No Register to Set (not switched from AA/Remote to normal mode)");
+        Serial.println("[ SYSTEM ] Operating Mode not changed - No Register to Set");
     }
     return true;
 }
 
 bool ICACHE_FLASH_ATTR EvseWiFiConfig::updateConfig(String jsonString) {
+    Serial.println("[ DBG ] updateConfig()...");
     if(loadConfig(jsonString)) {
         if (saveConfigFile(jsonString)) {
             return true;
@@ -596,8 +607,8 @@ uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getMeterPin(uint8_t meterId) {
     if (meterConfig[meterId].intpin) return meterConfig[meterId].intpin;
     #ifdef ESP8266
     return D3;
-    #elif ESP32_DEVKIT
-    return 17;
+
+
     #else
     return 17;
     #endif
@@ -618,10 +629,13 @@ uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getMeterFactor(uint8_t meterId) {
     if (meterConfig[meterId].factor) return meterConfig[meterId].factor;
     return 1;
 }
+
 bool ICACHE_FLASH_ATTR EvseWiFiConfig::setMeterFactor(uint8_t meterId, uint8_t factor) {
     meterConfig[meterId].factor = factor;
     return true;
 }
+
+
 
 // rfidConfig getter/setter
 bool ICACHE_FLASH_ATTR EvseWiFiConfig::getRfidActive(){
@@ -641,8 +655,8 @@ uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getRfidPin() {
     #endif
 }
 int8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getRfidGain() {
-    if (rfidConfig.rfidgain) return rfidConfig.rfidgain;
-    return 112;
+    return rfidConfig.rfidgain;
+    
 }
 
 // ntpConfig getter/setter
@@ -665,8 +679,8 @@ uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getButtonPin(uint8_t buttonId) {
     if (buttonConfig[0].buttonpin) return buttonConfig[buttonId].buttonpin;
     #ifdef ESP8266
     return D4;
-    #elif ESP32_DEVKIT
-    return 16;
+
+
     #else
     return 16;
     #endif
@@ -704,6 +718,10 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::getSystemLogging() {
 bool ICACHE_FLASH_ATTR EvseWiFiConfig::getSystemApi() {
     return systemConfig.api;
 }
+uint16_t ICACHE_FLASH_ATTR EvseWiFiConfig::getSystemOledOnTime() {
+    if (systemConfig.oledontime) return systemConfig.oledontime;
+    return 120;
+}
 
 // evseConfig getter/setter
 uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseMbid(uint8_t evseId) {
@@ -728,8 +746,8 @@ uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseDisplayRotation(uint8_t evseId)
 uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseLedPin(uint8_t evseId) {
     #ifdef ESP8266
     return D0;
-    #elif ESP32_DEVKIT
-    return 2;
+
+
     #else
     return 26;
     #endif
@@ -751,11 +769,8 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseRseActive(uint8_t evseId) {
     return evseConfig[evseId].rseActive;
 }
 uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseRsePin(uint8_t evseId) {
-    #ifdef ESP32_DEVKIT
-        return 34;
-    #else
-        return 2;
-    #endif
+    return 2;
+
 }
 uint8_t ICACHE_FLASH_ATTR EvseWiFiConfig::getEvseRseValue(uint8_t evseId) {
     return evseConfig[evseId].rseValue;

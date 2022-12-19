@@ -33,6 +33,7 @@ bool ICACHE_FLASH_ATTR activateEVSE();
 bool ICACHE_FLASH_ATTR deactivateEVSE(bool);
 bool ICACHE_FLASH_ATTR setEVSEcurrent();
 bool ICACHE_FLASH_ATTR setEVSERegister(uint16_t, uint16_t);
+bool ICACHE_FLASH_ATTR setSDMID();
 void ICACHE_FLASH_ATTR pushSessionTimeOut();
 void ICACHE_FLASH_ATTR sendEVSEdata();
 void ICACHE_FLASH_ATTR sendTime();

@@ -1,3 +1,5 @@
+#ifndef CONFIG_H_
+#define CONFIG_H_
 #include <Arduino.h>
 #include <ArduinoJson.h>
 
@@ -62,6 +64,7 @@ struct s_systemConfig {
     uint8_t evsecount;
     bool logging;
     bool api;
+    uint16_t oledontime;
 };
 
 struct s_evseConfig {
@@ -115,6 +118,7 @@ public:
     uint8_t ICACHE_FLASH_ATTR getMeterPhaseCount(uint8_t meterId);
     uint8_t ICACHE_FLASH_ATTR getMeterFactor(uint8_t meterId);
     bool ICACHE_FLASH_ATTR setMeterFactor(uint8_t meterId, uint8_t factor);
+
     bool useSMeter;
     bool useMMeter;
     bool mMeterTypeSDM120;
@@ -147,6 +151,7 @@ public:
     uint8_t ICACHE_FLASH_ATTR getSystemEvseCount();
     bool ICACHE_FLASH_ATTR getSystemLogging();
     bool ICACHE_FLASH_ATTR getSystemApi();
+    uint16_t ICACHE_FLASH_ATTR getSystemOledOnTime();
 
 // evrialConfig
     uint8_t ICACHE_FLASH_ATTR getEvseMbid(uint8_t evseId);
@@ -190,3 +195,4 @@ private:
 protected:
 
 };
+#endif //CONFIG_H
