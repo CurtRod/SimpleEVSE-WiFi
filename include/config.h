@@ -1,5 +1,6 @@
 #ifndef CONFIG_H_
 #define CONFIG_H_
+
 #include <Arduino.h>
 #include <ArduinoJson.h>
 
@@ -118,7 +119,6 @@ public:
     uint8_t ICACHE_FLASH_ATTR getMeterPhaseCount(uint8_t meterId);
     uint8_t ICACHE_FLASH_ATTR getMeterFactor(uint8_t meterId);
     bool ICACHE_FLASH_ATTR setMeterFactor(uint8_t meterId, uint8_t factor);
-
     bool useSMeter;
     bool useMMeter;
     bool mMeterTypeSDM120;

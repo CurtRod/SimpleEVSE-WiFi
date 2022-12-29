@@ -2,7 +2,6 @@
 #include "oled.h"
 #include <string>
 
-//U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 void EvseWiFiOled::begin(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8, uint8_t rotation) {
   this->u8g2 = u8;
   this->u8g2->begin();
@@ -378,7 +377,7 @@ String EvseWiFiOled::getTranslation(uint8_t id, uint8_t lang) {
       return "Charging";
     }
     else {
-      return "Lädt"; // ä
+      return "Lï¿½dt"; // ï¿½
     }
     break;
   case 20:
@@ -386,7 +385,7 @@ String EvseWiFiOled::getTranslation(uint8_t id, uint8_t lang) {
       return "RFID tag valid";
     }
     else {
-      return "RFID gültig";
+      return "RFID gï¿½ltig";
     }
     break;
   case 21:
@@ -394,7 +393,7 @@ String EvseWiFiOled::getTranslation(uint8_t id, uint8_t lang) {
       return "RFID tag invalid!";
     }
     else {
-      return "RFID ungültig!";
+      return "RFID ungï¿½ltig!";
     }
     break;
   case 22:

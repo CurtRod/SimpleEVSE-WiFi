@@ -1,6 +1,8 @@
 #include <rfid.h>
 
+#ifdef RFID
 MFRC522 mfrc522 = MFRC522();
+
 
 bool ICACHE_FLASH_ATTR EvseWiFiRfid::begin(int rfidss, bool usePN532, int rfidgain, NtpClient* ntp, bool debug, Syslog* s) {
   this->debug = debug;
@@ -16,10 +18,13 @@ bool ICACHE_FLASH_ATTR EvseWiFiRfid::begin(int rfidss, bool usePN532, int rfidga
   if (this->debug) this->slog->logln(rfidgain);
   delay(50);
   printReaderDetails();
+
   return true;
 }
+#endif
 
 void ICACHE_FLASH_ATTR EvseWiFiRfid::printReaderDetails() {
+#ifdef RFID
   // Get the MFRC522 software version 
   byte v = mfrc522.PCD_ReadRegister(mfrc522.VersionReg);
   if (this->debug) this->slog->log(this->ntpClient->iso8601DateTime() + "[ INFO ] MFRC522 Version: 0x");
@@ -41,10 +46,12 @@ void ICACHE_FLASH_ATTR EvseWiFiRfid::printReaderDetails() {
   if ((v == 0x00) || (v == 0xFF)) {
     if (this->debug) this->slog->logln("[ WARN ] Communication failure, check if MFRC522 properly connected");
   }
+  #endif
 }
 
 scanResult ICACHE_FLASH_ATTR EvseWiFiRfid::readPicc() {
   scanResult res;
+  #ifdef RFID
   //RC522
     if (! mfrc522.PICC_IsNewCardPresent()) {
       delay(50);
@@ -122,7 +129,7 @@ scanResult ICACHE_FLASH_ATTR EvseWiFiRfid::readPicc() {
     }
     rfidFile.close();
     //SPIFFS.end();
-
+#endif
  return res;
 }
 
@@ -189,10 +196,16 @@ DynamicJsonDocument ICACHE_FLASH_ATTR EvseWiFiRfid::getUserList(int page) {
 }
 
 bool ICACHE_FLASH_ATTR EvseWiFiRfid::performSelfTest() {
+  #ifdef RFID
   return mfrc522.PCD_PerformSelfTest();
+  #else
+  return false;
+  #endif
 }
 
 bool ICACHE_FLASH_ATTR EvseWiFiRfid::reset() {
+  #ifdef RFID
   mfrc522.PCD_Init();
+  #endif
   return true;
 }

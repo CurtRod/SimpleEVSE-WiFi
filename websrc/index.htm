@@ -79,6 +79,14 @@
           </div>
         </div>
         <div class="modal-footer">
+          <div class="btn-group pull-left" data-toggle="buttons" id="numPhasesButtons">
+            <label class="btn btn-primary" id="labelButton1P">
+              <input type="radio" name="options" id="button1P"> 1P
+            </label>
+            <label class="btn btn-primary" id="labelButton3P">
+              <input type="radio" name="options" id="button3P"> 3P
+            </label>
+          </div>
           <button type="button" class="btn btn-secondary" onclick="abortCurrentModal()"
             data-dismiss="modal"><object class="g_abort"></object></button>
           <button type="submit" id="currentModalSaveButton" class="btn btn-primary"
@@ -591,6 +599,16 @@
             <input class="form-control input-sm" value="100" placeholder="%" id="rsevalue" type="number" name="rsevalue"
               min="0" max="100">
           </span>
+        </div>
+        <div class="row form-group" id="divNumPhases">
+          <label data-toggle="tooltip"
+            title="Use the NumPhases Pin (GPIO32) to switch between one phase and three phase operation"
+            class="col-xs-3">Three phase operation</label>
+          <div class="col-xs-9">
+            <form>
+              <label class="checkbox-inline"><input type="checkbox" id="checkboxNumPhases" value="" name="checkboxNumPhases"></label>
+            </form>
+          </div>
         </div>
         <br>
       </div>
