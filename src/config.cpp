@@ -141,10 +141,10 @@ bool ICACHE_FLASH_ATTR EvseWiFiConfig::loadConfig(String givenConfig) {
     evseConfig[0].maxcurrent =  jsonDoc["evse"][0]["maxinstall"];
     evseConfig[0].avgconsumption = jsonDoc["evse"][0]["avgconsumption"];
 
-    if (jsonDoc["evse"][0].containsKey("disableled")) {
-        bool disableled = jsonDoc["evse"][0]["disableled"];
-        Serial.println(disableled);
-        if (disableled == true) {
+    if (jsonDoc["evse"][0].containsKey("disabled")) {
+        bool disabled = jsonDoc["evse"][0]["disabled"];
+        Serial.println(disabled);
+        if (disabled == true) {
             evseConfig[0].ledconfig = 1;
         }
         else {

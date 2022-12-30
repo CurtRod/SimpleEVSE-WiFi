@@ -14,3 +14,5 @@ OLED_CS        --               12     12
 OLED_DC        --               13     13
 OLED_RESET     --               33     33
 numPhasesPin   --               32     32
+SDM TX         --               34     34
+SDM RX         --               14     14

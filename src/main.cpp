@@ -1540,6 +1540,7 @@ bool ICACHE_FLASH_ATTR queryEVSE(bool startup = false)
       if (config.getEvseLedConfig(0) == 3)
         changeLedTimes(300, 300);
     }
+
     evseErrorCount++;
     mbErrCount++;
     Serial.print("[ ModBus ] Error ");
@@ -1995,8 +1996,10 @@ bool ICACHE_FLASH_ATTR activateEVSE()
   meteredKWh = 0.0;
 
 #ifndef ESP8266
+#ifdef OLED
   millisUpdateOled = millis() + 3000;
 // oled.showCheck(false);
+#endif
 #endif
 #ifdef RFID
   showLedRfidGrant = true;
@@ -3051,7 +3054,7 @@ bool ICACHE_FLASH_ATTR connectSTA(const char *ssid, const char *password, byte b
   slog.log(ssid);
 
   unsigned long now = millis();
-  uint8_t timeout = 10; // seconds
+  uint8_t timeout = 30; // seconds
   do
   {
     if (WiFi.status() == WL_CONNECTED)
@@ -3180,9 +3183,11 @@ bool ICACHE_FLASH_ATTR loadConfiguration(String configString = "")
 {
 
   Serial.println("[ SYSTEM ] Loading Config File on Startup...");
-#ifdef ESP32
+
+#ifdef OLED
   oled.showSplash("Config File...");
 #endif
+
   if (configString == "")
   {
     if (!config.loadConfig())
@@ -3194,7 +3199,7 @@ bool ICACHE_FLASH_ATTR loadConfiguration(String configString = "")
       return false;
   }
   config.loadConfiguration();
-#ifdef ESP32
+#ifdef OLED
   oled.setLanguage(&config);
 #endif
 
@@ -3265,7 +3270,7 @@ bool ICACHE_FLASH_ATTR loadConfiguration(String configString = "")
   {
     ws.setAuthentication("admin", config.getSystemPass());
     if (config.getSystemDebug())
-      slog.log(ntp.iso8601DateTime() + "[ Websocket ] Use Basic Authentication for Websocket");
+      slog.logln(ntp.iso8601DateTime() + "[ Websocket ] Use Basic Authentication for Websocket");
   }
 #ifdef ESP8266
   server.addHandler(new SPIFFSEditor("admin", config.getSystemPass()));
@@ -3283,13 +3288,13 @@ bool ICACHE_FLASH_ATTR loadConfiguration(String configString = "")
     if (config.getSystemDebug())
       slog.logln(ntp.iso8601DateTime() + "[ Modbus ] Error getting EVSE data!");
     delay(500);
-
     queryEVSE(true);
     if (evseErrorCount > 2)
     {
       break;
     }
   }
+
   delay(50);
 
   getAdditionalEVSEData();
@@ -3810,7 +3815,7 @@ request->send(response); });
         awp = request->getParam(0);
         if (awp->name() == "numPhases") {
           uint8_t numPhases = atoi(awp->value().c_str());
-          if(!config.getEvseAlwaysActive(0)) {
+
             if((numPhases == 1) || (numPhases == 3)) {
               if(switchNumPhases(numPhases)) {
                 request->send(200, "text/plain", "S0_switchNumPhases set to given value");
@@ -3818,11 +3823,6 @@ request->send(response); });
                 request->send(200, "text/plain", "E1_switchNumPhases failed - wrong state");
               }
             }
-          } else {
-            request->send(200, "text/plain", "E2_switchNumPhases failed - always active mode");
-          }
-        } else {
-          request->send(200, "text/plain", "E3_switchNumPhases failed - wrong parameter name");
         } });
     server.on("/setMeterFactor", HTTP_GET, [](AsyncWebServerRequest *request)
               {
@@ -4038,10 +4038,12 @@ void ICACHE_RAM_ATTR setup()
   evseNode.begin(1, SecondSer);
 
 #ifdef ESP32
+#ifdef OLED
   oled.begin(&u8g2, config.getEvseDisplayRotation(0));
   slog.logln(ntp.iso8601DateTime() + "[ SYSTEM ] OLED started");
   turnOnOled(config.getSystemOledOnTime());
   oled.showSplash();
+#endif
 #endif
 
   if (!loadConfiguration())
@@ -4082,7 +4084,7 @@ void ICACHE_RAM_ATTR setup()
     pinMode(config.getEvseLedPin(0), OUTPUT);
     if (config.getSystemDebug())
       Serial.println("Button Pressed while boot!");
-#ifdef ESP32
+#ifdef OLED
     oled.showSplash("FactoryReset in 20s");
 #endif
     digitalWrite(config.getEvseLedPin(0), HIGH);
@@ -4093,7 +4095,7 @@ void ICACHE_RAM_ATTR setup()
       if (millis() > (millisBefore + 20000))
       {
         factoryReset();
-#ifdef ESP32
+#ifdef OLED
         oled.showSplash("Factory Reset done!");
 #endif
         slog.logln(ntp.iso8601DateTime() + "[ SYSTEM ] System has been reset to factory settings!");
@@ -4119,7 +4121,7 @@ void ICACHE_RAM_ATTR setup()
 #ifdef ESP32_DEVKIT
   pinMode(config.getEvseNumPhasesPin(0), OUTPUT);
   if (config.getSystemDebug())
-    Serial.print("[ SYSTEM ] Use numPhases GPIO ");
+    Serial.print(ntp.iso8601DateTime() + "[ SYSTEM ] Use numPhases GPIO ");
   if (config.getSystemDebug())
     Serial.println(config.getEvseNumPhasesPin(0));
   numPhasesState = config.getEvseNumPhases(0);
@@ -4236,8 +4238,8 @@ void ICACHE_RAM_ATTR loop()
       toInitLog = false;
   }
   if (!updateRunning)
-  { // Update Modbus data every 3000ms and send data to WebUI
-    updateEvseData();
+  {                   // Update Modbus data every 3000ms and send data to WebUI
+    updateEvseData(); // <---- Modbus loop
   }
   if (config.useMMeter && millisUpdateMMeter < millis() && !updateRunning)
   {
@@ -4294,7 +4296,7 @@ void ICACHE_RAM_ATTR loop()
       }
       else
       {
-#endif
+
         if (!config.getEvseAlwaysActive(0))
         {
           if (evseActive)
@@ -4307,11 +4309,10 @@ void ICACHE_RAM_ATTR loop()
           }
           lastUsername = "Button";
           lastUID = "Button";
-#ifdef ESP32
+
           oled.showCheck(true, 1);
-#endif
+
         }
-#ifdef OLED
       }
 #endif
     }

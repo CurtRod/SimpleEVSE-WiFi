@@ -1645,7 +1645,8 @@ function loadStatus() {
   
   refreshStats();
   timerRefreshStats = setInterval(refreshStatsCountdown, 1000);
-  refreshSeconds = 10;
+  refreshSeconds = 5; //<-- Update interval UI
+
 
   websock.send("{\"command\":\"getconf\"}");
   handleRFID();
@@ -1663,7 +1664,7 @@ function refreshStatsCountdown() {
   document.getElementById("st_head").innerHTML = translate("st_head", refreshSeconds);
   if (refreshSeconds === 0) {
     refreshStats();
-    refreshSeconds = 10;
+    refreshSeconds = 5; 
   }
   else {
     refreshSeconds -= 1;
