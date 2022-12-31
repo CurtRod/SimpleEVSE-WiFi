@@ -43,12 +43,18 @@
 #include <ModbusMaster.h>
 #include <ModbusIP_ESP8266.h>
 
+#ifdef ESP32_DEVKIT
+#include <esp_task_wdt.h>
+#include "websrcembed.h"
+#else
+#include "websrc.h"
+#endif
+
 #include <string>
 #include <iostream>
 #include <deque>
 #include "proto.h"
 #include "ntp.h"
-#include "websrc.h"
 #include "config.h"
 #include "templates.h"
 #include "rfid.h"
@@ -3054,7 +3060,7 @@ bool ICACHE_FLASH_ATTR connectSTA(const char *ssid, const char *password, byte b
   slog.log(ssid);
 
   unsigned long now = millis();
-  uint8_t timeout = 30; // seconds
+  uint8_t timeout = 15; // seconds
   do
   {
     if (WiFi.status() == WL_CONNECTED)
@@ -3220,6 +3226,116 @@ bool ICACHE_FLASH_ATTR loadConfiguration(String configString = "")
   FirstSer.begin(9600, SERIAL_8N1, 22, 21);  // EVSE
   SecondSer.begin(9600, SERIAL_8N1, 34, 14); // SDM
 
+#ifdef OLED
+  oled.showSplash("Connecting WiFi...");
+#endif
+  if (config.getWifiWmode() == 1)
+  {
+    if (config.getSystemDebug())
+      slog.logln(ntp.iso8601DateTime() + "[ INFO ] EVSE-WiFi is running in AP Mode ");
+    WiFi.disconnect(true);
+    if (config.useMMeter)
+    {
+      if ((evseActive && !config.getEvseAlwaysActive(0)) || (vehicleCharging && config.getEvseAlwaysActive(0)))
+      {
+        if (config.getSystemDebug())
+          slog.logln(ntp.iso8601DateTime() + "[ INFO ] Vehicle is charging at startup");
+        readLogAtStartup();
+      }
+      else
+      {
+        if (config.getSystemDebug())
+          slog.logln(ntp.iso8601DateTime() + "[ INFO ] Vehicle is NOT charging at startup");
+      }
+    }
+    else
+    {                        // Feature only supported with modbus meter
+      deactivateEVSE(false); // initial deactivation
+      stopChargingTimestamp = 0;
+      vehicleCharging = false;
+    }
+    return startAP(config.getWifiSsid(), config.getWifiPass());
+  }
+
+  WiFi.disconnect(true);
+
+  if (config.getWifiStaticIp() == true)
+  {
+    IPAddress clientip;
+    IPAddress subnet;
+    IPAddress gateway;
+    IPAddress dns;
+
+    clientip.fromString(config.getWifiIp());
+    subnet.fromString(config.getWiFiSubnet());
+    gateway.fromString(config.getWiFiGateway());
+    dns.fromString(config.getWiFiDns());
+
+    WiFi.config(clientip, gateway, subnet, dns);
+  }
+  else
+  {
+#ifdef ESP32
+    WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
+#endif
+  }
+
+#ifdef ESP32
+  WiFi.setHostname(config.getSystemHostname());
+#else
+  WiFi.hostname(config.getSystemHostname());
+#endif
+
+  byte bssid[6];
+  parseBytes(config.getWifiBssid(), ':', bssid, 6, 16);
+
+  if (!connectSTA(config.getWifiSsid(), config.getWifiPass(), bssid))
+  {
+    return false;
+  }
+  if (!MDNS.begin(config.getSystemHostname()))
+  {
+    slog.logln(ntp.iso8601DateTime() + "[ SYSTEM ] Error setting up MDNS responder!");
+  }
+
+  // slog.logln("");
+  slog.log(ntp.iso8601DateTime() + "[ INFO ] Client IP address: ");
+  slog.logln(WiFi.localIP().toString());
+
+  // Check internet connection
+  delay(100);
+  if (config.getSystemDebug())
+    slog.logln(ntp.iso8601DateTime() + "[ NTP ] NTP Server - set up NTP");
+  const char *ntpserver = config.getNtpIp();
+  IPAddress timeserverip;
+  WiFi.hostByName(ntpserver, timeserverip);
+  String ip = printIP(timeserverip);
+  if (config.getSystemDebug())
+    slog.logln(ntp.iso8601DateTime() + "[ NTP ] IP: " + ip);
+  uint8_t tz = config.getNtpTimezone();
+  if (config.getNtpDst())
+  {
+    tz = tz + 1;
+    if (config.getSystemDebug())
+      slog.log(ntp.iso8601DateTime() + "[ NTP ] Timezone: ");
+    if (config.getSystemDebug())
+      slog.logln(tz);
+    if (config.getSystemDebug())
+      slog.logln(ntp.iso8601DateTime() + "[ NTP ] DST on");
+  }
+  else
+  {
+    if (config.getSystemDebug())
+      slog.log(ntp.iso8601DateTime() + "[ NTP ] Timezone: ");
+    if (config.getSystemDebug())
+      slog.logln(tz);
+    if (config.getSystemDebug())
+      slog.logln(ntp.iso8601DateTime() + "[ NTP ] DST off");
+  }
+  ntp.Ntp(config.getNtpIp(), tz, 3600); // use NTP Server, timeZone, update every x sec
+
+  delay(1000);
+
   // Check connected devices
   // EVSE:
   if (checkUart(&FirstSer, 1))
@@ -3339,116 +3455,6 @@ bool ICACHE_FLASH_ATTR loadConfiguration(String configString = "")
     rfid.begin(config.getRfidPin(), config.getRfidUsePN532(), config.getRfidGain(), &ntp, config.getSystemDebug(), &slog);
   }
 
-#ifdef OLED
-  oled.showSplash("Connecting WiFi...");
-#endif
-  if (config.getWifiWmode() == 1)
-  {
-    if (config.getSystemDebug())
-      slog.logln(ntp.iso8601DateTime() + "[ INFO ] EVSE-WiFi is running in AP Mode ");
-    WiFi.disconnect(true);
-    if (config.useMMeter)
-    {
-      if ((evseActive && !config.getEvseAlwaysActive(0)) || (vehicleCharging && config.getEvseAlwaysActive(0)))
-      {
-        if (config.getSystemDebug())
-          slog.logln(ntp.iso8601DateTime() + "[ INFO ] Vehicle is charging at startup");
-        readLogAtStartup();
-      }
-      else
-      {
-        if (config.getSystemDebug())
-          slog.logln(ntp.iso8601DateTime() + "[ INFO ] Vehicle is NOT charging at startup");
-      }
-    }
-    else
-    {                        // Feature only supported with modbus meter
-      deactivateEVSE(false); // initial deactivation
-      stopChargingTimestamp = 0;
-      vehicleCharging = false;
-    }
-    return startAP(config.getWifiSsid(), config.getWifiPass());
-  }
-
-  WiFi.disconnect(true);
-
-  if (config.getWifiStaticIp() == true)
-  {
-    IPAddress clientip;
-    IPAddress subnet;
-    IPAddress gateway;
-    IPAddress dns;
-
-    clientip.fromString(config.getWifiIp());
-    subnet.fromString(config.getWiFiSubnet());
-    gateway.fromString(config.getWiFiGateway());
-    dns.fromString(config.getWiFiDns());
-
-    WiFi.config(clientip, gateway, subnet, dns);
-  }
-  else
-  {
-#ifdef ESP32
-    WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
-#endif
-  }
-
-#ifdef ESP32
-  WiFi.setHostname(config.getSystemHostname());
-#else
-  WiFi.hostname(config.getSystemHostname());
-#endif
-
-  byte bssid[6];
-  parseBytes(config.getWifiBssid(), ':', bssid, 6, 16);
-
-  if (!connectSTA(config.getWifiSsid(), config.getWifiPass(), bssid))
-  {
-    return false;
-  }
-  if (!MDNS.begin(config.getSystemHostname()))
-  {
-    slog.logln(ntp.iso8601DateTime() + "[ SYSTEM ] Error setting up MDNS responder!");
-  }
-
-  // slog.logln("");
-  slog.log(ntp.iso8601DateTime() + "[ INFO ] Client IP address: ");
-  slog.logln(WiFi.localIP().toString());
-
-  // Check internet connection
-  delay(100);
-  if (config.getSystemDebug())
-    slog.logln(ntp.iso8601DateTime() + "[ NTP ] NTP Server - set up NTP");
-  const char *ntpserver = config.getNtpIp();
-  IPAddress timeserverip;
-  WiFi.hostByName(ntpserver, timeserverip);
-  String ip = printIP(timeserverip);
-  if (config.getSystemDebug())
-    slog.logln(ntp.iso8601DateTime() + "[ NTP ] IP: " + ip);
-  uint8_t tz = config.getNtpTimezone();
-  if (config.getNtpDst())
-  {
-    tz = tz + 1;
-    if (config.getSystemDebug())
-      slog.log(ntp.iso8601DateTime() + "[ NTP ] Timezone: ");
-    if (config.getSystemDebug())
-      slog.logln(tz);
-    if (config.getSystemDebug())
-      slog.logln(ntp.iso8601DateTime() + "[ NTP ] DST on");
-  }
-  else
-  {
-    if (config.getSystemDebug())
-      slog.log(ntp.iso8601DateTime() + "[ NTP ] Timezone: ");
-    if (config.getSystemDebug())
-      slog.logln(tz);
-    if (config.getSystemDebug())
-      slog.logln(ntp.iso8601DateTime() + "[ NTP ] DST off");
-  }
-  ntp.Ntp(config.getNtpIp(), tz, 3600); // use NTP Server, timeZone, update every x sec
-
-  delay(1000);
-
   // Handle boot while charging is active
   if ((evseActive && !config.getEvseAlwaysActive(0)) || (vehicleCharging && config.getEvseAlwaysActive(0)))
   {
@@ -3477,68 +3483,112 @@ void ICACHE_FLASH_ATTR setWebEvents()
 {
   server.on("/index.htm", HTTP_GET, [](AsyncWebServerRequest *request)
             {
+#ifdef ESP32_DEVKIT
+      AsyncWebServerResponse * response = request->beginResponse_P(200, "text/html", websrc_index_htm_start, websrc_index_htm_end-websrc_index_htm_start-1);
+#else
   AsyncWebServerResponse * response = request->beginResponse_P(200, "text/html", WEBSRC_INDEX_HTM, WEBSRC_INDEX_HTM_LEN);
   response->addHeader("Content-Encoding", "gzip");
+#endif
   request->send(response); });
 
   server.on("/script.js", HTTP_GET, [](AsyncWebServerRequest *request)
             {
+#ifdef ESP32_DEVKIT
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "text/javascript", websrc_script_js_start, websrc_script_js_end-websrc_script_js_start-1);
+#else 
     AsyncWebServerResponse * response = request->beginResponse_P(200, "text/javascript", WEBSRC_SCRIPT_JS, WEBSRC_SCRIPT_JS_LEN);
     response->addHeader("Content-Encoding", "gzip");
+#endif
     request->send(response); });
 
   server.on("/lang.js", HTTP_GET, [](AsyncWebServerRequest *request)
             {
+#ifdef ESP32_DEVKIT
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "text/javascript", websrc_lang_js_start, websrc_lang_js_end-websrc_lang_js_start-1);
+#else 
     AsyncWebServerResponse * response = request->beginResponse_P(200, "text/javascript", WEBSRC_LANG_JS, WEBSRC_LANG_JS_LEN);
     response->addHeader("Content-Encoding", "gzip");
+#endif
     request->send(response); });
 
   server.on("/fonts/glyph.woff", HTTP_GET, [](AsyncWebServerRequest *request)
             {
+#ifdef ESP32_DEVKIT
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "font/woff", websrc_glyph_woff_start, websrc_glyph_woff_end-websrc_glyph_woff_start-1);
+#else
     AsyncWebServerResponse * response = request->beginResponse_P(200, "font/woff", WEBSRC_GLYPH_WOFF, WEBSRC_GLYPH_WOFF_LEN);
     response->addHeader("Content-Encoding", "gzip");
+#endif
     request->send(response); });
 
   server.on("/fonts/glyph.woff2", HTTP_GET, [](AsyncWebServerRequest *request)
             {
+#ifdef ESP32_DEVKIT
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "font/woff", websrc_glyph_woff2_start, websrc_glyph_woff2_end-websrc_glyph_woff2_start-1);
+#else
     AsyncWebServerResponse * response = request->beginResponse_P(200, "font/woff", WEBSRC_GLYPH_WOFF2, WEBSRC_GLYPH_WOFF2_LEN);
     response->addHeader("Content-Encoding", "gzip");
+#endif
     request->send(response); });
 
   server.on("/required/required.css", HTTP_GET, [](AsyncWebServerRequest *request)
             {
+#ifdef ESP32_DEVKIT
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "text/css", websrc_required_css_start, websrc_required_css_end-websrc_required_css_start-1);
+#else
     AsyncWebServerResponse * response = request->beginResponse_P(200, "text/css", WEBSRC_REQUIRED_CSS, WEBSRC_REQUIRED_CSS_LEN);
     response->addHeader("Content-Encoding", "gzip");
+#endif
     request->send(response); });
 
   server.on("/required/required.js", HTTP_GET, [](AsyncWebServerRequest *request)
             {
+#ifdef ESP32_DEVKIT
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "text/javascript", websrc_required_js_start, websrc_required_js_end-websrc_required_js_start-1);
+#else
     AsyncWebServerResponse * response = request->beginResponse_P(200, "text/javascript", WEBSRC_REQUIRED_JS, WEBSRC_REQUIRED_JS_LEN);
     response->addHeader("Content-Encoding", "gzip");
+#endif
     request->send(response); });
 
   server.on("/status_charging.svg", HTTP_GET, [](AsyncWebServerRequest *request)
             {
+#ifdef ESP32_DEVKIT
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "image/svg+xml", websrc_status_charging_svg_start, websrc_status_charging_svg_end-websrc_status_charging_svg_start-1);
+#else
     AsyncWebServerResponse * response = request->beginResponse_P(200, "image/svg+xml", WEBSRC_STATUS_CHARGING_SVG, WEBSRC_STATUS_CHARGING_SVG_LEN);
     response->addHeader("Content-Encoding", "gzip");
+#endif
     request->send(response); });
 
   server.on("/status_detected.svg", HTTP_GET, [](AsyncWebServerRequest *request)
             {
+#ifdef ESP32_DEVKIT
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "image/svg+xml", websrc_status_detected_svg_start, websrc_status_detected_svg_end-websrc_status_detected_svg_start-1);
+#else
     AsyncWebServerResponse * response = request->beginResponse_P(200, "image/svg+xml", WEBSRC_STATUS_DETECTED_SVG, WEBSRC_STATUS_DETECTED_SVG_LEN);
-    response->addHeader("Content-Encoding", "gzip"); 
+    response->addHeader("Content-Encoding", "gzip");
+#endif
 request->send(response); });
 
   server.on("/status_ready.svg", HTTP_GET, [](AsyncWebServerRequest *request)
             {
+#ifdef ESP32_DEVKIT
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "image/svg+xml", websrc_status_ready_svg_start, websrc_status_ready_svg_end-websrc_status_ready_svg_start-1);
+#else
     AsyncWebServerResponse * response = request->beginResponse_P(200, "image/svg+xml", WEBSRC_STATUS_READY_SVG, WEBSRC_STATUS_READY_SVG_LEN);
     response->addHeader("Content-Encoding", "gzip");
+#endif
     request->send(response); });
 
   server.on("/favicon.ico", HTTP_GET, [](AsyncWebServerRequest *request)
             {
-    AsyncWebServerResponse * response = request->beginResponse_P(200, "image/x-icon", WEBSRC_FAVICON_ICO, WEBSRC_FAVICON_ICO_LEN);
+#ifdef ESP32_DEVKIT
+    AsyncWebServerResponse * response = request->beginResponse_P(200, "image/x-icon", websrc_favicon_ico_start, websrc_favicon_ico_end-websrc_favicon_ico_start-1);
+#else
+       AsyncWebServerResponse * response = request->beginResponse_P(200, "image/x-icon", WEBSRC_FAVICON_ICO, WEBSRC_FAVICON_ICO_LEN);
     response->addHeader("Content-Encoding", "gzip");
+#endif
     request->send(response); });
 
   //
@@ -4311,7 +4361,6 @@ void ICACHE_RAM_ATTR loop()
           lastUID = "Button";
 
           oled.showCheck(true, 1);
-
         }
       }
 #endif

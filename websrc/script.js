@@ -87,20 +87,20 @@ function listEVSEData(obj) {
   } else {
     document.getElementById("evse_current_limit").innerHTML = obj.evse_current_limit + " A";
   }
-  if (parseInt(obj.evse_num_phases)>0) {
+  if (parseInt(obj.evse_num_phases) > 0) {
     document.getElementById("evse_current_limit").innerHTML += " (" + obj.evse_num_phases + "P)";
     if (currentModalOpen === false) {
-      switch(parseInt(obj.evse_num_phases)) {
+      switch (parseInt(obj.evse_num_phases)) {
         case 1: document.getElementById("button1P").checked = true;
-                document.getElementById("button3P").checked = false;
-                $("#labelButton1P").addClass('active');
-                $("#labelButton3P").removeClass('active');
-                break;
+          document.getElementById("button3P").checked = false;
+          $("#labelButton1P").addClass('active');
+          $("#labelButton3P").removeClass('active');
+          break;
         case 3: document.getElementById("button1P").checked = false;
-                document.getElementById("button3P").checked = true;
-                $("#labelButton1P").removeClass('active');
-                $("#labelButton3P").addClass('active');
-                break;
+          document.getElementById("button3P").checked = true;
+          $("#labelButton1P").removeClass('active');
+          $("#labelButton3P").addClass('active');
+          break;
       }
     }
   }
@@ -195,7 +195,7 @@ function handleSlider(value) {
   else {
     document.getElementById("slider_current").innerHTML = parseFloat(value) + " A";
   }
-  
+
 }
 function setEVSECurrent() {
   var currentToSet = document.getElementById("currentSlider").value;
@@ -203,9 +203,9 @@ function setEVSECurrent() {
     currentToSet = parseFloat(currentToSet) * 100.0;
   }
   websock.send("{\"command\":\"setcurrent\", \"current\":" + currentToSet + "}");
-  if(document.getElementById("button1P").checked) {
+  if (document.getElementById("button1P").checked) {
     websock.send("{\"command\":\"setnumphases\", \"numphases\":" + 1 + "}");
-  } else if(document.getElementById("button3P").checked) {
+  } else if (document.getElementById("button3P").checked) {
     websock.send("{\"command\":\"setnumphases\", \"numphases\":" + 3 + "}");
   }
   $("#currentModal").modal("hide");
@@ -672,7 +672,7 @@ function exportSysLogJson() {
 
 function appendSyslog(obj) {
   document.getElementById("syslogstream").append(obj.text);
-  if (obj.text.substring(obj.text.length-1) === "\n") {
+  if (obj.text.substring(obj.text.length - 1) === "\n") {
     let br = document.createElement("br");
     document.getElementById("syslogstream").append(br);
   }
@@ -701,7 +701,7 @@ function loadSettings() {
 
 function updateFinished() {
   document.getElementById("h4UpdateModal").innerHTML = translate("se_rebooting");
-  setTimeout(() => { 
+  setTimeout(() => {
     document.getElementById("h4UpdateModal").innerHTML = translate("se_update_finish");
     document.getElementById("bodyUpdateModal").innerHTML = translate("se_update_finish_t");
     document.getElementById("reloadUpdateModal").style.display = "block";
@@ -716,7 +716,7 @@ function onChangeSelectionUpdate(s) {
   else {
     document.getElementById("selectedUpdateDescription").innerHTML = jsonUpdateList.versions[fwUpdateIndex].desEN;
   }
-  
+
 }
 
 function checkFirmwareUpdate() {
@@ -730,12 +730,12 @@ function checkFirmwareUpdate() {
   var xhrCheck = new XMLHttpRequest();
   xhrCheck.overrideMimeType("application/json");
   xhrCheck.open('GET', url, true);
-  xhrCheck.onload  = function() {
+  xhrCheck.onload = function () {
     var sel = false;
     jsonUpdateList = JSON.parse(xhrCheck.responseText);
     for (var i = 0; i < jsonUpdateList.versions.length; i++) {
       if (jsonUpdateList.versions[i].hw === hw_rev &&
-          ((betaversions === false && jsonUpdateList.versions[i].beta === false) || (betaversions === true))) {
+        ((betaversions === false && jsonUpdateList.versions[i].beta === false) || (betaversions === true))) {
         var option = document.createElement("option");
         option.id = i;
         option.text = "Version " + jsonUpdateList.versions[i].version;
@@ -747,7 +747,7 @@ function checkFirmwareUpdate() {
           else {
             document.getElementById("selectedUpdateDescription").innerHTML = jsonUpdateList.versions[i].desEN;
           }
-          
+
           fwUpdateIndex = i;
           sel = true;
         }
@@ -761,7 +761,7 @@ function checkFirmwareUpdate() {
 
 function updateSelectedFirmware() {
   var xhrGetFirmware = new XMLHttpRequest();
-  xhrGetFirmware.open("GET", jsonUpdateList.versions[fwUpdateIndex].url , true);
+  xhrGetFirmware.open("GET", jsonUpdateList.versions[fwUpdateIndex].url, true);
   xhrGetFirmware.responseType = "blob";
   xhrGetFirmware.onload = function () {
     if (xhrGetFirmware.status === 200) {
@@ -782,7 +782,7 @@ function updateSelectedFirmware() {
 function listCONF(obj) {
   document.getElementById("configversion").innerHTML = obj.configversion;
 
-  if(obj.hardwarerev === "ESP8266") {
+  if (obj.hardwarerev === "ESP8266") {
     hw_rev = "ESP8266";
     document.getElementById("divRSEValue").style.display = "none";
     document.getElementById("divUseRSE").style.display = "none";
@@ -900,12 +900,14 @@ function listCONF(obj) {
   document.getElementById("rsevalue").value = obj.evse[0].rsevalue;
   handleUseRse();
 
-  //number of phases switchable? ()
-  if(obj.evse[0].numPhases) {
-    document.getElementById("checkboxNumPhases").checked = obj.evse[0].numPhases==3?true:false;
-  } else {
-    document.getElementById("divNumPhases").style.display = "none";
-    document.getElementById("numPhasesButtons").style.display = "none";
+  function handleUsePhaseSwitch() {
+    //number of phases switchable? ()
+    if (obj.evse[0].numPhases) {
+      document.getElementById("checkboxNumPhases").checked = obj.evse[0].numPhases == 3 ? true : false;
+    } else {
+      document.getElementById("divNumPhases").style.display = "none";
+      document.getElementById("numPhasesButtons").style.display = "none";
+    }
   }
 
   var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2));
@@ -1037,7 +1039,7 @@ function handleMeter() {
 
 function handleMeterFactor() {
   if (document.getElementById("meterphase").value === "3" ||
-      document.getElementById("smetertype").value === "SDM630") {
+    document.getElementById("smetertype").value === "SDM630") {
     document.getElementById("factor").value = "1";
     document.getElementById("factor").disabled = true;;
   }
@@ -1285,9 +1287,9 @@ function saveConf() {
   else {
     datatosend.evse[0].rseactive = document.getElementById("checkboxUseRse").checked;
     datatosend.evse[0].rsevalue = parseInt(document.getElementById("rsevalue").value);
-    datatosend.evse[0].numPhases = document.getElementById("checkboxNumPhases").checked?3:1;
+    datatosend.evse[0].numPhases = document.getElementById("checkboxNumPhases").checked ? 3 : 1;
   }
-  
+
   websock.send(JSON.stringify(datatosend));
   alert(translate("se_alert_reboot"));
   location.reload();
@@ -1480,7 +1482,7 @@ function listTimer(obj) {
     var fromH = Math.floor(secsFrom / 3600);
     secsFrom %= 3600;
     var fromM = Math.floor(secsFrom / 60);
-  
+
     var secsTo = obj.list[i].to;
     var toH = Math.floor(secsTo / 3600);
     secsTo %= 3600;
@@ -1552,7 +1554,7 @@ function saveTimer() {
   var datatosend = {};
   datatosend.command = "timer";
   datatosend.list = [];
-  
+
   datatosend.active = document.getElementById("timer_active").checked;
 
   for (var i = 0; i < 5; i++) {
@@ -1592,14 +1594,14 @@ function saveTimer() {
     if (eCurrent < 6) {
       eCurrent = 0;
     }
-    
+
     var eDays = days;
 
     datatosend.list.push({
-      "active" : eActive,
-      "from"   : eFrom,
-      "to"     : eTo,
-      "days"   : eDays,
+      "active": eActive,
+      "from": eFrom,
+      "to": eTo,
+      "days": eDays,
       "current": eCurrent
     })
   }
@@ -1642,7 +1644,7 @@ function loadStatus() {
   clearInterval(timerRefreshStats);
   clearInterval(timerRefreshEvseData);
   closeNav();
-  
+
   refreshStats();
   timerRefreshStats = setInterval(refreshStatsCountdown, 1000);
   refreshSeconds = 5; //<-- Update interval UI
@@ -1664,7 +1666,7 @@ function refreshStatsCountdown() {
   document.getElementById("st_head").innerHTML = translate("st_head", refreshSeconds);
   if (refreshSeconds === 0) {
     refreshStats();
-    refreshSeconds = 5; 
+    refreshSeconds = 5;
   }
   else {
     refreshSeconds -= 1;
@@ -1752,7 +1754,7 @@ function setEVSERegister() {
   websock.send(JSON.stringify(datatosend));
   document.getElementById("buttonsetregister").disabled = true;
   $("#loadersetevsereg").removeClass('hidden');
-  
+
   setTimeout(function () {
     refreshStats();
     $("#evseRegModal").modal("hide");
@@ -1858,9 +1860,9 @@ function socketMessageListener(evt) {
     hw_rev = obj.hw_rev;
     sw_rev = obj.sw_rev;
     pp_limit = obj.pp_limit;
-      $.getScript("lang.js", function() {
-        $(document).ready(function() {});
-     });
+    $.getScript("lang.js", function () {
+      $(document).ready(function () { });
+    });
     if (obj.language === "de") {
       langMap = lang_de;
       language = "de";
@@ -1881,7 +1883,7 @@ function socketMessageListener(evt) {
       document.getElementById("timer4_current").setAttribute("step", "0.5");//Test -> 0,1
       document.getElementById("timer5_current").setAttribute("step", "0.5");//Test -> 0,1
     }
-    
+
     const fw = document.getElementsByClassName("fw_version");
     for (let i of fw) { i.innerHTML = sw_rev; }
     if (opmode === 0) {
@@ -1939,7 +1941,7 @@ function socketMessageListener(evt) {
   if (obj.hasOwnProperty("syslog_export")) {
     var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2));
     var downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href",     dataStr);
+    downloadAnchorNode.setAttribute("href", dataStr);
     downloadAnchorNode.setAttribute("download", "syslog_export.json");
     document.body.appendChild(downloadAnchorNode); // required for firefox
     downloadAnchorNode.click();
@@ -1993,9 +1995,9 @@ function wsConnect() {
     websock.send("{\"command\":\"getstartup\"}");
     loadEVSEControl();
   };
-  setTimeout(function() {
+  setTimeout(function () {
     timeoutInterval = setInterval(connectionTimeOutCheck, 3000);
-  }, 2000); 
+  }, 2000);
 }
 
 function connectionTimeOutCheck() {
@@ -2024,13 +2026,13 @@ function start() {
 function translate(val, var0 = null, var1 = null, var2 = null) {
   var retValue = langMap[val];
   if (var0 != null) {
-      retValue = retValue.replace("{0}", var0);
+    retValue = retValue.replace("{0}", var0);
   }
   if (var1 != null) {
-      retValue = retValue.replace("{1}", var1);
+    retValue = retValue.replace("{1}", var1);
   }
   if (var2 != null) {
-      retValue = retValue.replace("{2}", var2);
+    retValue = retValue.replace("{2}", var2);
   }
   return retValue;
 }
@@ -2040,7 +2042,7 @@ function translateAll() {
     const objects = document.getElementsByClassName(key);
     for (let i of objects) { i.innerHTML = val; }
     const object = document.getElementById(key);
-    if (object != null) {object.title = val; }
+    if (object != null) { object.title = val; }
   }
   $('[data-toggle="tooltip"]').tooltip();
 }

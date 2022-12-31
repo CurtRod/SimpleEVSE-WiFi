@@ -12,6 +12,8 @@ extern const uint8_t websrc_required_js_start[] asm("_binary_websrc_required_js_
 extern const uint8_t websrc_required_js_end[] asm("_binary_websrc_required_js_end");
 extern const uint8_t websrc_script_js_start[] asm("_binary_websrc_script_js_start");
 extern const uint8_t websrc_script_js_end[] asm("_binary_websrc_script_js_end");
+extern const uint8_t websrc_lang_js_start[] asm("_binary_websrc_lang_js_start");
+extern const uint8_t websrc_lang_js_end[] asm("_binary_websrc_lang_js_end");
 extern const uint8_t websrc_status_charging_svg_start[] asm("_binary_websrc_status_charging_svg_start");
 extern const uint8_t websrc_status_charging_svg_end[] asm("_binary_websrc_status_charging_svg_end");
 extern const uint8_t websrc_status_detected_svg_start[] asm("_binary_websrc_status_detected_svg_start");
