@@ -899,6 +899,7 @@ function listCONF(obj) {
   document.getElementById("checkboxUseRse").checked = obj.evse[0].rseactive;
   document.getElementById("rsevalue").value = obj.evse[0].rsevalue;
   handleUseRse();
+  handleUsePhaseSwitch();
 
   function handleUsePhaseSwitch() {
     //number of phases switchable? ()
