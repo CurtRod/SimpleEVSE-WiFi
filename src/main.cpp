@@ -1552,6 +1552,7 @@ bool ICACHE_FLASH_ATTR queryEVSE(bool startup = false)
     Serial.print("[ ModBus ] Error ");
     Serial.print(result, HEX);
     Serial.println(" occured while getting EVSE Register 1000+");
+    esp_task_wdt_reset();
     evseNode.clearTransmitBuffer();
     evseNode.clearResponseBuffer();
     lastModbusAction = millis();
@@ -1871,6 +1872,7 @@ bool ICACHE_FLASH_ATTR getAdditionalEVSEData()
     Serial.print("[ ModBus ] Error ");
     Serial.print(result, HEX);
     Serial.println(" occured while getting EVSE Register 2000+");
+    esp_task_wdt_reset();
     evseNode.clearTransmitBuffer();
     evseNode.clearResponseBuffer();
     if (config.getEvseLedConfig(0) == 3)
@@ -1964,6 +1966,7 @@ bool ICACHE_FLASH_ATTR activateEVSE()
         Serial.print("[ ModBus ] Error ");
         Serial.print(result, HEX);
         Serial.println(" occured while activating EVSE - trying again...");
+        esp_task_wdt_reset();
         if (config.getEvseLedConfig(0) == 3)
           changeLedTimes(300, 300);
         delay(500);
@@ -2044,6 +2047,7 @@ bool ICACHE_FLASH_ATTR deactivateEVSE(bool logUpdate)
       Serial.print("[ ModBus ] Error ");
       Serial.print(result, HEX);
       Serial.println(" occured while deactivating EVSE - trying again...");
+      esp_task_wdt_reset();
       if (config.getEvseLedConfig(0) == 3)
         changeLedTimes(300, 300);
       delay(500);
@@ -2179,6 +2183,7 @@ bool ICACHE_FLASH_ATTR setSDMID()
       Serial.print("[ ModBus ] Error ");
       Serial.print(result, HEX);
       Serial.println(" occured while setting current in EVSE - trying again...");
+      esp_task_wdt_reset();
       if (config.getEvseLedConfig(0) == 3)
         changeLedTimes(300, 300);
       delay(500);
@@ -2230,6 +2235,7 @@ bool ICACHE_FLASH_ATTR setEVSERegister(uint16_t reg, uint16_t val)
       Serial.print("[ ModBus ] Error ");
       Serial.print(result, HEX);
       Serial.println(" occured while setting EVSE Register " + (String)reg + " to " + (String)val);
+      esp_task_wdt_reset();
       if (config.getEvseLedConfig(0) == 3)
         changeLedTimes(300, 300);
       delay((i + 1) * 50);
@@ -2418,11 +2424,13 @@ bool ICACHE_FLASH_ATTR switchNumPhases(uint8_t numPhases)
   if (!numPhasesDoSwitch && numPhasesState && numPhases && (numPhasesState != numPhases))
   {
     if (config.getSystemDebug())
-      Serial.printf("[ switchNumPhases ] switch to: %d phases ...\r\n", numPhases);
+      Serial.printf("[ switchNumPhases ] switch to: %d phases...\r\n", numPhases);
+
     if (evseStatus == 3)
     {
       if (config.getSystemDebug())
         Serial.printf("[ switchNumPhases ] need to deactivateEVSE first\r\n");
+
       toDeactivateEVSE = true;
       needReactivation = true;
     }
@@ -4171,18 +4179,19 @@ void ICACHE_RAM_ATTR setup()
 #ifdef ESP32_DEVKIT
   pinMode(config.getEvseNumPhasesPin(0), OUTPUT);
   if (config.getSystemDebug())
+  {
     Serial.print(ntp.iso8601DateTime() + "[ SYSTEM ] Use numPhases GPIO ");
-  if (config.getSystemDebug())
     Serial.println(config.getEvseNumPhasesPin(0));
+  }
   numPhasesState = config.getEvseNumPhases(0);
-  if (numPhasesState == 3)
-  {
-    digitalWrite(config.getEvseNumPhasesPin(0), HIGH);
-  }
-  else if (numPhasesState == 1)
-  {
-    digitalWrite(config.getEvseNumPhasesPin(0), LOW);
-  }
+  // if (numPhasesState == 3)
+  // {
+  //   digitalWrite(config.getEvseNumPhasesPin(0), HIGH);
+  // }
+  // else if (numPhasesState == 1)
+  // {
+  //   digitalWrite(config.getEvseNumPhasesPin(0), LOW);
+  // }
 #endif
 #ifndef ESP8266
   pinMode(config.getEvseRsePin(0), INPUT_PULLUP);
@@ -4450,19 +4459,28 @@ void ICACHE_RAM_ATTR loop()
       slog.logln(ntp.iso8601DateTime() + "[ SYSTEM ] Interrupt CP stopped");
     }
   }
+
 #ifdef ESP32_DEVKIT
-  if (numPhasesDoSwitch && (numPhasesState != numPhasesDoSwitch) && (evseStatus < 3))
+  if (numPhasesDoSwitch && (numPhasesState != numPhasesDoSwitch)) // && (evseStatus < 3))
   {
+    Serial.printf("[ DEBUG numPhasesDoSwitch ] Phases %d", numPhasesDoSwitch);
+    Serial.println();
     if (numPhasesDoSwitch == 3)
     {
       digitalWrite(config.getEvseNumPhasesPin(0), HIGH);
+      if (config.getSystemDebug())
+        slog.logln("[ numPhasesDoSwitch ] turned relay ON");
     }
     else if (numPhasesDoSwitch == 1)
     {
       digitalWrite(config.getEvseNumPhasesPin(0), LOW);
+      if (config.getSystemDebug())
+        slog.logln("[ numPhasesDoSwitch ] turned relay OFF");
     }
-    numPhasesState = numPhasesDoSwitch;
+    slog.log("[ DEBUG numPhasesDoSwitch ] State of IO-Pin: ");
+    Serial.println(digitalRead(config.getEvseNumPhasesPin(0)));
 
+    numPhasesState = numPhasesDoSwitch;
     numPhasesDoSwitch = 0;
 
     if (needReactivation)
