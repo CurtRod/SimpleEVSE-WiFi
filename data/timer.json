@@ -1,0 +1,41 @@
+{
+  "command": "timer",
+  "list": [
+    {
+      "active": false,
+      "from": 0,
+      "to": 0,
+      "days": "",
+      "current": null
+    },
+    {
+      "active": false,
+      "from": 0,
+      "to": 0,
+      "days": "",
+      "current": null
+    },
+    {
+      "active": false,
+      "from": 0,
+      "to": 0,
+      "days": "",
+      "current": null
+    },
+    {
+      "active": false,
+      "from": 0,
+      "to": 0,
+      "days": "",
+      "current": null
+    },
+    {
+      "active": false,
+      "from": 0,
+      "to": 0,
+      "days": "",
+      "current": null
+    }
+  ],
+  "active": false
+}

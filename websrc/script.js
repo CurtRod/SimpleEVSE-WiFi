@@ -4,6 +4,7 @@ var wsUri;
 var sw_rev = ""
 var hw_rev = "";
 var language = "";
+var langMap;
 var timeoutInterval;
 var inApMode = false;
 var timerRefreshStats;
@@ -30,6 +31,7 @@ var editoropen = false;
 var logdata;
 var logdataraw;
 var logtable = false;
+var maxLog;
 
 //Settings
 var utcSeconds;
@@ -64,6 +66,7 @@ function loadEVSEControl() {
   document.getElementById("statusContent").style.display = "none";
   document.getElementById("logContent").style.display = "none";
   document.getElementById("loginContent").style.display = "none";
+  document.getElementById("syslogContent").style.display = "none";
   clearInterval(timerRefreshStats);
   closeNav();
   timerRefreshEvseData = setInterval(getEvseData, 2000);
@@ -84,20 +87,20 @@ function listEVSEData(obj) {
   } else {
     document.getElementById("evse_current_limit").innerHTML = obj.evse_current_limit + " A";
   }
-  if (parseInt(obj.evse_num_phases)>0) {
+  if (parseInt(obj.evse_num_phases) > 0) {
     document.getElementById("evse_current_limit").innerHTML += " (" + obj.evse_num_phases + "P)";
     if (currentModalOpen === false) {
-      switch(parseInt(obj.evse_num_phases)) {
+      switch (parseInt(obj.evse_num_phases)) {
         case 1: document.getElementById("button1P").checked = true;
-                document.getElementById("button3P").checked = false;
-                $("#labelButton1P").addClass('active');
-                $("#labelButton3P").removeClass('active');
-                break;
+          document.getElementById("button3P").checked = false;
+          $("#labelButton1P").addClass('active');
+          $("#labelButton3P").removeClass('active');
+          break;
         case 3: document.getElementById("button1P").checked = false;
-                document.getElementById("button3P").checked = true;
-                $("#labelButton1P").removeClass('active');
-                $("#labelButton3P").addClass('active');
-                break;
+          document.getElementById("button3P").checked = true;
+          $("#labelButton1P").removeClass('active');
+          $("#labelButton3P").addClass('active');
+          break;
       }
     }
   }
@@ -122,28 +125,28 @@ function listEVSEData(obj) {
     $("#carStatusDetected").addClass('hidden');
     $("#carStatusCharging").addClass('hidden');
     $("#carStatusReady").removeClass('hidden');
-    document.getElementById("evse_vehicle_state").innerHTML = "Modbus Error";
+    document.getElementById("evse_vehicle_state").innerHTML = translate("ec_error");
   }
   if (obj.evse_vehicle_state === 1) {	//Ready
     vehicleCharging = false;
     $("#carStatusDetected").addClass('hidden');
     $("#carStatusCharging").addClass('hidden');
     $("#carStatusReady").removeClass('hidden');
-    document.getElementById("evse_vehicle_state").innerHTML = "Ready";
+    document.getElementById("evse_vehicle_state").innerHTML = translate("ec_ready");
   }
   if (obj.evse_vehicle_state === 2) {	//Vehicle Detected
     vehicleCharging = false;
     $("#carStatusReady").addClass('hidden');
     $("#carStatusCharging").addClass('hidden');
     $("#carStatusDetected").removeClass('hidden');
-    document.getElementById("evse_vehicle_state").innerHTML = "Vehicle Detected";
+    document.getElementById("evse_vehicle_state").innerHTML = translate("ec_connected");
   }
   if (obj.evse_vehicle_state === 3) {	//Vehicle charging
     vehicleCharging = true;
     $("#carStatusReady").addClass('hidden');
     $("#carStatusDetected").addClass('hidden');
     $("#carStatusCharging").removeClass('hidden');
-    document.getElementById("evse_vehicle_state").innerHTML = "Charging...";
+    document.getElementById("evse_vehicle_state").innerHTML = translate("ec_charging");
   }
   if (obj.evse_timer_active === true) {  //Timer Symbol
     document.getElementById("evse_vehicle_state").innerHTML += "&nbsp;<span class=\"glyphicon glyphicon-time\" style=\"color:green\"></span>";
@@ -167,7 +170,8 @@ function listEVSEData(obj) {
   if (obj.evse_slider_status === false) {
     document.getElementById("currentSlider").disabled = true;
     document.getElementById("currentModalSaveButton").disabled = true;
-    document.getElementById("slider_current").innerHTML = obj.evse_current_limit + " A <br><span style=\"color:red\">Manual current specification in remote mode disabled!</span>";
+    document.getElementById("slider_current").innerHTML = obj.evse_current_limit + " A <br>"// <br><span style=\"color:red\">Manual current specification in remote mode disabled!</span>";
+    document.getElementById("slider_current").innerHTML += translate("ec_remote_curr_dis");
   } else {
     document.getElementById("currentSlider").disabled = false;
     document.getElementById("currentModalSaveButton").disabled = false;
@@ -191,7 +195,7 @@ function handleSlider(value) {
   else {
     document.getElementById("slider_current").innerHTML = parseFloat(value) + " A";
   }
-  
+
 }
 function setEVSECurrent() {
   var currentToSet = document.getElementById("currentSlider").value;
@@ -199,9 +203,9 @@ function setEVSECurrent() {
     currentToSet = parseFloat(currentToSet) * 100.0;
   }
   websock.send("{\"command\":\"setcurrent\", \"current\":" + currentToSet + "}");
-  if(document.getElementById("button1P").checked) {
+  if (document.getElementById("button1P").checked) {
     websock.send("{\"command\":\"setnumphases\", \"numphases\":" + 1 + "}");
-  } else if(document.getElementById("button3P").checked) {
+  } else if (document.getElementById("button3P").checked) {
     websock.send("{\"command\":\"setnumphases\", \"numphases\":" + 3 + "}");
   }
   $("#currentModal").modal("hide");
@@ -251,10 +255,10 @@ function loadUsers() {
   document.getElementById("timerContent").style.display = "none";
   document.getElementById("statusContent").style.display = "none";
   document.getElementById("logContent").style.display = "none";
+  document.getElementById("syslogContent").style.display = "none";
   closeNav();
   clearInterval(timerRefreshStats);
   clearInterval(timerRefreshEvseData);
-
   userdata = [];
   websock.send("{\"command\":\"userlist\", \"page\":" + page + "}");
 }
@@ -295,31 +299,31 @@ function initUserTable() {
       ft = window.FooTable.init("#usertable", {
         columns: [{
           "name": "uid",
-          "title": "UID",
+          "title": translate("us_uid"),
           "type": "text",
         },
         {
           "name": "username",
-          "title": "User Name or Label"
+          "title": translate("us_user_name_label")
         },
         {
           "name": "acctype",
-          "title": "Access Type",
+          "title": translate("us_access_type"),
           "breakpoints": "xs",
           "parser": function (value) {
             if (value === 1) {
-              return "Active";
+              return translate("us_active");
             } else if (value === 99) {
               return "Admin";
             } else if (value === 0) {
-              return "Disabled";
+              return translate("us_disabled");
             }
             return value;
           },
         },
         {
           "name": "validuntil",
-          "title": "Valid Until",
+          "title": translate("us_valid_until"),
           "breakpoints": "xs sm",
           "parser": function (value) {
             var comp = new Date();
@@ -334,22 +338,23 @@ function initUserTable() {
         ],
         rows: userdata,
         editing: {
-          showText: "<span class=\"fooicon fooicon-pencil\" aria-hidden=\"true\"></span> Edit Users",
-          addText: "New User",
+          showText: "<span class=\"fooicon fooicon-pencil\" aria-hidden=\"true\"></span>&nbsp;" + translate("us_edit_users"),
+          hideText: translate("g_abort"),
+          addText: translate("us_new_user"),
           addRow: function () {
             $editor[0].reset();
-            $editorTitle.text("Add a new User");
+            $editorTitle.text(translate("us_add_new_user"));
             editoropen = true;
             $modal.modal("show");
           },
           editRow: function (row) {
             var acctypefinder;
             var values = row.val();
-            if (values.acctype === "Active") {
+            if (values.acctype === translate("us_active")) {
               acctypefinder = 1;
             } else if (values.acctype === "Admin") {
               acctypefinder = 99;
-            } else if (values.acctype === "Disabled") {
+            } else if (values.acctype === translate("us_disabled")) {
               acctypefinder = 0;
             }
             $editor.find("#uid").val(values.uid);
@@ -357,14 +362,14 @@ function initUserTable() {
             $editor.find("#acctype").val(acctypefinder);
             $editor.find("#validuntil").val(values.validuntil);
             $modal.data("row", row);
-            $editorTitle.text("Edit User # " + values.username);
+            $editorTitle.text(translate("us_edit_user") + ": #" + values.username);
             editoropen = true;
             $modal.modal("show");
           },
           deleteRow: function (row) {
             var uid = row.value.uid;
             var username = row.value.username;
-            if (confirm("This will remove " + uid + " : " + username + " from database. Are you sure?")) {
+            if (confirm(translate("us_remove_user_t", uid, username))) {
               var jsontosend = "{\"uid\":\"" + uid + "\",\"command\":\"remove\"}";
               websock.send(jsontosend);
               row.delete();
@@ -413,7 +418,7 @@ function initUserTable() {
 }
 
 function acctypefinder() {
-  if (values.acctype === "Active") {
+  if (values.acctype === translate("us_active")) {
     return 1;
   }
   else if (values.acctype === "Admin") {
@@ -427,11 +432,11 @@ function acctypefinder() {
 function acctypeparser() {
   var $editor = $('#editor');
   if ($editor.find('#acctype option:selected').val() == 1) {
-    return "Active";
+    return translate("us_active");
   } else if ($editor.find('#acctype option:selected').val() == 99) {
     return "Admin";
   } else {
-    return "Disabled";
+    return translate("us_disabled");
   }
 }
 
@@ -439,8 +444,8 @@ FooTable.MyFiltering = FooTable.Filtering.extend({
   construct: function (instance) {
     this._super(instance);
     this.acctypes = ['1', '0'];
-    this.acctypesstr = ['Active', 'Disabled'];
-    this.def = 'All';
+    this.acctypesstr = [translate("us_active"), translate("us_disabled")];
+    this.def = translate("us_all");
     this.$acctype = null;
   },
   $create: function () {
@@ -494,10 +499,10 @@ FooTable.MyFiltering = FooTable.Filtering.extend({
 //Script data for Log
 function loadLog() {
   if (hw_rev === "ESP8266") {
-    document.getElementById("textlimitlogfile").innerHTML = "The log file is limited to 50 entries (LIFO principle)";
+    maxLog = 50;
   }
   else {
-    document.getElementById("textlimitlogfile").innerHTML = "The log file is limited to 100 entries (LIFO principle)";
+    maxLog = 100;
   }
 
   document.getElementById("evseContent").style.display = "none";
@@ -506,6 +511,7 @@ function loadLog() {
   document.getElementById("timerContent").style.display = "none";
   document.getElementById("statusContent").style.display = "none";
   document.getElementById("logContent").style.display = "block";
+  document.getElementById("syslogContent").style.display = "none";
   clearInterval(timerRefreshStats);
   closeNav();
 
@@ -523,7 +529,7 @@ function initLogTable() {
       columns: [
         {
           "name": "timestamp",
-          "title": "Date",
+          "title": translate("lo_date"),
           "parser": function (value) {
             var vuepoch = new Date(value * 1000);
             var formatted = twoDigits(vuepoch.getUTCDate())
@@ -539,7 +545,7 @@ function initLogTable() {
         },
         {
           "name": "duration",
-          "title": "Duration",
+          "title": translate("lo_duration"),
           "parser": function (value) {
             if (value === 0) {
               return "<span class=\"glyphicon glyphicon-repeat\"></span>";
@@ -566,7 +572,7 @@ function initLogTable() {
         },
         {
           "name": "energy",
-          "title": "Energy",
+          "title": translate("lo_energy"),
           "parser": function (value) {
             if (value === 0) {
               return "<span class=\"glyphicon glyphicon-repeat\"></span>";
@@ -579,17 +585,17 @@ function initLogTable() {
         },
         {
           "name": "costs",
-          "title": "Costs"
+          "title": translate("lo_costs")
         },
         {
           "name": "uid",
-          "title": "UID",
+          "title": translate("lo_uid"),
           "breakpoints": "xs",
           "type": "text",
         },
         {
           "name": "username",
-          "title": "User",
+          "title": translate("lo_user"),
           "breakpoints": "xs sm",
         }
       ],
@@ -648,6 +654,30 @@ function exportLogCsv() {
   hiddenElement.click();
 }
 
+//Script data for Syslog
+function loadSyslog() {
+  document.getElementById("evseContent").style.display = "none";
+  document.getElementById("usersContent").style.display = "none";
+  document.getElementById("settingsContent").style.display = "none";
+  document.getElementById("timerContent").style.display = "none";
+  document.getElementById("statusContent").style.display = "none";
+  document.getElementById("logContent").style.display = "none";
+  document.getElementById("syslogContent").style.display = "block";
+  closeNav();
+}
+
+function exportSysLogJson() {
+  websock.send("{\"command\":\"getsyslog\"}");
+}
+
+function appendSyslog(obj) {
+  document.getElementById("syslogstream").append(obj.text);
+  if (obj.text.substring(obj.text.length - 1) === "\n") {
+    let br = document.createElement("br");
+    document.getElementById("syslogstream").append(br);
+  }
+}
+
 //Script data for Settings
 function loadSettings() {
   document.getElementById("evseContent").style.display = "none";
@@ -656,6 +686,7 @@ function loadSettings() {
   document.getElementById("timerContent").style.display = "none";
   document.getElementById("statusContent").style.display = "none";
   document.getElementById("logContent").style.display = "none";
+  document.getElementById("syslogContent").style.display = "none";
   clearInterval(timerRefreshStats);
   clearInterval(timerRefreshEvseData);
   closeNav();
@@ -669,18 +700,23 @@ function loadSettings() {
 }
 
 function updateFinished() {
-  document.getElementById("h4UpdateModal").innerHTML = "System is rebooting..."
-  setTimeout(() => { 
-    document.getElementById("h4UpdateModal").innerHTML = "Update finished!"
-    document.getElementById("bodyUpdateModal").innerHTML = "Update process finished. Please click 'Refresh' to login."
+  document.getElementById("h4UpdateModal").innerHTML = translate("se_rebooting");
+  setTimeout(() => {
+    document.getElementById("h4UpdateModal").innerHTML = translate("se_update_finish");
+    document.getElementById("bodyUpdateModal").innerHTML = translate("se_update_finish_t");
     document.getElementById("reloadUpdateModal").style.display = "block";
   }, 15000);
 }
 
 function onChangeSelectionUpdate(s) {
   fwUpdateIndex = parseInt(s.selectedOptions[0].id);
-  document.getElementById("selectedUpdateDescription").innerHTML = jsonUpdateList.versions[fwUpdateIndex].desEN;
-  
+  if (language === "de") {
+    document.getElementById("selectedUpdateDescription").innerHTML = jsonUpdateList.versions[fwUpdateIndex].desDE;
+  }
+  else {
+    document.getElementById("selectedUpdateDescription").innerHTML = jsonUpdateList.versions[fwUpdateIndex].desEN;
+  }
+
 }
 
 function checkFirmwareUpdate() {
@@ -694,18 +730,24 @@ function checkFirmwareUpdate() {
   var xhrCheck = new XMLHttpRequest();
   xhrCheck.overrideMimeType("application/json");
   xhrCheck.open('GET', url, true);
-  xhrCheck.onload  = function() {
+  xhrCheck.onload = function () {
     var sel = false;
     jsonUpdateList = JSON.parse(xhrCheck.responseText);
     for (var i = 0; i < jsonUpdateList.versions.length; i++) {
       if (jsonUpdateList.versions[i].hw === hw_rev &&
-          ((betaversions === false && jsonUpdateList.versions[i].beta === false) || (betaversions === true))) {
+        ((betaversions === false && jsonUpdateList.versions[i].beta === false) || (betaversions === true))) {
         var option = document.createElement("option");
         option.id = i;
         option.text = "Version " + jsonUpdateList.versions[i].version;
         if (sel === false) {
           option.selected = true;
-          document.getElementById("selectedUpdateDescription").innerHTML = jsonUpdateList.versions[i].desEN;
+          if (language === "de") {
+            document.getElementById("selectedUpdateDescription").innerHTML = jsonUpdateList.versions[i].desDE;
+          }
+          else {
+            document.getElementById("selectedUpdateDescription").innerHTML = jsonUpdateList.versions[i].desEN;
+          }
+
           fwUpdateIndex = i;
           sel = true;
         }
@@ -719,7 +761,7 @@ function checkFirmwareUpdate() {
 
 function updateSelectedFirmware() {
   var xhrGetFirmware = new XMLHttpRequest();
-  xhrGetFirmware.open("GET", jsonUpdateList.versions[fwUpdateIndex].url , true);
+  xhrGetFirmware.open("GET", jsonUpdateList.versions[fwUpdateIndex].url, true);
   xhrGetFirmware.responseType = "blob";
   xhrGetFirmware.onload = function () {
     if (xhrGetFirmware.status === 200) {
@@ -740,13 +782,14 @@ function updateSelectedFirmware() {
 function listCONF(obj) {
   document.getElementById("configversion").innerHTML = obj.configversion;
 
-  if(obj.hardwarerev === "ESP8266") {
+  if (obj.hardwarerev === "ESP8266") {
     hw_rev = "ESP8266";
     document.getElementById("divRSEValue").style.display = "none";
     document.getElementById("divUseRSE").style.display = "none";
     document.getElementById("divNumPhases").style.display = "none";
     document.getElementById("divCPInterrupt").style.display = "none";
     document.getElementById("divDisplayRotation").style.display = "none";
+    document.getElementById("divDisplayOnTime").style.display = "none";
     document.getElementById("textDownloadFwVersion").innerHTML = "Download <a href=\"https://github.com/CurtRod/SimpleEVSE-WiFi/releases\" target=\"_blank\">latest version</a> from GitHub.";
   }
   else {
@@ -812,6 +855,19 @@ function listCONF(obj) {
   else {
     document.getElementById("checkboxEnableLogging").checked = true;
   }
+  if (obj.system.hasOwnProperty("language")) {
+    document.getElementById("language").value = obj.system.language;
+  }
+  else {
+    document.getElementById("language").value = "en";
+  }
+  if (obj.system.hasOwnProperty("oledontime")) {
+    document.getElementById("oledontime").value = obj.system.oledontime;
+  }
+  else {
+    document.getElementById("oledontime").value = 120;
+  }
+
   //document.getElementById("evsecount").value = obj.system.evsecount;  -> prep for dual evse
 
   //Load evse settings
@@ -843,13 +899,16 @@ function listCONF(obj) {
   document.getElementById("checkboxUseRse").checked = obj.evse[0].rseactive;
   document.getElementById("rsevalue").value = obj.evse[0].rsevalue;
   handleUseRse();
+  handleUsePhaseSwitch();
 
-  //number of phases switchable? ()
-  if(obj.evse[0].numPhases) {
-    document.getElementById("checkboxNumPhases").checked = obj.evse[0].numPhases==3?true:false;
-  } else {
-    document.getElementById("divNumPhases").style.display = "none";
-    document.getElementById("numPhasesButtons").style.display = "none";
+  function handleUsePhaseSwitch() {
+    //number of phases switchable? ()
+    if (obj.evse[0].numPhases) {
+      document.getElementById("checkboxNumPhases").checked = obj.evse[0].numPhases == 3 ? true : false;
+    } else {
+      document.getElementById("divNumPhases").style.display = "none";
+      document.getElementById("numPhasesButtons").style.display = "none";
+    }
   }
 
   var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2));
@@ -981,7 +1040,7 @@ function handleMeter() {
 
 function handleMeterFactor() {
   if (document.getElementById("meterphase").value === "3" ||
-      document.getElementById("smetertype").value === "SDM630") {
+    document.getElementById("smetertype").value === "SDM630") {
     document.getElementById("factor").value = "1";
     document.getElementById("factor").disabled = true;;
   }
@@ -1055,10 +1114,10 @@ function shWifi() {
   var x = document.getElementById("wifipass");
   if (x.type === "password") {
     x.type = "text";
-    document.getElementById("shwifi").innerHTML = "hide";
+    document.getElementById("shwifi").innerHTML = translate("g_hide");
   } else {
     x.type = "password";
-    document.getElementById("shwifi").innerHTML = "show";
+    document.getElementById("shwifi").innerHTML = translate("g_show");
   }
 }
 function shAdmin() {
@@ -1066,10 +1125,10 @@ function shAdmin() {
   if (x.value != "") {
     if (x.type === "password") {
       x.type = "text";
-      document.getElementById("shadmin").innerHTML = "hide";
+      document.getElementById("shadmin").innerHTML = translate("g_hide");
     } else {
       x.type = "password";
-      document.getElementById("shadmin").innerHTML = "show";
+      document.getElementById("shadmin").innerHTML = translate("g_show");
     }
   }
 }
@@ -1085,7 +1144,7 @@ function listSSID(obj) {
     var opt = document.createElement("option");
     opt.value = obj.list[i].ssid;
     opt.bssidvalue = obj.list[i].bssid;
-    opt.innerHTML = "BSSID: " + obj.list[i].bssid + ", Signal Strength: " + obj.list[i].rssi + ", Network: " + obj.list[i].ssid;
+    opt.innerHTML = obj.list[i].ssid + " (BSSID: " + obj.list[i].bssid + ", Signal: " + obj.list[i].rssi + "dBm)";
     select.appendChild(opt);
   }
   document.getElementById("scanb").innerHTML = "Re-Scan";
@@ -1112,15 +1171,15 @@ function saveConf() {
   //Validate input
   var a = document.getElementById("adminpwd").value;
   if (a === null || a === "") {
-    alert("Administrator Password cannot be empty");
+    alert(translate("se_alert_admin_pw_empty"));
     return;
   }
   else if (a.length < 8) {
-    alert("Administrator Password must be at least 8 characters");
+    alert(translate("se_alert_admin_pw_char"));
     return;
   }
   else if (a !== document.getElementById("cadminpwd").value) {
-    alert("Administrator Password did not match. Please confirm admin Password!");
+    alert(translate("se_alert_admin_pw_match"));
     return;
   }
 
@@ -1151,7 +1210,7 @@ function saveConf() {
     datatosend.wifi.bssid = document.getElementById("wifibssid").value = "";
     if (document.getElementById("wifipass").value.length < 8 &&
       document.getElementById("wifipass").value.length !== 0) {
-      alert("WiFi Password in AP mode must be at least 8 characters or empty (for wifi without protection)");
+      alert(translate("se_alert_wifi_pw_char"));
       return;
     }
   }
@@ -1199,7 +1258,6 @@ function saveConf() {
   //datatosend.button[0].buttonpin = parseInt(document.getElementById("gpiobutton").value);
 
   datatosend.system.hostnm = document.getElementById("hostname").value;
-  //datatosend.system.language = document.getElementById("DropDownLanguage").value;
   datatosend.system.adminpwd = a;
   datatosend.system.wsauth = document.getElementById("checkboxSafari").checked;
   datatosend.system.debug = document.getElementById("checkboxDebug").checked;
@@ -1207,6 +1265,8 @@ function saveConf() {
   datatosend.system.logging = document.getElementById("checkboxEnableLogging").checked;
   datatosend.system.api = document.getElementById("checkboxApi").checked;
   datatosend.system.evsecount = 1;
+  datatosend.system.language = document.getElementById("language").value;
+  datatosend.system.oledontime = document.getElementById("oledontime").value;
 
   datatosend.evse[0].mbid = 1;
   if (document.getElementById("radioOperatingMode_Remote").checked === true) {
@@ -1228,11 +1288,11 @@ function saveConf() {
   else {
     datatosend.evse[0].rseactive = document.getElementById("checkboxUseRse").checked;
     datatosend.evse[0].rsevalue = parseInt(document.getElementById("rsevalue").value);
-    datatosend.evse[0].numPhases = document.getElementById("checkboxNumPhases").checked?3:1;
+    datatosend.evse[0].numPhases = document.getElementById("checkboxNumPhases").checked ? 3 : 1;
   }
-  
+
   websock.send(JSON.stringify(datatosend));
-  alert("Device now should reboot with new settings");
+  alert(translate("se_alert_reboot"));
   location.reload();
 }
 
@@ -1261,29 +1321,29 @@ function restoreSet() {
   var reader = new FileReader();
   if ("files" in input) {
     if (input.files.length === 0) {
-      alert("You did not select file to restore");
+      alert(translate("se_alert_no_file_restore"));
     } else {
       reader.onload = function () {
         var json;
         try {
           json = JSON.parse(reader.result);
         } catch (e) {
-          alert("Not a valid backup file");
+          alert(translate("se_alert_no_valid_backup"));
           return;
         }
         if (!json.hasOwnProperty("command")) {
           json.command = "configfile";
         }
-        if (json.command === "configfile") {
-          var x = confirm("File seems to be valid, do you wish to continue?");
+        if (json.hasOwnProperty("configversion")) {
+          var x = confirm(translate("se_confirm_backup"));
           if (x) {
             websock.send(JSON.stringify(json));
-            alert("Device now should reboot with new settings");
+            alert(translate("se_alert_reboot"));
             location.reload();
           }
         }
         else {
-          alert("Not a valid backup file");
+          alert(translate("se_alert_no_valid_backup"));
           return;
         }
       };
@@ -1322,24 +1382,28 @@ function restoreUser() {
   var reader = new FileReader();
   if ("files" in input) {
     if (input.files.length === 0) {
-      alert("You did not select any file to restore");
+      alert(translate("se_alert_no_file_restore"));
     } else {
       reader.onload = function () {
         var json;
         try {
           json = JSON.parse(reader.result);
         } catch (e) {
-          alert("Not a valid backup file");
+          alert(translate("se_alert_no_valid_backup"));
           return;
         }
         if (json.type === "evse-wifi-userbackup") {
-          var x = confirm("File seems to be valid, do you wish to continue?");
+          var x = confirm(translate("se_confirm_backup"));
           if (x) {
             recordstorestore = json.list.length;
             userdata = json.list;
             $("#restoremodal").modal();
             restore1by1(slot, recordstorestore, userdata);
           }
+        }
+        else {
+          alert(translate("se_alert_no_valid_backup"));
+          return;
         }
       };
       reader.readAsText(input.files[0]);
@@ -1348,35 +1412,35 @@ function restoreUser() {
 }
 
 function resetLogFile() {
-  if (confirm("Are you sure to reset all your charging logs?")) {
+  if (confirm(translate("se_confirm_rst_log"))) {
     websock.send("{\"command\":\"initlog\"}");
-    alert("Log File Resetted!");
+    alert(translate("se_alert_logfile_reset"));
     location.reload();
   }
   else {
-    alert("Aborted!");
+    alert(translate("se_alert_aborted"));
   }
 }
 
 function resetUserData() {
-  if (confirm("Are you sure to reset all your user data?")) {
+  if (confirm(translate("se_confirm_rst_user"))) {
     websock.send("{\"command\":\"resetuserdata\"}");
-    alert("Log File Resetted!");
+    alert(translate("se_alert_user_reset"));
     location.reload();
   }
   else {
-    alert("Aborted!");
+    alert(translate("se_alert_aborted"));
   }
 }
 
 function resetFactoryReset() {
-  if (confirm("Are you sure to reset all your settings and logs? EVSE-WiFi will reboot in factory settings! This cannot be undone! ")) {
+  if (confirm(translate("se_confirm_rst_factory"))) {
     websock.send("{\"command\":\"factoryreset\"}");
-    alert("Factory settings restored!");
+    alert(translate("se_alert_factory_restored"));
     location.reload();
   }
   else {
-    alert("Aborted!");
+    alert(translate("se_alert_aborted"));
   }
 }
 
@@ -1419,7 +1483,7 @@ function listTimer(obj) {
     var fromH = Math.floor(secsFrom / 3600);
     secsFrom %= 3600;
     var fromM = Math.floor(secsFrom / 60);
-  
+
     var secsTo = obj.list[i].to;
     var toH = Math.floor(secsTo / 3600);
     secsTo %= 3600;
@@ -1491,7 +1555,7 @@ function saveTimer() {
   var datatosend = {};
   datatosend.command = "timer";
   datatosend.list = [];
-  
+
   datatosend.active = document.getElementById("timer_active").checked;
 
   for (var i = 0; i < 5; i++) {
@@ -1531,19 +1595,19 @@ function saveTimer() {
     if (eCurrent < 6) {
       eCurrent = 0;
     }
-    
+
     var eDays = days;
 
     datatosend.list.push({
-      "active" : eActive,
-      "from"   : eFrom,
-      "to"     : eTo,
-      "days"   : eDays,
+      "active": eActive,
+      "from": eFrom,
+      "to": eTo,
+      "days": eDays,
       "current": eCurrent
     })
   }
   websock.send(JSON.stringify(datatosend));
-  alert("Timer settings saved");
+  alert(translate("ti_saved"));
   loadTimer();
 }
 
@@ -1577,13 +1641,15 @@ function loadStatus() {
   document.getElementById("timerContent").style.display = "none";
   document.getElementById("statusContent").style.display = "block";
   document.getElementById("logContent").style.display = "none";
+  document.getElementById("syslogContent").style.display = "none";
   clearInterval(timerRefreshStats);
   clearInterval(timerRefreshEvseData);
   closeNav();
-  
+
   refreshStats();
   timerRefreshStats = setInterval(refreshStatsCountdown, 1000);
-  refreshSeconds = 10;
+  refreshSeconds = 5; //<-- Update interval UI
+
 
   websock.send("{\"command\":\"getconf\"}");
   handleRFID();
@@ -1598,10 +1664,10 @@ function refreshStats() {
 }
 
 function refreshStatsCountdown() {
-  document.getElementById("refreshSeconds").innerHTML = refreshSeconds;
+  document.getElementById("st_head").innerHTML = translate("st_head", refreshSeconds);
   if (refreshSeconds === 0) {
     refreshStats();
-    refreshSeconds = 10;
+    refreshSeconds = 5;
   }
   else {
     refreshSeconds -= 1;
@@ -1656,9 +1722,9 @@ function listStats(obj) {
   document.getElementById("meter_p1").innerHTML = obj.meter_p1;
   document.getElementById("meter_p2").innerHTML = obj.meter_p2;
   document.getElementById("meter_p3").innerHTML = obj.meter_p3;
-  document.getElementById("meter_p1_v").innerHTML = obj.meter_p1_v;
-  document.getElementById("meter_p2_v").innerHTML = obj.meter_p2_v;
-  document.getElementById("meter_p3_v").innerHTML = obj.meter_p3_v;
+  document.getElementById("meter_v1").innerHTML = obj.meter_p1_v;
+  document.getElementById("meter_v2").innerHTML = obj.meter_p2_v;
+  document.getElementById("meter_v3").innerHTML = obj.meter_p3_v;
   if (obj.hasOwnProperty("rssi")) {
     document.getElementById("rssi").innerHTML = " (" + obj.rssi + "dBm)";
     document.getElementById("rssi").style.fontWeight = 'bold';
@@ -1671,7 +1737,7 @@ function listStats(obj) {
     else if (obj.rssi < -59) { // middle-good wifi signal
       document.getElementById("rssi").style.color = '#6f3';
     }
-    else if (obj.rssi < -49) { // good wifi signal
+    else { // good wifi signal
       document.getElementById("rssi").style.color = '#093';
     }
   }
@@ -1689,7 +1755,7 @@ function setEVSERegister() {
   websock.send(JSON.stringify(datatosend));
   document.getElementById("buttonsetregister").disabled = true;
   $("#loadersetevsereg").removeClass('hidden');
-  
+
   setTimeout(function () {
     refreshStats();
     $("#evseRegModal").modal("hide");
@@ -1734,7 +1800,7 @@ function showEvseRegModal() {
 }
 
 $(document).ready(function () {
-  $('[data-toggle="tooltip"]').tooltip();
+  //$('[data-toggle="tooltip"]').tooltip();
 });
 
 function socketMessageListener(evt) {
@@ -1795,26 +1861,43 @@ function socketMessageListener(evt) {
     hw_rev = obj.hw_rev;
     sw_rev = obj.sw_rev;
     pp_limit = obj.pp_limit;
-    language = obj.language;
+    $.getScript("lang.js", function () {
+      $(document).ready(function () { });
+    });
+    if (obj.language === "de") {
+      langMap = lang_de;
+      language = "de";
+    }
+    else {
+      langMap = lang_en;
+      language = "en";
+    }
+    translateAll();
     opmode = obj.opmode;
     highResolution = obj.highResolution;
 
     if (highResolution) {
-      document.getElementById("currentSlider").setAttribute("step", "0.5");
-      document.getElementById("timer1_current").setAttribute("step", "0.5");
-      document.getElementById("timer2_current").setAttribute("step", "0.5");
-      document.getElementById("timer3_current").setAttribute("step", "0.5");
-      document.getElementById("timer4_current").setAttribute("step", "0.5");
-      document.getElementById("timer5_current").setAttribute("step", "0.5");
+      document.getElementById("currentSlider").setAttribute("step", "0.5"); //Test -> 0,1
+      document.getElementById("timer1_current").setAttribute("step", "0.5");//Test -> 0,1
+      document.getElementById("timer2_current").setAttribute("step", "0.5");//Test -> 0,1
+      document.getElementById("timer3_current").setAttribute("step", "0.5");//Test -> 0,1
+      document.getElementById("timer4_current").setAttribute("step", "0.5");//Test -> 0,1
+      document.getElementById("timer5_current").setAttribute("step", "0.5");//Test -> 0,1
     }
-    
-    const fw = document.getElementsByClassName("fw_version")
+
+    const fw = document.getElementsByClassName("fw_version");
     for (let i of fw) { i.innerHTML = sw_rev; }
     if (opmode === 0) {
       document.getElementById("timerLink").style.display = "block";
     }
     else {
       document.getElementById("timerLink").style.display = "none";
+    }
+    if (obj.debug === true) {
+      document.getElementById("syslogLink").style.display = "block";
+    }
+    else {
+      document.getElementById("syslogLink").style.display = "none";
     }
   }
   else if (typeof obj.configversion !== "undefined") {
@@ -1834,6 +1917,9 @@ function socketMessageListener(evt) {
   else if (obj.command === "updateFinished") {
     updateFinished();
   }
+  else if (obj.command === "syslog") {
+    appendSyslog(obj);
+  }
   if (obj.type === "latestlog") {
     logdataraw = obj.list
     logdata = obj.list;
@@ -1850,10 +1936,18 @@ function socketMessageListener(evt) {
       initLogTable();
     }
     if (logdata.length > 0) {
-      document.getElementById("textlimitlogfile2").innerHTML = "Currently " + logdata.length + " entries in log file. ";
+      document.getElementById("textlimitlogfile").innerHTML = translate("lo_head", maxLog, logdata.length);
     }
   }
-
+  if (obj.hasOwnProperty("syslog_export")) {
+    var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2));
+    var downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "syslog_export.json");
+    document.body.appendChild(downloadAnchorNode); // required for firefox
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  }
 }
 
 function socketCloseListener(evt) {
@@ -1902,16 +1996,16 @@ function wsConnect() {
     websock.send("{\"command\":\"getstartup\"}");
     loadEVSEControl();
   };
-  setTimeout(function() {
+  setTimeout(function () {
     timeoutInterval = setInterval(connectionTimeOutCheck, 3000);
-  }, 2000); 
+  }, 2000);
 }
 
 function connectionTimeOutCheck() {
   var readyState = websock.readyState;
   if (readyState !== 1) {
     clearInterval(timeoutInterval);
-    if (confirm("Connection to EVSE-WiFi lost. Reload Page?")) {
+    if (confirm(translate("g_confirm_conn_lost"))) {
       location.reload();
     }
     else {
@@ -1927,4 +2021,29 @@ function start() {
   document.getElementById("timerContent").style.display = "none";
   document.getElementById("statusContent").style.display = "none";
   document.getElementById("logContent").style.display = "none";
+}
+
+
+function translate(val, var0 = null, var1 = null, var2 = null) {
+  var retValue = langMap[val];
+  if (var0 != null) {
+    retValue = retValue.replace("{0}", var0);
+  }
+  if (var1 != null) {
+    retValue = retValue.replace("{1}", var1);
+  }
+  if (var2 != null) {
+    retValue = retValue.replace("{2}", var2);
+  }
+  return retValue;
+}
+
+function translateAll() {
+  for (const [key, val] of Object.entries(langMap)) {
+    const objects = document.getElementsByClassName(key);
+    for (let i of objects) { i.innerHTML = val; }
+    const object = document.getElementById(key);
+    if (object != null) { object.title = val; }
+  }
+  $('[data-toggle="tooltip"]').tooltip();
 }

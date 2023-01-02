@@ -2,46 +2,49 @@
 
 #ifdef RFID
 MFRC522 mfrc522 = MFRC522();
-#endif
 
-bool ICACHE_FLASH_ATTR EvseWiFiRfid::begin(int rfidss, bool usePN532, int rfidgain, NtpClient* ntp, bool debug) {
-#ifdef RFID
+
+bool ICACHE_FLASH_ATTR EvseWiFiRfid::begin(int rfidss, bool usePN532, int rfidgain, NtpClient* ntp, bool debug, Syslog* s) {
   this->debug = debug;
   this->ntpClient = ntp;
+  this->slog = s;
   mfrc522.PCD_SetAntennaGain(rfidgain);
   delay(50);
   mfrc522.PCD_Init(rfidss, 0);
   delay(50);
-  if (debug) Serial.printf("[ INFO ] RFID SS_PIN: %u and Gain Factor: %u", rfidss, rfidgain);
-  if (debug) Serial.println("");
+  if (this->debug) this->slog->log(this->ntpClient->iso8601DateTime() + "[ INFO ] RFID SS_PIN:");
+  if (this->debug) this->slog->log(rfidss);
+  if (this->debug) this->slog->log("and Gain Factor: ");
+  if (this->debug) this->slog->logln(rfidgain);
   delay(50);
   printReaderDetails();
-#endif
+
   return true;
 }
+#endif
 
 void ICACHE_FLASH_ATTR EvseWiFiRfid::printReaderDetails() {
 #ifdef RFID
   // Get the MFRC522 software version 
   byte v = mfrc522.PCD_ReadRegister(mfrc522.VersionReg);
-  if (this->debug) Serial.print(F("[ INFO ] MFRC522 Version: 0x"));
-  if (this->debug) Serial.print(v, HEX);
+  if (this->debug) this->slog->log(this->ntpClient->iso8601DateTime() + "[ INFO ] MFRC522 Version: 0x");
+  if (this->debug) this->slog->log(v, true);
   if (v == 0x91) {
-    if (this->debug) Serial.print(F(" = v1.0"));
+    if (this->debug) this->slog->log(" = v1.0");
   }
   else if (v == 0x92) {
-    if (this->debug) Serial.print(F(" = v2.0"));
+    if (this->debug) this->slog->log(" = v2.0");
   }
   else if (v == 0x88) {
-    if (this->debug) Serial.print(F(" = clone"));
+    if (this->debug) this->slog->log(" = clone");
   }
   else {
-    if (this->debug) Serial.print(F(" (unknown)"));
+    if (this->debug) this->slog->log(" (unknown)");
   }
-  if (this->debug) Serial.println("");
+  if (this->debug) this->slog->logln("");
   // When 0x00 or 0xFF is returned, communication probably failed
   if ((v == 0x00) || (v == 0xFF)) {
-    if (this->debug) Serial.println(F("[ WARN ] Communication failure, check if MFRC522 properly connected"));
+    if (this->debug) this->slog->logln("[ WARN ] Communication failure, check if MFRC522 properly connected");
   }
   #endif
 }
@@ -63,17 +66,17 @@ scanResult ICACHE_FLASH_ATTR EvseWiFiRfid::readPicc() {
       return res;
     }
     res.read = true;
-    Serial.println("[ RFID ] Card detected to read!"); ///DEBUG
+    this->slog->logln(this->ntpClient->iso8601DateTime() + "[ RFID ] Card detected to read!");
     mfrc522.PICC_HaltA();
     this->cooldown = millis() + 3000;
-    if (this->debug) Serial.print(F("[ INFO ] PICC's UID: "));
+    if (this->debug) this->slog->log(this->ntpClient->iso8601DateTime() +"[ RFID ] PICC's UID: ");
     String uid = "";
     for (int i = 0; i < mfrc522.uid.size; ++i) {
       uid += String(mfrc522.uid.uidByte[i], HEX);
     }
     
     res.uid = uid;
-    if (this->debug) Serial.print(uid);
+    if (this->debug) this->slog->log(uid);
     MFRC522::PICC_Type piccType = mfrc522.PICC_GetType(mfrc522.uid.sak);
     String type = mfrc522.PICC_GetTypeName(piccType);
     res.type = type;
@@ -99,30 +102,30 @@ scanResult ICACHE_FLASH_ATTR EvseWiFiRfid::readPicc() {
       if (!error) {
         res.user = strdup(jsonDoc["user"]);
         AccType = jsonDoc["acctype"];
-        if (this->debug) Serial.println(" = known PICC");
-        if (this->debug) Serial.print("[ INFO ] User Name: ");
+        if (this->debug) this->slog->logln(" = known PICC");
+        if (this->debug) this->slog->log(this->ntpClient->iso8601DateTime() + "[ INFO ] User Name: ");
         if (res.user == "undefined") {
-          if (this->debug) Serial.print(res.uid);
+          if (this->debug) this->slog->log(res.uid);
         }
         else {
-          if (this->debug) Serial.print(res.user);
+          if (this->debug) this->slog->log(res.user);
         }
         if ((AccType == 1 || AccType == 99) &&
             ntpClient->getUtcTimeNow() < jsonDoc["validuntil"]) {
-          if (this->debug) Serial.println(" have permission");
+          if (this->debug) this->slog->logln(" has permission");
           res.valid = true;
         }
         else {
-          if (this->debug) Serial.println(" does not have permission");
+          if (this->debug) this->slog->logln(" does not have permission");
         }
       }
       else {
-        if (this->debug) Serial.println("");
-        if (this->debug) Serial.println(F("[ WARN ] Failed to parse User Data"));
+        if (this->debug) this->slog->logln("");
+        if (this->debug) this->slog->logln("[ WARN ] Failed to parse User Data");
       }
     }
     else { // Unknown PICC
-      if (this->debug) Serial.println(" = unknown PICC");
+      if (this->debug) this->slog->logln(" = unknown PICC");
     }
     rfidFile.close();
     //SPIFFS.end();
@@ -131,8 +134,8 @@ scanResult ICACHE_FLASH_ATTR EvseWiFiRfid::readPicc() {
 }
 
 DynamicJsonDocument ICACHE_FLASH_ATTR EvseWiFiRfid::getUserList(int page) {
-  Serial.print("getUserlist - Page: ");
-  Serial.println(page);
+  this->slog->log("getUserlist - Page: ");
+  this->slog->logln(page);
   DynamicJsonDocument jsonDoc(3000);
   jsonDoc["command"] = "userlist";
   jsonDoc["page"] = page;
