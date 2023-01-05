@@ -2,7 +2,7 @@
 #include "oled.h"
 #include <string>
 
-void EvseWiFiOled::begin(U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8, uint8_t rotation) {
+void EvseWiFiOled::begin(U8G2_SSD1306_128X64_NONAME_F_SW_I2C* u8, uint8_t rotation) {
   this->u8g2 = u8;
   this->u8g2->begin();
   switch (rotation)

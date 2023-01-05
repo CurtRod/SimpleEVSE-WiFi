@@ -156,7 +156,7 @@ HardwareSerial SecondSer(2);
 #ifdef OLED
 // oLED
 unsigned long millisUpdateOled = 0;
-U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/U8X8_PIN_NONE);
+U8G2_SSD1306_128X64_NONAME_F_SW_I2C u8g2(U8G2_R0, /* clock=*/ 25, /* data=*/ 26,  /* reset=*/ U8X8_PIN_NONE);
 // U8G2_SSD1309_128X64_NONAME0_F_4W_HW_SPI u8g2(U8G2_R0, /* cs=*/ 12, /* dc=*/ 13, /* reset=*/ 33);
 EvseWiFiOled oled;
 #endif
@@ -4184,14 +4184,6 @@ void ICACHE_RAM_ATTR setup()
     Serial.println(config.getEvseNumPhasesPin(0));
   }
   numPhasesState = config.getEvseNumPhases(0);
-  // if (numPhasesState == 3)
-  // {
-  //   digitalWrite(config.getEvseNumPhasesPin(0), HIGH);
-  // }
-  // else if (numPhasesState == 1)
-  // {
-  //   digitalWrite(config.getEvseNumPhasesPin(0), LOW);
-  // }
 #endif
 #ifndef ESP8266
   pinMode(config.getEvseRsePin(0), INPUT_PULLUP);
