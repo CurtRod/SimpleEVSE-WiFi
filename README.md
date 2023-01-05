@@ -1,3 +1,16 @@
+# This fork... 
+... contains the latest official release on github (v2.3.0) of the original source code + the phase switching feature from the baycom fork.
+There are various slight modifications in many parts of the code, to get everything working.
+The code can be compiled for an ESP32 or NodeMCU-32s and runs without issues. I also added the support for a cheap OLED SSD1306 and also a breakout PCB to simplify the connections.
+
+Tested with:
+SimpleEVSE WB
+OLED SSD1303 (1.3")
+SDM 630 Modbus v2
+NodeMCU-32S Kit with external antenna (AZDelivery)
+3.3V Relaisboard (important 3.3V otheriwse it will not switch!!)
+
+
 # SimpleEVSE-WiFi
 
 💬 [German version](https://www.evse-wifi.de/dokumentation/)
@@ -97,10 +110,10 @@ D0 | GPIO16 | Anode (+) | GPIO2
 GND | | Kathode (-) | GND
 
 ##### Modbus Electicity Meter (optional)**
-TTL->RS485 | ESP8266-Pin
+TTL->RS485 | ESP32-Pin
 ----------- | -----------
-RX | RX 
-TX | TX 
+RX | 14 
+TX | 34 
 VCC | 5V
 GND | GND
 
@@ -108,6 +121,15 @@ TTL->RS485 | Modbus Meter
 ----------- | -----------
 A+ | A
 B- | B
+
+##### OLED SSD1306  **
+OLED | ESP32-Pin
+----------- | -----------
+CS | 25 
+DC | 26 
+VCC | 5V
+GND | GND
+
 
 ##### Phase switching (optional)**
 ESP32 DEVKIT V1
