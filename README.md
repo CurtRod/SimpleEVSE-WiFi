@@ -4,11 +4,11 @@ There are various slight modifications in many parts of the code, to get everyth
 The code can be compiled for an ESP32 or NodeMCU-32s and runs without issues. I also added the support for a cheap OLED SSD1306 and also a breakout PCB to simplify the connections.
 
 Tested with:
-SimpleEVSE WB
-OLED SSD1303 (1.3")
-SDM 630 Modbus v2
-NodeMCU-32S Kit with external antenna (AZDelivery)
-3.3V Relaisboard (important 3.3V otheriwse it will not switch!!)
+- SimpleEVSE WB
+- OLED SSD1303 (1.3")
+- SDM 630 Modbus v2
+- NodeMCU-32S Kit with external antenna (AZDelivery)
+- 3.3V Relaisboard (important ***3.3V*** otheriwse it will not switch!!)
 
 
 # SimpleEVSE-WiFi
