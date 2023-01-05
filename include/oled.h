@@ -10,7 +10,7 @@ class EvseWiFiOled {
 public:
     bool displayOn;
 //U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE, /* clock=*/ 16, /* data=*/ 17);
-    void begin(U8G2_SSD1306_128X64_NONAME_F_HW_I2C*, uint8_t rotation);
+    void begin(U8G2_SSD1306_128X64_NONAME_F_SW_I2C*, uint8_t rotation);
     void setLanguage(EvseWiFiConfig*);
     void clearBuffer();
     void sendBuffer();
@@ -22,7 +22,7 @@ public:
     void showSplash(String text = "", String head = "Loading...");
 
 private:
-    U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2;
+    U8G2_SSD1306_128X64_NONAME_F_SW_I2C* u8g2;
     void drawCheck(uint8_t);
     void drawUncheck();
     uint8_t offsetX = 0;
